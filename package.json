@@ -12,6 +12,7 @@
     "electron:dev": "concurrently \"pnpm dev\" \"wait-on http://localhost:5173 && electron .\""
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "react": "^19.2.6",

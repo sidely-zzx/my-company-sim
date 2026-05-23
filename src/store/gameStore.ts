@@ -53,27 +53,50 @@ export interface GameStore extends GameState {
   getYesterdayFinanceReport: () => FinanceReport | undefined
 }
 
+function toGameState(state: GameStore): GameState {
+  return {
+    settings: state.settings,
+    time: state.time,
+    money: state.money,
+    employees: state.employees,
+    resumes: state.resumes,
+    laborContracts: state.laborContracts,
+    projectContracts: state.projectContracts,
+    events: state.events,
+    financeRecords: state.financeRecords,
+    financeReports: state.financeReports,
+    mailbox: state.mailbox,
+    pendingArbitrations: state.pendingArbitrations,
+    market: state.market,
+    rngSeed: state.rngSeed,
+    nextId: state.nextId,
+  }
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   ...createInitialGameState(),
   startGame: () => set(() => createInitialGameState()),
   resetGame: () => set(() => createInitialGameState()),
-  setSpeed: (speed) => set((state) => setSpeed(state, speed)),
-  setOffWorkHour: (hour) => set((state) => setOffWorkHour(state, hour)),
-  tick: (realDeltaMs) => set((state) => advanceGameTime(state, realDeltaMs)),
-  refreshResumes: () => set((state) => refreshResumes(state)),
+  setSpeed: (speed) => set((state) => setSpeed(toGameState(state), speed)),
+  setOffWorkHour: (hour) => set((state) => setOffWorkHour(toGameState(state), hour)),
+  tick: (realDeltaMs) => set((state) => advanceGameTime(toGameState(state), realDeltaMs)),
+  refreshResumes: () => set((state) => refreshResumes(toGameState(state))),
   sendOffer: (resumeId, salaryPerDay, socialInsuranceRatio) =>
-    set((state) => sendOffer(state, resumeId, salaryPerDay, socialInsuranceRatio)),
-  acceptLaborContract: (contractId) => set((state) => acceptLaborContract(state, contractId)),
+    set((state) => sendOffer(toGameState(state), resumeId, salaryPerDay, socialInsuranceRatio)),
+  acceptLaborContract: (contractId) =>
+    set((state) => acceptLaborContract(toGameState(state), contractId)),
   assignEmployeeToLabor: (employeeId, contractId) =>
-    set((state) => assignEmployeeToLabor(state, employeeId, contractId)),
-  acceptProjectContract: (projectId) => set((state) => acceptProjectContract(state, projectId)),
+    set((state) => assignEmployeeToLabor(toGameState(state), employeeId, contractId)),
+  acceptProjectContract: (projectId) =>
+    set((state) => acceptProjectContract(toGameState(state), projectId)),
   assignEmployeeToProject: (employeeId, projectId, role) =>
-    set((state) => assignEmployeeToProject(state, employeeId, projectId, role)),
-  renameEmployee: (employeeId, nickname) => set((state) => renameEmployee(state, employeeId, nickname)),
+    set((state) => assignEmployeeToProject(toGameState(state), employeeId, projectId, role)),
+  renameEmployee: (employeeId, nickname) =>
+    set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   fireEmployee: (employeeId, compensationRatio) =>
-    set((state) => fireEmployee(state, employeeId, compensationRatio)),
-  markMailRead: (mailId) => set((state) => markMailRead(state, mailId)),
-  markAllMailRead: () => set((state) => markAllMailRead(state)),
-  getFinanceReport: (day) => getFinanceReport(get(), day),
-  getYesterdayFinanceReport: () => getYesterdayFinanceReport(get()),
+    set((state) => fireEmployee(toGameState(state), employeeId, compensationRatio)),
+  markMailRead: (mailId) => set((state) => markMailRead(toGameState(state), mailId)),
+  markAllMailRead: () => set((state) => markAllMailRead(toGameState(state))),
+  getFinanceReport: (day) => getFinanceReport(toGameState(get()), day),
+  getYesterdayFinanceReport: () => getYesterdayFinanceReport(toGameState(get())),
 }))
