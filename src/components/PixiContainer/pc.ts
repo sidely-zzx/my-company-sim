@@ -23,6 +23,12 @@ const SCREEN_SOURCE_Y = 227;
 const SCREEN_SOURCE_WIDTH = 670;
 const SCREEN_SOURCE_HEIGHT = 326;
 const SCREEN_SCROLL_SPEED = 0.3;
+const MAX_ACTIVE_SCREENS = DESK_COLUMNS * DESK_ROWS;
+
+export interface PcLayerHandle {
+  layer: Container;
+  setActiveScreenCount: (count: number) => void;
+}
 
 const createWorkingScreen = (screenTexture: Texture) => {
   const screenLayer = new Container();
@@ -69,12 +75,14 @@ const createWorkingScreen = (screenTexture: Texture) => {
 
 const createPcMatrix = (pcTexture: Texture, screenTexture: Texture, ticker: Ticker) => {
   const pcLayer = new Container();
+  const workingScreens: Array<ReturnType<typeof createWorkingScreen>> = [];
 
   for (let row = 0; row < DESK_ROWS; row += 1) {
     for (let column = 0; column < DESK_COLUMNS; column += 1) {
       const stationLayer = new Container();
       const pc = new Sprite(pcTexture);
       const workingScreen = createWorkingScreen(screenTexture);
+      workingScreen.layer.visible = false;
 
       // 电脑是桌面的生产设备视觉资产：它遮挡桌子表面，但会被椅子和未来坐下的员工遮挡。
       // 电脑位置影响桌面摆件、显示器点击热区和工位状态展示，不直接影响现金流、项目进度等经营数值。
@@ -86,13 +94,29 @@ const createPcMatrix = (pcTexture: Texture, screenTexture: Texture, ticker: Tick
       stationLayer.addChild(pc);
       stationLayer.addChild(workingScreen.layer);
       pcLayer.addChild(stationLayer);
+      workingScreens.push(workingScreen);
       ticker.add((ticker) => {
-        workingScreen.update(ticker.deltaTime);
+        if (workingScreen.layer.visible) {
+          workingScreen.update(ticker.deltaTime);
+        }
       });
     }
   }
 
-  return pcLayer;
+  const setActiveScreenCount = (count: number) => {
+    const activeScreenCount = Math.max(0, Math.min(MAX_ACTIVE_SCREENS, count));
+
+    workingScreens.forEach((workingScreen, index) => {
+      // 工作屏幕受对应工位是否有员工影响：有员工时显示代码滚动，没有员工时隐藏屏幕内容，保留电脑显示器黑屏。
+      // 这只改变视觉状态，不改变员工、项目进度、现金流等经营属性。
+      workingScreen.layer.visible = index < activeScreenCount;
+    });
+  };
+
+  return {
+    layer: pcLayer,
+    setActiveScreenCount,
+  };
 };
 
 async function createPcLayer(ticker: Ticker) {

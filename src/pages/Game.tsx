@@ -271,7 +271,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         </aside>
       </div>
 
-      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[850px] grid-cols-7 gap-px p-1.5')} aria-label="模块导航">
+      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[850px] grid-cols-7 gap-px')} aria-label="模块导航">
         <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} title="员工列表" description="管理员工">
           <EmployeePanel />
         </DockDialog>

@@ -28,7 +28,7 @@ export function DockDialog({ icon, label, badge, title, description, children }:
           {badge ? <em className="absolute right-2.5 top-[7px] h-5 min-w-5 rounded-full bg-[#bf5146] text-xs not-italic leading-5 text-[#fff2df]">{badge}</em> : null}
         </button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className='p-0'>
         <DialogTitle className={srOnly}>{title}</DialogTitle>
         <DialogDescription className={srOnly}>{description}</DialogDescription>
         {children}

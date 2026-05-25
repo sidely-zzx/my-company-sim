@@ -198,9 +198,9 @@ export function DashboardSettingsPanel({
           <p className={eyebrow}>系统</p>
           <h2 className={panelTitle}>设置</h2>
         </div>
-        <button type="button" className={secondaryButton} onClick={onOpenHome}>
+        {/* <button type="button" className={secondaryButton} onClick={onOpenHome}>
           返回主菜单
-        </button>
+        </button> */}
       </div>
       <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6] [&_select]:w-full">
         <label>

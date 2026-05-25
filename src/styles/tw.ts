@@ -26,7 +26,7 @@ export const panel = cn(surface, 'min-w-0 p-[18px]')
 export const dialogPanel = 'min-w-0 bg-transparent p-0 shadow-none'
 
 export const panelHeader =
-  'mb-3.5 flex items-center justify-between gap-3 max-[900px]:flex-col max-[900px]:items-start'
+  'mb-3.5 flex items-center justify-between gap-3 max-[900px]:flex-col max-[900px]:items-start  pr-10'
 
 export const panelTitle = 'm-0 text-[17px] text-[#efe2c8]'
 

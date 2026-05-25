@@ -150,9 +150,10 @@ const createGameApp = async (
   officeBackground.height = OFFICE_IMAGE_HEIGHT;
   backgroundLayer.addChild(officeBackground);
   officeLayer.addChild(deskLayer);
-  officeLayer.addChild(pcLayer);
+  officeLayer.addChild(pcLayer.layer);
   officeLayer.addChild(employeeLayer.layer);
   officeLayer.addChild(chairLayer.layer);
+  pcLayer.setActiveScreenCount(options.activeEmployeeCount);
   chairLayer.setOccupiedEmployeeCount(options.activeEmployeeCount);
 
   const resizeOfficeLayer = () => {
@@ -168,6 +169,7 @@ const createGameApp = async (
   return {
     setActiveEmployeeCount: (count) => {
       employeeLayer.setActiveEmployeeCount(count);
+      pcLayer.setActiveScreenCount(count);
       chairLayer.setOccupiedEmployeeCount(count);
     },
     destroy: () => {
