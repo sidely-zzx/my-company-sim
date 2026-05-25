@@ -1,6 +1,7 @@
 import { Application, Assets, Container, Sprite, type Texture } from 'pixi.js';
 import createChairLayer from './chair';
 import createDeskLayer from './desk';
+import createPcLayer from './pc';
 
 const OFFICE_BACKGROUND_SRC = '/office.png';
 const OFFICE_IMAGE_WIDTH = 1672;
@@ -128,9 +129,10 @@ const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
   officeLayer.addChild(backgroundLayer);
   app.stage.addChild(sceneLayer);
 
-  const [officeTexture, deskLayer, chairLayer] = await Promise.all([
+  const [officeTexture, deskLayer, pcLayer, chairLayer] = await Promise.all([
     Assets.load<Texture>(OFFICE_BACKGROUND_SRC),
     createDeskLayer(),
+    createPcLayer(),
     createChairLayer(),
   ]);
   const officeBackground = new Sprite(officeTexture);
@@ -138,6 +140,7 @@ const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
   officeBackground.height = OFFICE_IMAGE_HEIGHT;
   backgroundLayer.addChild(officeBackground);
   officeLayer.addChild(deskLayer);
+  officeLayer.addChild(pcLayer);
   officeLayer.addChild(chairLayer);
 
   const resizeOfficeLayer = () => {
