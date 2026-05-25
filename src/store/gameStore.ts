@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import { createInitialGameState } from '../game/initialState'
+import { createGameSaveFileName, createGameSaveJson, parseGameSaveJson } from '../game/save'
 import {
   acceptLaborContract,
   assignEmployeeToLabor,
@@ -47,6 +48,12 @@ export interface GameStore extends GameState {
   markMailRead: (mailId: string) => void
   /** 将全部邮件标记为已读。 */
   markAllMailRead: () => void
+  /** 导出当前局面的 JSON 存档，只包含 GameState 数据，不包含 Zustand action 函数。 */
+  exportSaveJson: () => string
+  /** 生成当前局面的默认存档文件名，包含游戏日和导出时间。 */
+  getSaveFileName: () => string
+  /** 从 JSON 存档恢复 GameState；会保留 store action 函数并覆盖当前局面。 */
+  loadSaveJson: (json: string) => void
   /** 获取指定游戏日的财务报表。 */
   getFinanceReport: (day: number) => FinanceReport | undefined
   /** 获取昨天的财务报表，供“查看昨日收支”入口使用。 */
@@ -97,6 +104,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => fireEmployee(toGameState(state), employeeId, compensationRatio)),
   markMailRead: (mailId) => set((state) => markMailRead(toGameState(state), mailId)),
   markAllMailRead: () => set((state) => markAllMailRead(toGameState(state))),
+  exportSaveJson: () => createGameSaveJson(toGameState(get())),
+  getSaveFileName: () => createGameSaveFileName(toGameState(get())),
+  loadSaveJson: (json) => set(() => parseGameSaveJson(json)),
   getFinanceReport: (day) => getFinanceReport(toGameState(get()), day),
   getYesterdayFinanceReport: () => getYesterdayFinanceReport(toGameState(get())),
 }))

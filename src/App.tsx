@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 
 import type {
   Employee,
@@ -13,11 +13,13 @@ import type {
 } from './game/types'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from './components/ui/dialog'
+import { parseGameSaveFileJson } from './game/save'
 import { useGameStore } from './store/gameStore'
 import './App.css'
 
@@ -76,10 +78,44 @@ const urgencyLabels = {
   normal: '普通',
 }
 
+type AppView = 'home' | 'game'
+
+interface ImportedSave {
+  id: string
+  fileName: string
+  json: string
+  savedAt: string
+  day: number
+  money: number
+}
+
+interface VisualSettings {
+  density: 'compact' | 'comfortable'
+  theme: 'system' | 'light' | 'dark'
+  motion: 'standard' | 'reduced'
+  volume: number
+}
+
 function formatTime(minuteOfDay: number): string {
   const hour = Math.floor(minuteOfDay / 60)
   const minute = minuteOfDay % 60
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+function formatSaveDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString('zh-CN', {
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function money(value: number): string {
@@ -88,6 +124,61 @@ function money(value: number): string {
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
+}
+
+function signedMoney(value: number): string {
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${money(value)}`
+}
+
+function average(values: number[], fallback: number): number {
+  if (values.length === 0) {
+    return fallback
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length
+}
+
+function projectProgress(project: ProjectContract): number {
+  return Math.round(
+    average(
+      projectTracks.map((track) => project.phaseProgress[track] ?? 0),
+      0,
+    ),
+  )
+}
+
+function projectRisk(project: ProjectContract, day: number): { label: string; tone: 'danger' | 'warning' | 'success' } {
+  if (project.status === 'overdue' || project.deadlineDay <= day) {
+    return { label: '延期风险：高', tone: 'danger' }
+  }
+  if (project.deadlineDay - day <= 1) {
+    return { label: '延期风险：中', tone: 'warning' }
+  }
+  return { label: '延期风险：低', tone: 'success' }
+}
+
+function progressTone(value: number): 'danger' | 'warning' | 'success' {
+  if (value >= 75) {
+    return 'success'
+  }
+  if (value >= 45) {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+function eventIcon(type: string): string {
+  const icons: Record<string, string> = {
+    finance: '$',
+    recruiting: '+',
+    contract: '#',
+    project: 'P',
+    employee: '@',
+    warning: '!',
+  }
+
+  return icons[type] ?? 'i'
 }
 
 function clampNumber(value: string, fallback: number): number {
@@ -169,66 +260,6 @@ function GameClock() {
   }, [])
 
   return null
-}
-
-function TopBar() {
-  const day = useGameStore((state) => state.time.day)
-  const minuteOfDay = useGameStore((state) => state.time.minuteOfDay)
-  const speed = useGameStore((state) => state.time.speed)
-  const moneyValue = useGameStore((state) => state.money)
-  const offWorkHour = useGameStore((state) => state.settings.offWorkHour)
-  const mailbox = useGameStore((state) => state.mailbox)
-  const resetGame = useGameStore((state) => state.resetGame)
-  const setSpeed = useGameStore((state) => state.setSpeed)
-  const setOffWorkHour = useGameStore((state) => state.setOffWorkHour)
-  const tick = useGameStore((state) => state.tick)
-
-  const unreadCount = mailbox.filter((mail) => !mail.read).length
-  const remainingMinutes = Math.max(0, offWorkHour * 60 - minuteOfDay)
-
-  function advanceToOffWork() {
-    for (let index = 0; index < remainingMinutes; index += 1) {
-      tick(2000)
-    }
-  }
-
-  return (
-    <header className="top-bar">
-      <div>
-        <p className="eyebrow">外包公司模拟器 · 内核测试面板</p>
-        <h1>第 {day} 天 {formatTime(minuteOfDay)}</h1>
-      </div>
-      <div className="stats-row">
-        <span>现金 {money(moneyValue)}</span>
-        <span>速度 {speed === 0 ? '暂停' : `${speed}x`}</span>
-        <span>下班 {offWorkHour}:00</span>
-        <span>未读邮件 {unreadCount}</span>
-      </div>
-      <div className="toolbar">
-        <button type="button" onClick={resetGame}>重开</button>
-        <button type="button" onClick={() => setSpeed(0)}>暂停</button>
-        <button type="button" onClick={() => setSpeed(1)}>1x</button>
-        <button type="button" onClick={() => setSpeed(2)}>2x</button>
-        <label>
-          下班
-          <select
-            name="offWorkHour"
-            value={offWorkHour}
-            onChange={(event) => setOffWorkHour(Number(event.target.value) as WorkHour)}
-          >
-            {workHours.map((hour) => (
-              <option key={hour} value={hour}>{hour}:00</option>
-            ))}
-          </select>
-        </label>
-        <button type="button" onClick={() => tick(2000)}>推进 1 分钟</button>
-        <button type="button" onClick={() => tick(60 * 2000)}>推进 60 分钟</button>
-        <button type="button" onClick={advanceToOffWork} disabled={remainingMinutes === 0}>
-          推进到下班
-        </button>
-      </div>
-    </header>
-  )
 }
 
 function RecruitingPanel() {
@@ -759,126 +790,784 @@ function EventPanel() {
   )
 }
 
-interface SystemDialogProps {
+interface DashboardSettingsPanelProps {
+  visualSettings: VisualSettings
+  onOpenHome: () => void
+  onUpdateVisualSettings: (patch: Partial<VisualSettings>) => void
+}
+
+function DashboardSettingsPanel({
+  visualSettings,
+  onOpenHome,
+  onUpdateVisualSettings,
+}: DashboardSettingsPanelProps) {
+  const offWorkHour = useGameStore((state) => state.settings.offWorkHour)
+  const setOffWorkHour = useGameStore((state) => state.setOffWorkHour)
+  const resetGame = useGameStore((state) => state.resetGame)
+  const tick = useGameStore((state) => state.tick)
+  const exportSaveJson = useGameStore((state) => state.exportSaveJson)
+  const getSaveFileName = useGameStore((state) => state.getSaveFileName)
+  const loadSaveJson = useGameStore((state) => state.loadSaveJson)
+  const saveInputRef = useRef<HTMLInputElement>(null)
+  const [saveStatus, setSaveStatus] = useState('')
+
+  function downloadSave() {
+    const saveJson = exportSaveJson()
+    const fileName = getSaveFileName()
+    const blob = new Blob([saveJson], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    setSaveStatus(`已保存 ${fileName}`)
+  }
+
+  async function loadSave(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    try {
+      loadSaveJson(await file.text())
+      setSaveStatus(`已读取 ${file.name}`)
+    } catch (error) {
+      setSaveStatus(error instanceof Error ? error.message : '读取存档失败')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  return (
+    <section className="panel dashboard-settings-panel">
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">系统</p>
+          <h2>设置</h2>
+        </div>
+        <button type="button" className="secondary-button" onClick={onOpenHome}>
+          返回主菜单
+        </button>
+      </div>
+      <div className="settings-grid">
+        <label>
+          下班时间
+          <select
+            name="dashboard-off-work-hour"
+            value={offWorkHour}
+            onChange={(event) => setOffWorkHour(Number(event.target.value) as WorkHour)}
+          >
+            {workHours.map((hour) => (
+              <option key={hour} value={hour}>{hour}:00</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          界面密度
+          <select
+            name="dashboard-visual-density"
+            value={visualSettings.density}
+            onChange={(event) =>
+              onUpdateVisualSettings({ density: event.target.value as VisualSettings['density'] })
+            }
+          >
+            <option value="compact">紧凑</option>
+            <option value="comfortable">舒展</option>
+          </select>
+        </label>
+        <label>
+          主题模式
+          <select
+            name="dashboard-visual-theme"
+            value={visualSettings.theme}
+            onChange={(event) =>
+              onUpdateVisualSettings({ theme: event.target.value as VisualSettings['theme'] })
+            }
+          >
+            <option value="system">跟随系统</option>
+            <option value="light">浅色</option>
+            <option value="dark">深色</option>
+          </select>
+        </label>
+        <label>
+          音量 {visualSettings.volume}
+          <input
+            className="range-input"
+            name="dashboard-visual-volume"
+            type="range"
+            min="0"
+            max="100"
+            value={visualSettings.volume}
+            onChange={(event) => onUpdateVisualSettings({ volume: Number(event.target.value) })}
+          />
+        </label>
+      </div>
+      <div className="dashboard-settings-actions">
+        <button type="button" onClick={() => tick(2000)}>推进 1 分钟</button>
+        <button type="button" onClick={() => tick(60 * 2000)}>推进 60 分钟</button>
+        <button type="button" onClick={downloadSave}>保存 JSON</button>
+        <button type="button" onClick={() => saveInputRef.current?.click()}>读取 JSON</button>
+        <button type="button" onClick={resetGame}>重开</button>
+        <input
+          ref={saveInputRef}
+          aria-label="选择 JSON 存档"
+          className="sr-only"
+          type="file"
+          accept=".json,.companysim,application/json"
+          onChange={loadSave}
+        />
+      </div>
+      {saveStatus ? <span className="save-status" role="status">{saveStatus}</span> : null}
+    </section>
+  )
+}
+
+interface DockDialogProps {
+  icon: string
+  label: string
+  badge?: number
   title: string
-  eyebrow: string
-  metric: string
-  status: string
+  description: string
   children: ReactNode
 }
 
-function SystemDialog({ title, eyebrow, metric, status, children }: SystemDialogProps) {
+function DockDialog({ icon, label, badge, title, description, children }: DockDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="system-card">
-          <span>{eyebrow}</span>
-          <strong>{title}</strong>
-          <small>{metric}</small>
-          <em>{status}</em>
+        <button type="button" className="dock-button">
+          <span className="dock-icon">{icon}</span>
+          <span>{label}</span>
+          {badge ? <em>{badge}</em> : null}
         </button>
       </DialogTrigger>
       <DialogContent>
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <DialogDescription className="sr-only">{status}</DialogDescription>
+        <DialogDescription className="sr-only">{description}</DialogDescription>
         {children}
       </DialogContent>
     </Dialog>
   )
 }
 
-function SystemLauncherGrid() {
+interface GameDashboardProps {
+  visualSettings: VisualSettings
+  onOpenHome: () => void
+  onUpdateVisualSettings: (patch: Partial<VisualSettings>) => void
+}
+
+function GameDashboard({ visualSettings, onOpenHome, onUpdateVisualSettings }: GameDashboardProps) {
+  const time = useGameStore((state) => state.time)
+  const settings = useGameStore((state) => state.settings)
+  const moneyValue = useGameStore((state) => state.money)
+  const employees = useGameStore((state) => state.employees)
   const resumes = useGameStore((state) => state.resumes)
+  const laborContracts = useGameStore((state) => state.laborContracts)
+  const projectContracts = useGameStore((state) => state.projectContracts)
+  const events = useGameStore((state) => state.events)
+  const financeRecords = useGameStore((state) => state.financeRecords)
+  const mailbox = useGameStore((state) => state.mailbox)
+  const setSpeed = useGameStore((state) => state.setSpeed)
+
+  const activeEmployees = employees.filter((employee) => employee.status !== 'fired')
+  const workingEmployees = activeEmployees.filter((employee) => employee.status === 'working').length
+  const slackingEmployees = activeEmployees.filter((employee) => employee.status === 'slacking').length
+  const idleEmployees = activeEmployees.filter((employee) => employee.status === 'idle').length
+  const satisfaction = Math.round(
+    average(activeEmployees.map((employee) => employee.satisfaction), activeEmployees.length > 0 ? 0 : 72),
+  )
+  const incomeTotal = financeRecords
+    .filter((record) => record.amount > 0)
+    .reduce((total, record) => total + record.amount, 0)
+  const expenseTotal = Math.abs(
+    financeRecords
+      .filter((record) => record.amount < 0)
+      .reduce((total, record) => total + record.amount, 0),
+  )
+  const netTotal = incomeTotal - expenseTotal
+  const burnRate = Math.round(expenseTotal / Math.max(1, time.day))
+  const keyProjects = useMemo(
+    () =>
+      [...projectContracts]
+        .sort((left, right) => {
+          const leftActive = left.status === 'available' ? 1 : 0
+          const rightActive = right.status === 'available' ? 1 : 0
+          return leftActive - rightActive || left.deadlineDay - right.deadlineDay
+        })
+        .slice(0, 3),
+    [projectContracts],
+  )
+  const todos = [
+    { text: '处理未读邮件', meta: `${mailbox.filter((mail) => !mail.read).length} 封` },
+    { text: '筛选候选人简历', meta: `${resumes.length} 份` },
+    {
+      text: '确认可签合同',
+      meta: `${laborContracts.filter((contract) => contract.status === 'available').length} 人力`,
+    },
+  ]
+  const morale = Math.max(0, Math.min(100, satisfaction))
+  const efficiency = Math.round(
+    activeEmployees.length > 0 ? ((workingEmployees + idleEmployees * 0.45) / activeEmployees.length) * 100 : 68,
+  )
+  const overtime = Math.max(10, Math.min(95, 25 + (settings.offWorkHour - 18) * 14))
+  const stability = Math.round(
+    employees.length > 0 ? (activeEmployees.length / employees.length) * 100 : 72,
+  )
+  const recentEvents = events.slice(-5).reverse()
+  const alertMail = [...mailbox].reverse().find((mail) => !mail.read)
+  const alertEvent = [...events].reverse().find((event) =>
+    event.severity === 'danger' || event.severity === 'warning',
+  )
+  const alertText = alertMail?.subject ?? alertEvent?.title ?? '今日暂无紧急风险'
+  const activeProjectCount = projectContracts.filter((project) =>
+    ['accepted', 'active', 'overdue'].includes(project.status),
+  ).length
+
+  return (
+    <main className="game-dashboard-shell">
+      <header className="game-hud">
+        <div className="company-plate">
+          <div className="company-mark">M</div>
+          <div>
+            <h1>小马科技</h1>
+            <p>Day {time.day} · {formatTime(time.minuteOfDay)}</p>
+          </div>
+          <div className="speed-controls" aria-label="时间速度">
+            <button type="button" onClick={() => setSpeed(0)} className={time.speed === 0 ? 'is-active' : ''}>
+              ||
+            </button>
+            <button type="button" onClick={() => setSpeed(1)} className={time.speed === 1 ? 'is-active' : ''}>
+              &gt;
+            </button>
+            <button type="button" onClick={() => setSpeed(2)} className={time.speed === 2 ? 'is-active' : ''}>
+              &gt;&gt;
+            </button>
+          </div>
+        </div>
+        <div className="hud-metrics" aria-label="经营指标">
+          <div><span>现金流</span><strong className="amount-positive">{money(moneyValue)}</strong></div>
+          <div><span>burn rate</span><strong className="amount-negative">-{money(burnRate)}/天</strong></div>
+          <div><span>项目数</span><strong>{activeProjectCount}/{projectContracts.length}</strong></div>
+          <div><span>员工数</span><strong>{activeEmployees.length}/15</strong></div>
+          <div><span>公司满意度</span><strong>{percent(morale / 100)}</strong></div>
+        </div>
+        <div className="hud-shortcuts">
+          <button type="button" aria-label="主菜单" onClick={onOpenHome}>MENU</button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" aria-label="财务报表">FIN</button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogTitle className="sr-only">财务报表</DialogTitle>
+              <DialogDescription className="sr-only">查看昨日财务报表</DialogDescription>
+              <FinanceReportPanel />
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" aria-label="设置">SET</button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogTitle className="sr-only">设置</DialogTitle>
+              <DialogDescription className="sr-only">系统与视觉设置</DialogDescription>
+              <DashboardSettingsPanel
+                visualSettings={visualSettings}
+                onOpenHome={onOpenHome}
+                onUpdateVisualSettings={onUpdateVisualSettings}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </header>
+
+      <div className="dashboard-grid">
+        <aside className="dashboard-column left-column">
+          <section className="hud-panel">
+            <h2>项目</h2>
+            <div className="project-stack">
+              {keyProjects.map((project) => {
+                const progress = projectProgress(project)
+                const risk = projectRisk(project, time.day)
+                return (
+                  <article key={project.id} className="project-chip">
+                    <div>
+                      <strong>{project.title}</strong>
+                      <span className={`risk-${risk.tone}`}>{risk.label}</span>
+                    </div>
+                    <div className="progress-track">
+                      <i className={`progress-fill progress-${progressTone(progress)}`} style={{ width: `${progress}%` }} />
+                    </div>
+                    <small>{progress}%</small>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+          <section className="hud-panel">
+            <h2>待办事项</h2>
+            <ul className="todo-list">
+              {todos.map((todo) => (
+                <li key={todo.text}>
+                  <span>{todo.text}</span>
+                  <em>{todo.meta}</em>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section className="hud-panel finance-panel">
+            <h2>本月财务</h2>
+            <dl>
+              <div><dt>收入</dt><dd className="amount-positive">{money(incomeTotal)}</dd></div>
+              <div><dt>支出</dt><dd className="amount-negative">-{money(expenseTotal)}</dd></div>
+              <div><dt>净利润</dt><dd className={netTotal >= 0 ? 'amount-positive' : 'amount-negative'}>{signedMoney(netTotal)}</dd></div>
+            </dl>
+          </section>
+          <section className="hud-panel">
+            <h2>公司状态</h2>
+            <div className="status-bars">
+              <StatusBar label="团队士气" value={morale} />
+              <StatusBar label="工作效率" value={efficiency} />
+              <StatusBar label="加班强度" value={overtime} inverse />
+              <StatusBar label="人员稳定性" value={stability} />
+            </div>
+          </section>
+        </aside>
+
+        <section className="office-scene-viewport" data-scene-root>
+          <div className="scene-placeholder">
+            <span>PixiJS Office Scene Placeholder</span>
+            <strong>办公室舞台挂载点</strong>
+            <small>后续 PixiJS 渲染层会接管该区域</small>
+          </div>
+        </section>
+
+        <aside className="dashboard-column right-column">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" className="alert-card">
+                <span>!</span>
+                <strong>{alertText}</strong>
+                <em>查看</em>
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogTitle className="sr-only">提醒详情</DialogTitle>
+              <DialogDescription className="sr-only">查看邮件和事件</DialogDescription>
+              <MailPanel />
+            </DialogContent>
+          </Dialog>
+          <section className="hud-panel event-panel">
+            <div className="event-panel-header">
+              <h2>事件日志</h2>
+              <span>{events.length}</span>
+            </div>
+            {recentEvents.length === 0 ? (
+              <p className="empty-state">暂无事件。</p>
+            ) : (
+              <ol className="dashboard-event-list">
+                {recentEvents.map((event) => (
+                  <li key={event.id}>
+                    <span className={`event-token event-token-${event.severity}`}>{eventIcon(event.type)}</span>
+                    <div>
+                      <time>{formatTime(event.minute)}</time>
+                      <strong>{event.title}</strong>
+                      <p>{event.message}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <nav className="bottom-dock" aria-label="模块导航">
+        <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} title="员工列表" description="管理员工">
+          <EmployeePanel />
+        </DockDialog>
+        <DockDialog icon="REC" label="招聘" badge={resumes.length} title="简历市场" description="招聘候选人">
+          <RecruitingPanel />
+        </DockDialog>
+        <DockDialog icon="PRJ" label="项目" badge={activeProjectCount} title="项目合同" description="项目外包">
+          <ProjectPanel />
+        </DockDialog>
+        <DockDialog icon="FIN" label="财务" title="昨日财报" description="财务报表">
+          <FinanceReportPanel />
+        </DockDialog>
+        <DockDialog icon="EVT" label="事件" badge={mailbox.filter((mail) => !mail.read).length} title="事件日志" description="查看事件">
+          <EventPanel />
+        </DockDialog>
+        <DockDialog icon="CTR" label="合同" badge={laborContracts.length} title="驻场合同" description="人力外包合同">
+          <LaborPanel />
+        </DockDialog>
+        <DockDialog icon="SET" label="设置" title="设置" description="系统与视觉设置">
+          <DashboardSettingsPanel
+            visualSettings={visualSettings}
+            onOpenHome={onOpenHome}
+            onUpdateVisualSettings={onUpdateVisualSettings}
+          />
+        </DockDialog>
+      </nav>
+
+      <div className="staff-status-strip" aria-label="员工状态概览">
+        <span>工作中 {workingEmployees}</span>
+        <span>摸鱼中 {slackingEmployees}</span>
+        <span>待分配 {idleEmployees}</span>
+      </div>
+    </main>
+  )
+}
+
+interface StatusBarProps {
+  label: string
+  value: number
+  inverse?: boolean
+}
+
+function StatusBar({ label, value, inverse = false }: StatusBarProps) {
+  const tone = inverse ? progressTone(100 - value) : progressTone(value)
+
+  return (
+    <div className="status-bar-row">
+      <span>{label}</span>
+      <div className="progress-track">
+        <i className={`progress-fill progress-${tone}`} style={{ width: `${value}%` }} />
+      </div>
+      <em>{value}%</em>
+    </div>
+  )
+}
+
+interface HomePageProps {
+  importedSaves: ImportedSave[]
+  importStatus: string
+  exitStatus: string
+  visualSettings: VisualSettings
+  onStartNewGame: () => void
+  onImportSaves: (event: ChangeEvent<HTMLInputElement>) => Promise<void>
+  onLoadImportedSave: (save: ImportedSave) => void
+  onUpdateVisualSettings: (patch: Partial<VisualSettings>) => void
+  onExit: () => void
+}
+
+function HomePage({
+  importedSaves,
+  importStatus,
+  exitStatus,
+  visualSettings,
+  onStartNewGame,
+  onImportSaves,
+  onLoadImportedSave,
+  onUpdateVisualSettings,
+  onExit,
+}: HomePageProps) {
+  const day = useGameStore((state) => state.time.day)
+  const moneyValue = useGameStore((state) => state.money)
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
-  const mailbox = useGameStore((state) => state.mailbox)
-  const events = useGameStore((state) => state.events)
-  const report = useGameStore((state) => state.getYesterdayFinanceReport())
-  const availableLabor = laborContracts.filter((contract) => contract.status === 'available').length
-  const activeLabor = laborContracts.filter((contract) =>
-    ['accepted', 'active', 'warning'].includes(contract.status),
-  ).length
-  const availableProjects = projectContracts.filter((project) => project.status === 'available').length
-  const activeProjects = projectContracts.filter((project) =>
-    ['accepted', 'active', 'overdue'].includes(project.status),
-  ).length
-  const unreadMail = mailbox.filter((mail) => !mail.read).length
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <section className="systems-board">
-      <div className="systems-header">
-        <p className="eyebrow">系统</p>
-        <h2>测试入口</h2>
+    <section className="home-screen">
+      <div className="home-panel home-menu-panel">
+        <div className="home-brand">
+          <p className="eyebrow">OA 运营工作台</p>
+          <h1>外包公司模拟器</h1>
+          <p className="home-subtitle">招聘 · 合同 · 财务 · 邮件</p>
+        </div>
+        <div className="home-actions" aria-label="主菜单">
+          <button type="button" className="menu-action menu-action-primary" onClick={onStartNewGame}>
+            开始新游戏
+          </button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" className="menu-action">
+                继续游戏
+              </button>
+            </DialogTrigger>
+            <DialogContent className="menu-dialog">
+              <DialogTitle>继续游戏</DialogTitle>
+              <DialogDescription className="dialog-description">
+                已导入存档会显示在此列表中。
+              </DialogDescription>
+              <div className="save-import-row">
+                <button type="button" onClick={() => fileInputRef.current?.click()}>
+                  导入存档
+                </button>
+                <input
+                  ref={fileInputRef}
+                  aria-label="导入本地存档"
+                  className="sr-only"
+                  type="file"
+                  multiple
+                  accept=".json,.companysim,.companysim.json,application/json"
+                  onChange={(event) => {
+                    void onImportSaves(event)
+                  }}
+                />
+                {importStatus ? <span className="save-status" role="status">{importStatus}</span> : null}
+              </div>
+              {importedSaves.length === 0 ? (
+                <p className="empty-state">暂无已导入存档。</p>
+              ) : (
+                <div className="imported-save-list">
+                  {importedSaves.map((save) => (
+                    <button
+                      key={save.id}
+                      type="button"
+                      className="imported-save-row"
+                      onClick={() => onLoadImportedSave(save)}
+                    >
+                      <span>
+                        <strong>{save.fileName}</strong>
+                        <small>第 {save.day} 天 · {money(save.money)} · {formatSaveDate(save.savedAt)}</small>
+                      </span>
+                      <em>读取</em>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" className="menu-action">
+                设置
+              </button>
+            </DialogTrigger>
+            <DialogContent className="menu-dialog settings-dialog">
+              <DialogTitle>设置</DialogTitle>
+              <DialogDescription className="dialog-description">
+                当前为视觉占位设置，不影响游戏结算。
+              </DialogDescription>
+              <div className="settings-grid">
+                <label>
+                  界面密度
+                  <select
+                    name="visual-density"
+                    value={visualSettings.density}
+                    onChange={(event) =>
+                      onUpdateVisualSettings({
+                        density: event.target.value as VisualSettings['density'],
+                      })
+                    }
+                  >
+                    <option value="compact">紧凑</option>
+                    <option value="comfortable">舒展</option>
+                  </select>
+                </label>
+                <label>
+                  主题模式
+                  <select
+                    name="visual-theme"
+                    value={visualSettings.theme}
+                    onChange={(event) =>
+                      onUpdateVisualSettings({
+                        theme: event.target.value as VisualSettings['theme'],
+                      })
+                    }
+                  >
+                    <option value="system">跟随系统</option>
+                    <option value="light">浅色</option>
+                    <option value="dark">深色</option>
+                  </select>
+                </label>
+                <label>
+                  动效
+                  <select
+                    name="visual-motion"
+                    value={visualSettings.motion}
+                    onChange={(event) =>
+                      onUpdateVisualSettings({
+                        motion: event.target.value as VisualSettings['motion'],
+                      })
+                    }
+                  >
+                    <option value="standard">标准</option>
+                    <option value="reduced">减少</option>
+                  </select>
+                </label>
+                <label>
+                  音量 {visualSettings.volume}
+                  <input
+                    className="range-input"
+                    name="visual-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={visualSettings.volume}
+                    onChange={(event) =>
+                      onUpdateVisualSettings({
+                        volume: Number(event.target.value),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="dialog-actions">
+                <DialogClose asChild>
+                  <button type="button">完成</button>
+                </DialogClose>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <button type="button" className="menu-action menu-action-danger" onClick={onExit}>
+            退出
+          </button>
+        </div>
+        {exitStatus ? <p className="menu-status" role="status">{exitStatus}</p> : null}
       </div>
-      <div className="systems-grid">
-        <SystemDialog
-          eyebrow="招聘"
-          title="简历市场"
-          metric={`${resumes.length} 份简历`}
-          status="刷新简历、发 offer"
-        >
-          <RecruitingPanel />
-        </SystemDialog>
-        <SystemDialog
-          eyebrow="员工"
-          title="员工列表"
-          metric={`${employees.length} 人`}
-          status="改花名、辞退、看隐藏能力"
-        >
-          <EmployeePanel />
-        </SystemDialog>
-        <SystemDialog
-          eyebrow="人力"
-          title="驻场合同"
-          metric={`${availableLabor} 可签 / ${activeLabor} 已签`}
-          status="签约、分配驻场员工"
-        >
-          <LaborPanel />
-        </SystemDialog>
-        <SystemDialog
-          eyebrow="项目"
-          title="项目合同"
-          metric={`${availableProjects} 可签 / ${activeProjects} 进行中`}
-          status="签项目、分配岗位"
-        >
-          <ProjectPanel />
-        </SystemDialog>
-        <SystemDialog
-          eyebrow="财务"
-          title="昨日财报"
-          metric={report ? money(report.net) : '未生成'}
-          status="收入、支出、净利润"
-        >
-          <FinanceReportPanel />
-        </SystemDialog>
-        <SystemDialog
-          eyebrow="邮件"
-          title="邮箱通知"
-          metric={`${unreadMail} 未读`}
-          status="合同、违约、仲裁、财报"
-        >
-          <MailPanel />
-        </SystemDialog>
-        <SystemDialog
-          eyebrow="事件"
-          title="最近事件"
-          metric={`${events.length} 条`}
-          status="查看系统触发结果"
-        >
-          <EventPanel />
-        </SystemDialog>
-      </div>
+      <aside className="home-panel home-overview-panel" aria-label="当前会话概览">
+        <p className="eyebrow">当前会话</p>
+        <h2>运营看板</h2>
+        <dl className="home-status-list">
+          <div>
+            <dt>游戏日</dt>
+            <dd>第 {day} 天</dd>
+          </div>
+          <div>
+            <dt>现金</dt>
+            <dd>{money(moneyValue)}</dd>
+          </div>
+          <div>
+            <dt>员工</dt>
+            <dd>{employees.length} 人</dd>
+          </div>
+          <div>
+            <dt>合同</dt>
+            <dd>{laborContracts.length + projectContracts.length} 个</dd>
+          </div>
+          <div>
+            <dt>已导入存档</dt>
+            <dd>{importedSaves.length} 个</dd>
+          </div>
+        </dl>
+      </aside>
     </section>
   )
 }
 
 function App() {
+  const [view, setView] = useState<AppView>('home')
+  const [importedSaves, setImportedSaves] = useState<ImportedSave[]>([])
+  const [importStatus, setImportStatus] = useState('')
+  const [exitStatus, setExitStatus] = useState('')
+  const [visualSettings, setVisualSettings] = useState<VisualSettings>({
+    density: 'compact',
+    theme: 'system',
+    motion: 'standard',
+    volume: 60,
+  })
+  const startGame = useGameStore((state) => state.startGame)
+  const loadSaveJson = useGameStore((state) => state.loadSaveJson)
+
+  function startNewGame() {
+    startGame()
+    setExitStatus('')
+    setView('game')
+  }
+
+  async function importSaves(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget
+    const files = Array.from(input.files ?? [])
+    if (files.length === 0) {
+      return
+    }
+
+    const importedAt = Date.now()
+    const loaded: ImportedSave[] = []
+    const errors: string[] = []
+
+    for (const [index, file] of files.entries()) {
+      try {
+        const json = await file.text()
+        const saveFile = parseGameSaveFileJson(json)
+        loaded.push({
+          id: `${file.name}-${file.lastModified}-${importedAt}-${index}`,
+          fileName: file.name,
+          json,
+          savedAt: saveFile.savedAt,
+          day: saveFile.state.time.day,
+          money: saveFile.state.money,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '读取失败'
+        errors.push(`${file.name}: ${message}`)
+      }
+    }
+
+    if (loaded.length > 0) {
+      setImportedSaves((current) => [...loaded, ...current])
+    }
+
+    if (loaded.length > 0 && errors.length > 0) {
+      setImportStatus(`已导入 ${loaded.length} 个存档，${errors.length} 个失败：${errors.join('；')}`)
+    } else if (loaded.length > 0) {
+      setImportStatus(`已导入 ${loaded.length} 个存档`)
+    } else {
+      setImportStatus(`未导入存档：${errors.join('；')}`)
+    }
+
+    input.value = ''
+  }
+
+  function loadImportedSave(save: ImportedSave) {
+    try {
+      loadSaveJson(save.json)
+      setImportStatus(`已读取 ${save.fileName}`)
+      setExitStatus('')
+      setView('game')
+    } catch (error) {
+      setImportStatus(error instanceof Error ? error.message : '读取存档失败')
+    }
+  }
+
+  function updateVisualSettings(patch: Partial<VisualSettings>) {
+    setVisualSettings((current) => ({ ...current, ...patch }))
+  }
+
+  function exitApp() {
+    setExitStatus('正在尝试关闭窗口')
+    window.close()
+    window.setTimeout(() => {
+      if (!window.closed) {
+        setExitStatus('当前环境无法自动关闭窗口，请手动关闭标签页/窗口')
+      }
+    }, 120)
+  }
+
+  if (view === 'home') {
+    return (
+      <main className="app-shell home-app-shell">
+        <HomePage
+          importedSaves={importedSaves}
+          importStatus={importStatus}
+          exitStatus={exitStatus}
+          visualSettings={visualSettings}
+          onStartNewGame={startNewGame}
+          onImportSaves={importSaves}
+          onLoadImportedSave={loadImportedSave}
+          onUpdateVisualSettings={updateVisualSettings}
+          onExit={exitApp}
+        />
+      </main>
+    )
+  }
+
   return (
-    <main className="app-shell">
+    <main className="app-shell game-app-shell">
       <GameClock />
-      <TopBar />
-      <SystemLauncherGrid />
+      <GameDashboard
+        visualSettings={visualSettings}
+        onOpenHome={() => setView('home')}
+        onUpdateVisualSettings={updateVisualSettings}
+      />
     </main>
   )
 }
