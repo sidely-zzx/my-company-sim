@@ -30,6 +30,7 @@ import {
 import { useGameStore } from '../store/gameStore'
 import type { VisualSettings } from '../type'
 import { money } from '../utils'
+import PixiContainer from '../components/PixiContainer'
 
 interface GamePageProps {
   visualSettings: VisualSettings
@@ -215,9 +216,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
 
         <section className="office-scene-viewport" data-scene-root>
           <div className="scene-placeholder">
-            <span>PixiJS Office Scene Placeholder</span>
-            <strong>办公室舞台挂载点</strong>
-            <small>后续 PixiJS 渲染层会接管该区域</small>
+            <PixiContainer></PixiContainer>
           </div>
         </section>
 
