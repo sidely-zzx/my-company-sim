@@ -58,6 +58,8 @@
 project-root/
 ├─ public/                  # 静态资源：模型、贴图、音效
 ├─ src/
+│  ├─ pages                 # 页面
+│  │   ├─ Home.tsx          # 首页
 │  ├─ components/           # UI 面板
 │  │   ├─ EmployeePanel.tsx
 │  │   ├─ ProjectPanel.tsx
@@ -70,6 +72,8 @@ project-root/
 │  │   ├─ systems/          # 工作系统、事件系统
 │  ├─ store/                # Zustand 状态管理
 │  │   ├─ gameStore.ts
+│  ├─ type/                 # 共享类型
+│  ├─ utils/                # 共享工具函数
 │  ├─ assets/               # glb/glTF 模型、贴图
 │  ├─ App.tsx
 │  └─ main.tsx
