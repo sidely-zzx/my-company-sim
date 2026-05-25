@@ -1,0 +1,49 @@
+{
+  "frames": {
+    "worker_01.png": {
+      "frame": { "x": 195, "y": 44, "w": 275, "h": 432 },
+      "spriteSourceSize": { "x": 119, "y": 40, "w": 275, "h": 432 },
+      "sourceSize": { "w": 512, "h": 512 }
+    },
+    "worker_02.png": {
+      "frame": { "x": 608, "y": 43, "w": 416, "h": 434 },
+      "spriteSourceSize": { "x": 48, "y": 39, "w": 416, "h": 434 },
+      "sourceSize": { "w": 512, "h": 512 }
+    },
+    "worker_03.png": {
+      "frame": { "x": 1024, "y": 43, "w": 247, "h": 433 },
+      "spriteSourceSize": { "x": 133, "y": 40, "w": 247, "h": 433 },
+      "sourceSize": { "w": 512, "h": 512 }
+    },
+    "worker_04.png": {
+      "frame": { "x": 195, "y": 531, "w": 270, "h": 430 },
+      "spriteSourceSize": { "x": 121, "y": 41, "w": 270, "h": 430 },
+      "sourceSize": { "w": 512, "h": 512 }
+    },
+    "worker_05.png": {
+      "frame": { "x": 606, "y": 530, "w": 418, "h": 430 },
+      "spriteSourceSize": { "x": 47, "y": 41, "w": 418, "h": 430 },
+      "sourceSize": { "w": 512, "h": 512 }
+    },
+    "worker_06.png": {
+      "frame": { "x": 1024, "y": 530, "w": 241, "h": 432 },
+      "spriteSourceSize": { "x": 136, "y": 40, "w": 241, "h": 432 },
+      "sourceSize": { "w": 512, "h": 512 }
+    }
+  },
+  "meta": {
+    "image": "working_employee.png",
+    "size": { "w": 1536, "h": 1024 },
+    "scale": "1"
+  },
+  "animations": {
+    "typing": [
+      "worker_01.png",
+      "worker_02.png",
+      "worker_03.png",
+      "worker_04.png",
+      "worker_05.png",
+      "worker_06.png"
+    ]
+  }
+}

@@ -14,9 +14,16 @@ const CHAIR_IMAGE_HEIGHT = 1024;
 const CHAIR_DISPLAY_WIDTH = DESK_DISPLAY_WIDTH * 0.8;
 const CHAIR_DISPLAY_HEIGHT = CHAIR_DISPLAY_WIDTH * (CHAIR_IMAGE_HEIGHT / CHAIR_IMAGE_WIDTH);
 const CHAIR_OFFSET_Y = DESK_DISPLAY_HEIGHT * 0.12;
+const MAX_OCCUPIED_CHAIRS = DESK_COLUMNS * DESK_ROWS;
+
+export interface ChairLayerHandle {
+  layer: Container;
+  setOccupiedEmployeeCount: (count: number) => void;
+}
 
 const createChairMatrix = (chairTexture: Texture) => {
   const chairLayer = new Container();
+  const chairs: Sprite[] = [];
 
   for (let row = 0; row < DESK_ROWS; row += 1) {
     for (let column = 0; column < DESK_COLUMNS; column += 1) {
@@ -29,17 +36,32 @@ const createChairMatrix = (chairTexture: Texture) => {
       chair.height = CHAIR_DISPLAY_HEIGHT;
       chair.x = DESK_COLUMN_CENTER_XS[column] - 10;
       chair.y = DESK_ROW_CENTER_YS[row] + CHAIR_OFFSET_Y;
+      chairs.push(chair);
       chairLayer.addChild(chair);
     }
   }
 
-  return chairLayer;
+  return { chairLayer, chairs };
 };
 
 async function createChairLayer() {
   const chairTexture = await Assets.load<Texture>(CHAIR_SRC);
+  const { chairLayer, chairs } = createChairMatrix(chairTexture);
 
-  return createChairMatrix(chairTexture);
+  const setOccupiedEmployeeCount = (count: number) => {
+    const occupiedCount = Math.max(0, Math.min(MAX_OCCUPIED_CHAIRS, count));
+
+    chairs.forEach((chair, index) => {
+      // 员工工作图已经包含椅子时，隐藏对应工位的独立椅子，避免同一把椅子被绘制两次。
+      // 隐藏数量受在职员工数量影响，只改变视觉遮挡，不改变员工、工位或经营属性数据。
+      chair.visible = index >= occupiedCount;
+    });
+  };
+
+  return {
+    layer: chairLayer,
+    setOccupiedEmployeeCount,
+  };
 }
 
 export default createChairLayer;

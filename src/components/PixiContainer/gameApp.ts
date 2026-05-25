@@ -1,6 +1,7 @@
 import { Application, Assets, Container, Sprite, type Texture } from 'pixi.js';
 import createChairLayer from './chair';
 import createDeskLayer from './desk';
+import createEmployeeLayer from './employee';
 import createPcLayer from './pc';
 
 const OFFICE_BACKGROUND_SRC = '/office.png';
@@ -9,6 +10,11 @@ const OFFICE_IMAGE_HEIGHT = 941;
 
 export interface GameAppHandle {
   destroy: () => void;
+  setActiveEmployeeCount: (count: number) => void;
+}
+
+interface GameAppOptions {
+  activeEmployeeCount: number;
 }
 
 interface DragState {
@@ -106,7 +112,10 @@ const bindRightButtonSceneDrag = (canvas: HTMLCanvasElement, sceneLayer: Contain
   };
 };
 
-const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
+const createGameApp = async (
+  node: HTMLDivElement,
+  options: GameAppOptions,
+): Promise<GameAppHandle> => {
   const app = new Application();
   // @ts-expect-error devtool插件
   globalThis.__PIXI_APP__ = app;
@@ -129,10 +138,11 @@ const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
   officeLayer.addChild(backgroundLayer);
   app.stage.addChild(sceneLayer);
 
-  const [officeTexture, deskLayer, pcLayer, chairLayer] = await Promise.all([
+  const [officeTexture, deskLayer, pcLayer, employeeLayer, chairLayer] = await Promise.all([
     Assets.load<Texture>(OFFICE_BACKGROUND_SRC),
     createDeskLayer(),
     createPcLayer(app.ticker),
+    createEmployeeLayer(app.ticker, options.activeEmployeeCount),
     createChairLayer(),
   ]);
   const officeBackground = new Sprite(officeTexture);
@@ -141,7 +151,9 @@ const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
   backgroundLayer.addChild(officeBackground);
   officeLayer.addChild(deskLayer);
   officeLayer.addChild(pcLayer);
-  officeLayer.addChild(chairLayer);
+  officeLayer.addChild(employeeLayer.layer);
+  officeLayer.addChild(chairLayer.layer);
+  chairLayer.setOccupiedEmployeeCount(options.activeEmployeeCount);
 
   const resizeOfficeLayer = () => {
     fitOfficeLayer(officeLayer, app.screen.width, app.screen.height);
@@ -154,9 +166,14 @@ const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
   const unbindRightButtonSceneDrag = bindRightButtonSceneDrag(app.canvas, sceneLayer);
 
   return {
+    setActiveEmployeeCount: (count) => {
+      employeeLayer.setActiveEmployeeCount(count);
+      chairLayer.setOccupiedEmployeeCount(count);
+    },
     destroy: () => {
       resizeObserver.disconnect();
       unbindRightButtonSceneDrag();
+      employeeLayer.destroy();
       app.destroy({ removeView: true }, { children: true });
     },
   };
