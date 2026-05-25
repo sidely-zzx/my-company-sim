@@ -1,42 +1,32 @@
-import {
-  Application,
-  extend,
-} from '@pixi/react'
-import {
-  Container,
-  Graphics,
-  type Graphics as PixiGraphics,
-} from 'pixi.js'
-import { useCallback } from 'react'
-
-extend({
-  Container,
-  Graphics,
-})
-
-const BASE_WIDTH = 1920
-const BASE_HEIGHT = 1080;
+import { useEffect, useRef } from 'react'
+import createGameApp, { type GameAppHandle } from './gameApp'
 
 const MyComponent = () => {
-  const drawCallback = useCallback((graphics: PixiGraphics) => {
-    graphics.clear()
-    graphics.setFillStyle({ color: 'red' })
-    graphics.rect(0, 0, 100, 100)
-    graphics.fill()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let disposed = false
+    let game: GameAppHandle | null = null
+
+    if (!ref.current) {
+      return undefined
+    }
+
+    void createGameApp(ref.current).then((createdGame) => {
+      if (disposed) {
+        createdGame.destroy()
+        return
+      }
+
+      game = createdGame
+    })
+
+    return () => {
+      disposed = true
+      game?.destroy()
+    }
   }, [])
 
-  return (
-    <Application
-      width={BASE_WIDTH}
-      height={BASE_HEIGHT}
-      antialias={false}
-      autoDensity={false}
-      backgroundAlpha={0}
-    >
-      <pixiContainer x={100} y={100}>
-        <pixiGraphics draw={drawCallback} />
-      </pixiContainer>
-    </Application>
-  )
+  return <div ref={ref} className="h-full w-full" />
 }
 export default MyComponent
