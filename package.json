@@ -13,9 +13,11 @@
     "electron:dev": "concurrently \"pnpm dev\" \"wait-on http://localhost:5173 && electron .\""
   },
   "dependencies": {
+    "@pixi/react": "^8.0.5",
     "@radix-ui/react-dialog": "^1.1.15",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "pixi.js": "^8.18.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "shadcn-ui": "^0.9.5",
