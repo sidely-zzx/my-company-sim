@@ -1,4 +1,5 @@
 import type { FinanceRecord } from '../../game/types'
+import { amountNegative, amountPositive, emptyState, table } from '../../styles/tw'
 import { money } from '../../utils'
 
 interface FinanceRecordTableProps {
@@ -7,11 +8,11 @@ interface FinanceRecordTableProps {
 
 export function FinanceRecordTable({ records }: FinanceRecordTableProps) {
   if (records.length === 0) {
-    return <p className="empty-state">暂无明细</p>
+    return <p className={emptyState}>暂无明细</p>
   }
 
   return (
-    <table>
+    <table className={table}>
       <thead>
         <tr>
           <th>类型</th>
@@ -23,7 +24,7 @@ export function FinanceRecordTable({ records }: FinanceRecordTableProps) {
         {records.map((record) => (
           <tr key={record.id}>
             <td>{record.type}</td>
-            <td className={record.amount >= 0 ? 'amount-positive' : 'amount-negative'}>
+            <td className={record.amount >= 0 ? amountPositive : amountNegative}>
               {money(record.amount)}
             </td>
             <td>{record.reason}</td>

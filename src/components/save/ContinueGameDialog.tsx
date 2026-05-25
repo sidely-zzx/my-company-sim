@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { button, cn, emptyState, menuAction, srOnly } from '../../styles/tw'
 import type { ImportedSave } from '../../type'
 import { money } from '../../utils'
 
@@ -45,23 +46,23 @@ export function ContinueGameDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="menu-action">
+        <button type="button" className={menuAction}>
           继续游戏
         </button>
       </DialogTrigger>
-      <DialogContent className="menu-dialog">
+      <DialogContent className="w-[min(calc(100vw-32px),720px)]">
         <DialogTitle>继续游戏</DialogTitle>
-        <DialogDescription className="dialog-description">
+        <DialogDescription className="mb-[18px] mt-0 text-[#aab0a8]">
           已导入存档会显示在此列表中。
         </DialogDescription>
-        <div className="save-import-row">
-          <button type="button" onClick={() => fileInputRef.current?.click()}>
+        <div className="mb-3.5 flex flex-wrap items-center gap-2.5 max-[560px]:[&_button]:w-full">
+          <button type="button" className={button} onClick={() => fileInputRef.current?.click()}>
             导入存档
           </button>
           <input
             ref={fileInputRef}
             aria-label="导入本地存档"
-            className="sr-only"
+            className={srOnly}
             type="file"
             multiple
             accept=".json,.companysim,.companysim.json,application/json"
@@ -70,29 +71,29 @@ export function ContinueGameDialog({
             }}
           />
           {importStatus ? (
-            <span className="save-status" role="status">
+            <span className="inline-flex min-h-8 max-w-full items-center text-[13px] font-extrabold text-[#aab0a8] [overflow-wrap:anywhere]" role="status">
               {importStatus}
             </span>
           ) : null}
         </div>
         {importedSaves.length === 0 ? (
-          <p className="empty-state">暂无已导入存档。</p>
+          <p className={emptyState}>暂无已导入存档。</p>
         ) : (
-          <div className="imported-save-list">
+          <div className="grid gap-2.5">
             {importedSaves.map((save) => (
               <button
                 key={save.id}
                 type="button"
-                className="imported-save-row"
+                className={cn(button, 'flex min-h-[74px] items-center justify-between gap-3.5 border-[#3d4642] px-3.5 py-3 text-left text-[#efe2c8] hover:border-[#8b7f63] hover:bg-[#252b28] focus-visible:border-[#8b7f63] focus-visible:bg-[#252b28] focus-visible:outline-none max-[560px]:flex-col max-[560px]:items-start')}
                 onClick={() => onLoadImportedSave(save)}
               >
-                <span>
+                <span className="grid gap-1">
                   <strong>{save.fileName}</strong>
-                  <small>
+                  <small className="text-[13px] text-[#9aa29a]">
                     第 {save.day} 天 · {money(save.money)} · {formatSaveDate(save.savedAt)}
                   </small>
                 </span>
-                <em>读取</em>
+                <em className="shrink-0 not-italic text-[#dac69c]">读取</em>
               </button>
             ))}
           </div>

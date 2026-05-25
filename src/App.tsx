@@ -3,8 +3,8 @@ import { useState, type ChangeEvent } from 'react'
 import { GameClock } from './components/game/GameClock'
 import { parseGameSaveFileJson } from './game/save'
 import { useGameStore } from './store/gameStore'
+import { cn } from './styles/tw'
 import type { ImportedSave, VisualSettings } from './type'
-import './App.css'
 import GamePage from './pages/Game'
 import HomePage from './pages/Home'
 
@@ -101,7 +101,7 @@ function App() {
 
   if (view === 'home') {
     return (
-      <main className="app-shell home-app-shell">
+      <main className="min-h-screen bg-[radial-gradient(circle_at_50%_0%,rgba(101,122,122,0.18),transparent_36%),linear-gradient(135deg,#151a1b_0%,#232829_46%,#111516_100%)] p-6 text-[#e8ddc7] grid items-center max-[900px]:items-start max-[900px]:p-3">
         <HomePage
           importedSaves={importedSaves}
           importStatus={importStatus}
@@ -118,7 +118,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell game-app-shell">
+    <main className={cn('min-h-screen bg-[radial-gradient(circle_at_50%_0%,rgba(101,122,122,0.18),transparent_36%),linear-gradient(135deg,#151a1b_0%,#232829_46%,#111516_100%)] text-[#e8ddc7]')}>
       <GameClock />
       <GamePage
         visualSettings={visualSettings}

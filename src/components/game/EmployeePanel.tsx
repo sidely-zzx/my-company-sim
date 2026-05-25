@@ -10,6 +10,19 @@ import {
   skillClaimsText,
 } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import {
+  button,
+  dialogPanel,
+  emptyState,
+  eyebrow,
+  formGrid,
+  input,
+  panel,
+  panelHeader,
+  panelTitle,
+  table,
+  tableWrap,
+} from '../../styles/tw'
 import { money } from '../../utils'
 
 export function EmployeePanel() {
@@ -22,19 +35,19 @@ export function EmployeePanel() {
   const [compensations, setCompensations] = useState<Record<string, string>>({})
 
   return (
-    <section className="panel">
-      <div className="panel-header">
+    <section className={`${panel} ${dialogPanel}`}>
+      <div className={panelHeader}>
         <div>
-          <p className="eyebrow">员工</p>
-          <h2>员工列表</h2>
+          <p className={eyebrow}>员工</p>
+          <h2 className={panelTitle}>员工列表</h2>
         </div>
         <span>{employees.length} 人</span>
       </div>
       {employees.length === 0 ? (
-        <p className="empty-state">暂无员工，先从简历市场发 offer。</p>
+        <p className={emptyState}>暂无员工，先从简历市场发 offer。</p>
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className={tableWrap}>
+          <table className={table}>
             <thead>
               <tr>
                 <th>员工</th>
@@ -61,8 +74,9 @@ export function EmployeePanel() {
                   <td>{abilitiesText(employee)}</td>
                   <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
                   <td>
-                    <div className="form-grid">
+                    <div className={formGrid}>
                       <input
+                        className={input}
                         aria-label={`${employee.name} 花名`}
                         name={`employee-nickname-${employee.id}`}
                         value={nicknames[employee.id] ?? ''}
@@ -73,11 +87,13 @@ export function EmployeePanel() {
                       />
                       <button
                         type="button"
+                        className={button}
                         onClick={() => renameEmployee(employee.id, nicknames[employee.id] || employee.name)}
                       >
                         改名
                       </button>
                       <input
+                        className={input}
                         aria-label={`${employee.name} 赔偿系数`}
                         name={`employee-compensation-${employee.id}`}
                         type="number"
@@ -91,6 +107,7 @@ export function EmployeePanel() {
                       />
                       <button
                         type="button"
+                        className={button}
                         disabled={employee.status === 'fired'}
                         onClick={() => fireEmployee(employee.id, clampNumber(compensations[employee.id] ?? '1', 1))}
                       >

@@ -1,8 +1,21 @@
 import { useState } from 'react'
 
 import type { SkillRole } from '../../game/types'
-import { clampNumber, roleLabels, schoolLabels, skillClaimsText } from '../../game/ui'
+import { clampNumber, schoolLabels, skillClaimsText } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import {
+  button,
+  dialogPanel,
+  eyebrow,
+  formGrid,
+  inlineActions,
+  input,
+  panel,
+  panelHeader,
+  panelTitle,
+  table,
+  tableWrap,
+} from '../../styles/tw'
 import { money } from '../../utils'
 
 export function RecruitingPanel() {
@@ -24,19 +37,19 @@ export function RecruitingPanel() {
   }
 
   return (
-    <section className="panel">
-      <div className="panel-header">
+    <section className={`${panel} ${dialogPanel}`}>
+      <div className={panelHeader}>
         <div>
-          <p className="eyebrow">招聘</p>
-          <h2>简历市场</h2>
+          <p className={eyebrow}>招聘</p>
+          <h2 className={panelTitle}>简历市场</h2>
         </div>
-        <div className="inline-actions">
+        <div className={inlineActions}>
           <span>{market.resumeRefreshesUsed}/{market.resumeRefreshLimit} 次</span>
-          <button type="button" onClick={refreshResumes}>刷新简历</button>
+          <button type="button" className={button} onClick={refreshResumes}>刷新简历</button>
         </div>
       </div>
-      <div className="table-wrap">
-        <table>
+      <div className={tableWrap}>
+        <table className={table}>
           <thead>
             <tr>
               <th>候选人</th>
@@ -60,8 +73,9 @@ export function RecruitingPanel() {
                   <td>{money(resume.expectedSalaryPerDay)}</td>
                   <td>{resume.introduction}</td>
                   <td>
-                    <div className="form-grid">
+                    <div className={formGrid}>
                       <input
+                        className={input}
                         aria-label={`${resume.name} offer 日薪`}
                         name={`offer-salary-${resume.id}`}
                         type="number"
@@ -70,6 +84,7 @@ export function RecruitingPanel() {
                         onChange={(event) => updateForm(resume.id, { salary: event.target.value })}
                       />
                       <input
+                        className={input}
                         aria-label={`${resume.name} 社保比例`}
                         name={`offer-social-${resume.id}`}
                         type="number"
@@ -80,6 +95,7 @@ export function RecruitingPanel() {
                       />
                       <button
                         type="button"
+                        className={button}
                         onClick={() =>
                           sendOffer(
                             resume.id,

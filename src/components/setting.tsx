@@ -12,6 +12,19 @@ import {
 import type { WorkHour } from '../game/types'
 import { workHours } from '../game/ui'
 import { useGameStore } from '../store/gameStore'
+import {
+  button,
+  cn,
+  dialogPanel,
+  eyebrow,
+  menuAction,
+  panel,
+  panelHeader,
+  panelTitle,
+  secondaryButton,
+  select,
+  srOnly,
+} from '../styles/tw'
 import type { VisualSettings } from '../type'
 
 interface VisualSettingsFieldsProps {
@@ -30,6 +43,7 @@ export function VisualSettingsFields({
       <label>
         界面密度
         <select
+          className={select}
           name="visual-density"
           value={visualSettings.density}
           onChange={(event) =>
@@ -43,6 +57,7 @@ export function VisualSettingsFields({
       <label>
         主题模式
         <select
+          className={select}
           name="visual-theme"
           value={visualSettings.theme}
           onChange={(event) =>
@@ -58,6 +73,7 @@ export function VisualSettingsFields({
         <label>
           动效
           <select
+            className={select}
             name="visual-motion"
             value={visualSettings.motion}
             onChange={(event) =>
@@ -72,7 +88,7 @@ export function VisualSettingsFields({
       <label>
         音量 {visualSettings.volume}
         <input
-          className="range-input"
+          className="min-h-8 w-full rounded-md border border-[#4b514d] bg-[#171c1b] p-0 text-[#e8ddc7]"
           name="visual-volume"
           type="range"
           min="0"
@@ -97,24 +113,24 @@ export function HomeSettingsDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="menu-action">
+        <button type="button" className={menuAction}>
           设置
         </button>
       </DialogTrigger>
-      <DialogContent className="menu-dialog settings-dialog">
+      <DialogContent className="w-[min(calc(100vw-32px),720px)]">
         <DialogTitle>设置</DialogTitle>
-        <DialogDescription className="dialog-description">
+        <DialogDescription className="mb-[18px] mt-0 text-[#aab0a8]">
           当前为视觉占位设置，不影响游戏结算。
         </DialogDescription>
-        <div className="settings-grid">
+        <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6] [&_select]:w-full">
           <VisualSettingsFields
             visualSettings={visualSettings}
             onUpdateVisualSettings={onUpdateVisualSettings}
           />
         </div>
-        <div className="dialog-actions">
+        <div className="mb-3.5 flex flex-wrap items-center gap-2.5 max-[560px]:[&_button]:w-full">
           <DialogClose asChild>
-            <button type="button">完成</button>
+            <button type="button" className={button}>完成</button>
           </DialogClose>
         </div>
       </DialogContent>
@@ -176,20 +192,21 @@ export function DashboardSettingsPanel({
   }
 
   return (
-    <section className="panel dashboard-settings-panel">
-      <div className="panel-header">
+    <section className={cn(panel, dialogPanel)}>
+      <div className={panelHeader}>
         <div>
-          <p className="eyebrow">系统</p>
-          <h2>设置</h2>
+          <p className={eyebrow}>系统</p>
+          <h2 className={panelTitle}>设置</h2>
         </div>
-        <button type="button" className="secondary-button" onClick={onOpenHome}>
+        <button type="button" className={secondaryButton} onClick={onOpenHome}>
           返回主菜单
         </button>
       </div>
-      <div className="settings-grid">
+      <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6] [&_select]:w-full">
         <label>
           下班时间
           <select
+            className={select}
             name="dashboard-off-work-hour"
             value={offWorkHour}
             onChange={(event) => setOffWorkHour(Number(event.target.value) as WorkHour)}
@@ -205,22 +222,22 @@ export function DashboardSettingsPanel({
           includeMotion={false}
         />
       </div>
-      <div className="dashboard-settings-actions">
-        <button type="button" onClick={() => tick(2000)}>推进 1 分钟</button>
-        <button type="button" onClick={() => tick(60 * 2000)}>推进 60 分钟</button>
-        <button type="button" onClick={downloadSave}>保存 JSON</button>
-        <button type="button" onClick={() => saveInputRef.current?.click()}>读取 JSON</button>
-        <button type="button" onClick={resetGame}>重开</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={button} onClick={() => tick(2000)}>推进 1 分钟</button>
+        <button type="button" className={button} onClick={() => tick(60 * 2000)}>推进 60 分钟</button>
+        <button type="button" className={button} onClick={downloadSave}>保存 JSON</button>
+        <button type="button" className={button} onClick={() => saveInputRef.current?.click()}>读取 JSON</button>
+        <button type="button" className={button} onClick={resetGame}>重开</button>
         <input
           ref={saveInputRef}
           aria-label="选择 JSON 存档"
-          className="sr-only"
+          className={srOnly}
           type="file"
           accept=".json,.companysim,application/json"
           onChange={loadSave}
         />
       </div>
-      {saveStatus ? <span className="save-status" role="status">{saveStatus}</span> : null}
+      {saveStatus ? <span className="inline-flex min-h-8 max-w-full items-center text-[13px] font-extrabold text-[#aab0a8] [overflow-wrap:anywhere]" role="status">{saveStatus}</span> : null}
     </section>
   )
 }

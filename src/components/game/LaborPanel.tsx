@@ -2,6 +2,18 @@ import { useState } from 'react'
 
 import { laborStatusLabels, roleLabels, urgencyLabels } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import {
+  button,
+  dialogPanel,
+  eyebrow,
+  formGrid,
+  panel,
+  panelHeader,
+  panelTitle,
+  select,
+  table,
+  tableWrap,
+} from '../../styles/tw'
 import { money } from '../../utils'
 
 export function LaborPanel() {
@@ -13,15 +25,15 @@ export function LaborPanel() {
   const availableEmployees = employees.filter((employee) => employee.status !== 'fired' && !employee.assignedTo)
 
   return (
-    <section className="panel">
-      <div className="panel-header">
+    <section className={`${panel} ${dialogPanel}`}>
+      <div className={panelHeader}>
         <div>
-          <p className="eyebrow">人力外包</p>
-          <h2>驻场合同</h2>
+          <p className={eyebrow}>人力外包</p>
+          <h2 className={panelTitle}>驻场合同</h2>
         </div>
       </div>
-      <div className="table-wrap">
-        <table>
+      <div className={tableWrap}>
+        <table className={table}>
           <thead>
             <tr>
               <th>合同</th>
@@ -51,10 +63,11 @@ export function LaborPanel() {
                   <td>{assigned?.nickname || assigned?.name || '未分配'}</td>
                   <td>
                     {contract.status === 'available' ? (
-                      <button type="button" onClick={() => acceptLaborContract(contract.id)}>签约</button>
+                      <button type="button" className={button} onClick={() => acceptLaborContract(contract.id)}>签约</button>
                     ) : (
-                      <div className="form-grid">
+                      <div className={formGrid}>
                         <select
+                          className={select}
                           name={`labor-assignment-${contract.id}`}
                           value={assignments[contract.id] ?? ''}
                           onChange={(event) =>
@@ -70,6 +83,7 @@ export function LaborPanel() {
                         </select>
                         <button
                           type="button"
+                          className={button}
                           disabled={!assignments[contract.id]}
                           onClick={() => assignEmployeeToLabor(assignments[contract.id] ?? '', contract.id)}
                         >

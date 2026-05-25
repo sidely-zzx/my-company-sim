@@ -5,6 +5,7 @@ import {
 import {
   Container,
   Graphics,
+  type Graphics as PixiGraphics,
 } from 'pixi.js'
 import { useCallback } from 'react'
 
@@ -14,7 +15,7 @@ extend({
 })
 
 const MyComponent = () => {
-  const drawCallback = useCallback(graphics => {
+  const drawCallback = useCallback((graphics: PixiGraphics) => {
     graphics.clear()
     graphics.setFillStyle({ color: 'red' })
     graphics.rect(0, 0, 100, 100)
@@ -29,4 +30,4 @@ const MyComponent = () => {
     </Application>
   )
 }
-export default MyComponent;
+export default MyComponent

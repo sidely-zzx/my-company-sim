@@ -9,6 +9,18 @@ import {
   skillRoles,
 } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import {
+  button,
+  dialogPanel,
+  eyebrow,
+  formGrid,
+  panel,
+  panelHeader,
+  panelTitle,
+  select,
+  table,
+  tableWrap,
+} from '../../styles/tw'
 import { money } from '../../utils'
 
 export function ProjectPanel() {
@@ -31,15 +43,15 @@ export function ProjectPanel() {
   }
 
   return (
-    <section className="panel">
-      <div className="panel-header">
+    <section className={`${panel} ${dialogPanel}`}>
+      <div className={panelHeader}>
         <div>
-          <p className="eyebrow">项目外包</p>
-          <h2>项目合同</h2>
+          <p className={eyebrow}>项目外包</p>
+          <h2 className={panelTitle}>项目合同</h2>
         </div>
       </div>
-      <div className="table-wrap">
-        <table>
+      <div className={tableWrap}>
+        <table className={table}>
           <thead>
             <tr>
               <th>项目</th>
@@ -69,7 +81,7 @@ export function ProjectPanel() {
                   <td>{projectStatusLabels[project.status]}</td>
                   <td>{phaseLabels[project.currentPhase]}</td>
                   <td>
-                    <div className="progress-list">
+                    <div className="grid gap-1">
                       {projectTracks.map((track) => (
                         <span key={track}>
                           {roleLabels[track]} {Math.round(project.phaseProgress[track])}%
@@ -78,7 +90,7 @@ export function ProjectPanel() {
                     </div>
                   </td>
                   <td>
-                    <div className="progress-list">
+                    <div className="grid gap-1">
                       {skillRoles.map((role) => (
                         <span key={role}>
                           {roleLabels[role]} {(project.assignedEmployees[role] ?? []).length} 人
@@ -88,10 +100,11 @@ export function ProjectPanel() {
                   </td>
                   <td>
                     {project.status === 'available' ? (
-                      <button type="button" onClick={() => acceptProjectContract(project.id)}>签约</button>
+                      <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>签约</button>
                     ) : (
-                      <div className="form-grid">
+                      <div className={formGrid}>
                         <select
+                          className={select}
                           name={`project-employee-${project.id}`}
                           value={assignment.employeeId}
                           onChange={(event) => updateAssignment(project.id, { employeeId: event.target.value })}
@@ -104,6 +117,7 @@ export function ProjectPanel() {
                           ))}
                         </select>
                         <select
+                          className={select}
                           name={`project-role-${project.id}`}
                           value={assignment.role}
                           onChange={(event) => updateAssignment(project.id, { role: event.target.value as SkillRole })}
@@ -114,6 +128,7 @@ export function ProjectPanel() {
                         </select>
                         <button
                           type="button"
+                          className={button}
                           disabled={!assignment.employeeId || project.status === 'completed'}
                           onClick={() => assignEmployeeToProject(assignment.employeeId, project.id, assignment.role)}
                         >
