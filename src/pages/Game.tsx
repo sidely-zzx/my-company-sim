@@ -67,7 +67,6 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
 
   const activeEmployees = employees.filter((employee) => employee.status !== 'fired')
   const workingEmployees = activeEmployees.filter((employee) => employee.status === 'working').length
-  const slackingEmployees = activeEmployees.filter((employee) => employee.status === 'slacking').length
   const idleEmployees = activeEmployees.filter((employee) => employee.status === 'idle').length
   const satisfaction = Math.round(
     average(activeEmployees.map((employee) => employee.satisfaction), activeEmployees.length > 0 ? 0 : 72),
@@ -119,15 +118,15 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const unreadMailCount = mailbox.filter((mail) => !mail.read).length
 
   return (
-    <main className="grid min-h-screen grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-2 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px),#151918] bg-[length:24px_24px] p-2">
-      <header className={cn(surface, 'grid min-h-20 grid-cols-[minmax(260px,1.1fr)_minmax(420px,2fr)_auto] items-stretch gap-3 px-3.5 py-2.5 max-[1180px]:grid-cols-1')}>
-        <div className="flex flex-nowrap items-center gap-2 max-[900px]:flex-col max-[900px]:items-start">
+    <main className="grid h-full w-full grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-2 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px),#151918] bg-[length:24px_24px] p-2">
+      <header className={cn(surface, 'fixed top-0 left-0 right-0 grid min-h-20 grid-cols-[minmax(210px,1fr)_minmax(360px,1.7fr)_auto] items-stretch gap-2 px-2.5 py-2')}>
+        <div className="flex flex-nowrap items-center gap-2">
           <div className="grid h-12 w-12 place-items-center rounded-lg border border-[#7e735a] bg-[#2b2922] text-3xl font-black text-[#ead7aa] shadow-[inset_0_0_0_2px_#171a18]">M</div>
           <div>
             <h1 className="m-0 text-[23px] text-[#efe2c8]">小马科技</h1>
             <p className="m-0 text-xs font-extrabold text-[#aaa48f]">Day {time.day} · {formatTime(time.minuteOfDay)}</p>
           </div>
-          <div className="ml-2.5 flex flex-wrap items-center gap-2 border-l border-[#333a37] pl-2.5" aria-label="时间速度">
+          <div className="ml-1.5 flex flex-wrap items-center gap-1.5 border-l border-[#333a37] pl-2" aria-label="时间速度">
             <button type="button" onClick={() => setSpeed(0)} className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 0 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]')}>
               ||
             </button>
@@ -139,12 +138,12 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 max-[1180px]:justify-start" aria-label="经营指标">
-          <div className="min-w-28 border-l border-[#343b38] px-3.5 max-[560px]:min-w-[46%] max-[560px]:px-2"><span className="block text-[13px] text-[#aea790]">现金流</span><strong className={cn('mt-1 block text-[21px]', amountPositive)}>{money(moneyValue)}</strong></div>
-          <div className="min-w-28 border-l border-[#343b38] px-3.5 max-[560px]:min-w-[46%] max-[560px]:px-2"><span className="block text-[13px] text-[#aea790]">burn rate</span><strong className={cn('mt-1 block text-[21px]', amountNegative)}>-{money(burnRate)}/天</strong></div>
-          <div className="min-w-28 border-l border-[#343b38] px-3.5 max-[560px]:min-w-[46%] max-[560px]:px-2"><span className="block text-[13px] text-[#aea790]">项目数</span><strong className="mt-1 block text-[21px] text-[#efe2c8]">{activeProjectCount}/{projectContracts.length}</strong></div>
-          <div className="min-w-28 border-l border-[#343b38] px-3.5 max-[560px]:min-w-[46%] max-[560px]:px-2"><span className="block text-[13px] text-[#aea790]">员工数</span><strong className="mt-1 block text-[21px] text-[#efe2c8]">{activeEmployees.length}/15</strong></div>
-          <div className="min-w-28 border-l border-[#343b38] px-3.5 max-[560px]:min-w-[46%] max-[560px]:px-2"><span className="block text-[13px] text-[#aea790]">公司满意度</span><strong className="mt-1 block text-[21px] text-[#efe2c8]">{percent(morale / 100)}</strong></div>
+        <div className="flex flex-nowrap items-center justify-between gap-1.5" aria-label="经营指标">
+          <div className="min-w-20 border-l border-[#343b38] px-2"><span className="block text-[12px] text-[#aea790]">现金流</span><strong className={cn('mt-1 block text-[17px]', amountPositive)}>{money(moneyValue)}</strong></div>
+          <div className="min-w-20 border-l border-[#343b38] px-2"><span className="block text-[12px] text-[#aea790]">burn rate</span><strong className={cn('mt-1 block text-[17px]', amountNegative)}>-{money(burnRate)}/天</strong></div>
+          <div className="min-w-16 border-l border-[#343b38] px-2"><span className="block text-[12px] text-[#aea790]">项目数</span><strong className="mt-1 block text-[17px] text-[#efe2c8]">{activeProjectCount}/{projectContracts.length}</strong></div>
+          <div className="min-w-16 border-l border-[#343b38] px-2"><span className="block text-[12px] text-[#aea790]">员工数</span><strong className="mt-1 block text-[17px] text-[#efe2c8]">{activeEmployees.length}/15</strong></div>
+          <div className="min-w-20 border-l border-[#343b38] px-2"><span className="block text-[12px] text-[#aea790]">满意度</span><strong className="mt-1 block text-[17px] text-[#efe2c8]">{percent(morale / 100)}</strong></div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button type="button" className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]')} aria-label="主菜单" onClick={onOpenHome}>MENU</button>
@@ -174,9 +173,11 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
           </Dialog>
         </div>
       </header>
-
-      <div className="grid min-h-0 grid-cols-[282px_minmax(420px,1fr)_292px] gap-2 max-[1180px]:grid-cols-1">
-        <aside className="grid min-w-0 content-start gap-2 max-[1180px]:grid-cols-2 max-[900px]:grid-cols-1">
+      <div className='h-full w-full'>
+        <PixiContainer></PixiContainer>
+      </div>
+      <div className="fixed left-0 top-25">
+        <aside className="grid w-[230px] min-w-0 content-start gap-2">
           <section className={cn(surface, 'min-w-0 p-3.5')}>
             <h2 className="mb-3 mt-0 text-[17px] text-[#efe2c8]">项目</h2>
             <div className="grid gap-2.5">
@@ -227,14 +228,10 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
             </div>
           </section>
         </aside>
+      </div>
 
-        <section className="relative grid min-h-[610px] place-items-center overflow-hidden rounded-lg border border-[#38413d] bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(180deg,#38413f_0%,#222a28_42%,#303432_42%,#202625_100%)] bg-[length:48px_48px,48px_48px,auto] shadow-[inset_0_0_80px_rgba(0,0,0,0.46),0_12px_30px_rgba(0,0,0,0.28)] before:absolute before:inset-[18px] before:rounded-lg before:border-2 before:border-dashed before:border-[rgba(234,215,170,0.18)] before:content-[''] max-[1180px]:min-h-[520px] max-[560px]:min-h-[360px]" data-scene-root>
-          <div className="relative grid w-[min(420px,calc(100%-48px))] gap-2 rounded-lg border border-[rgba(234,215,170,0.3)] bg-[rgba(13,16,16,0.62)] p-6 text-center text-[#d7caaa]">
-            <PixiContainer></PixiContainer>
-          </div>
-        </section>
-
-        <aside className="grid min-w-0 content-start gap-2 max-[1180px]:grid-cols-1 max-[900px]:grid-cols-1">
+      <div className='fixed right-0 bottom-25'>
+         <aside className="grid w-[260px] min-w-0 content-start gap-2">
           <Dialog>
             <DialogTrigger asChild>
               <button type="button" className={cn(button, 'grid min-h-[58px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]')}>
@@ -274,7 +271,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         </aside>
       </div>
 
-      <nav className={cn(surface, 'mx-auto grid w-[min(850px,100%)] grid-cols-7 gap-px p-1.5 max-[900px]:grid-cols-4 max-[560px]:grid-cols-2')} aria-label="模块导航">
+      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[850px] grid-cols-7 gap-px p-1.5')} aria-label="模块导航">
         <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} title="员工列表" description="管理员工">
           <EmployeePanel />
         </DockDialog>
@@ -302,11 +299,11 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         </DockDialog>
       </nav>
 
-      <div className={cn(surface, 'flex flex-wrap justify-center gap-3 px-3 py-2 text-xs font-extrabold text-[#aeb5ac]')} aria-label="员工状态概览">
+      {/* <div className={cn(surface, 'flex flex-wrap justify-center gap-3 px-3 py-2 text-xs font-extrabold text-[#aeb5ac]')} aria-label="员工状态概览">
         <span>工作中 {workingEmployees}</span>
         <span>摸鱼中 {slackingEmployees}</span>
         <span>待分配 {idleEmployees}</span>
-      </div>
+      </div> */}
     </main>
   )
 }

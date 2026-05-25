@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 
 import { GameClock } from './components/game/GameClock'
 import { parseGameSaveFileJson } from './game/save'
@@ -10,7 +10,22 @@ import HomePage from './pages/Home'
 
 type AppView = 'home' | 'game'
 
+const BASE_WIDTH = 1920
+const BASE_HEIGHT = 1080
+const USE_INTEGER_SCALE = false
+
+function getGameScale() {
+  const fitScale = Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT)
+
+  if (USE_INTEGER_SCALE) {
+    return Math.max(1, Math.floor(fitScale))
+  }
+
+  return fitScale
+}
+
 function App() {
+  const gameRootRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<AppView>('home')
   const [importedSaves, setImportedSaves] = useState<ImportedSave[]>([])
   const [importStatus, setImportStatus] = useState('')
@@ -99,6 +114,25 @@ function App() {
     }, 120)
   }
 
+  useEffect(() => {
+    if (view !== 'game') {
+      return
+    }
+
+    function updateScale() {
+      if (!gameRootRef.current) {
+        return
+      }
+
+      gameRootRef.current.style.transform = `scale(${getGameScale()})`
+    }
+
+    updateScale()
+    window.addEventListener('resize', updateScale)
+
+    return () => window.removeEventListener('resize', updateScale)
+  }, [view])
+
   if (view === 'home') {
     return (
       <main className="min-h-screen bg-[radial-gradient(circle_at_50%_0%,rgba(101,122,122,0.18),transparent_36%),linear-gradient(135deg,#151a1b_0%,#232829_46%,#111516_100%)] p-6 text-[#e8ddc7] grid items-center max-[900px]:items-start max-[900px]:p-3">
@@ -118,13 +152,15 @@ function App() {
   }
 
   return (
-    <main className={cn('min-h-screen bg-[radial-gradient(circle_at_50%_0%,rgba(101,122,122,0.18),transparent_36%),linear-gradient(135deg,#151a1b_0%,#232829_46%,#111516_100%)] text-[#e8ddc7]')}>
+    <main className={cn('game-viewport bg-[radial-gradient(circle_at_50%_0%,rgba(101,122,122,0.18),transparent_36%),linear-gradient(135deg,#151a1b_0%,#232829_46%,#111516_100%)] text-[#e8ddc7]')}>
       <GameClock />
-      <GamePage
-        visualSettings={visualSettings}
-        onOpenHome={() => setView('home')}
-        onUpdateVisualSettings={updateVisualSettings}
-      />
+      <div ref={gameRootRef} className="game-root">
+        <GamePage
+          visualSettings={visualSettings}
+          onOpenHome={() => setView('home')}
+          onUpdateVisualSettings={updateVisualSettings}
+        />
+      </div>
     </main>
   )
 }

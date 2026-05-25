@@ -14,6 +14,9 @@ extend({
   Graphics,
 })
 
+const BASE_WIDTH = 1920
+const BASE_HEIGHT = 1080;
+
 const MyComponent = () => {
   const drawCallback = useCallback((graphics: PixiGraphics) => {
     graphics.clear()
@@ -23,7 +26,13 @@ const MyComponent = () => {
   }, [])
 
   return (
-    <Application>
+    <Application
+      width={BASE_WIDTH}
+      height={BASE_HEIGHT}
+      antialias={false}
+      autoDensity={false}
+      backgroundAlpha={0}
+    >
       <pixiContainer x={100} y={100}>
         <pixiGraphics draw={drawCallback} />
       </pixiContainer>

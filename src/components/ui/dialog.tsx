@@ -31,7 +31,7 @@ export function DialogContent({
   ...props
 }: ComponentPropsWithoutRef<typeof DialogPrimitive.Content>) {
   return (
-    <DialogPrimitive.Portal>
+    <>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-[rgba(5,7,7,0.72)]" />
       <DialogPrimitive.Content
         className={cn(
@@ -51,6 +51,6 @@ export function DialogContent({
           ×
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
+    </>
   )
 }
