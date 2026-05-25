@@ -132,7 +132,7 @@ const createGameApp = async (node: HTMLDivElement): Promise<GameAppHandle> => {
   const [officeTexture, deskLayer, pcLayer, chairLayer] = await Promise.all([
     Assets.load<Texture>(OFFICE_BACKGROUND_SRC),
     createDeskLayer(),
-    createPcLayer(),
+    createPcLayer(app.ticker),
     createChairLayer(),
   ]);
   const officeBackground = new Sprite(officeTexture);
