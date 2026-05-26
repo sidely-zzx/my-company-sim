@@ -1,4 +1,5 @@
 import type {
+  AssignmentMode,
   Employee,
   LaborContract,
   ProjectContract,
@@ -13,6 +14,13 @@ import { money } from '../utils'
 export const workHours: WorkHour[] = [18, 19, 20, 21, 22, 23, 24]
 export const skillRoles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing']
 export const projectTracks: ProjectWorkTrack[] = ['product', 'design', 'frontend', 'backend', 'testing']
+
+export const assignmentModes: AssignmentMode[] = ['immediate', 'after_current']
+
+export const assignmentModeLabels: Record<AssignmentMode, string> = {
+  immediate: '立即投入',
+  after_current: '做完当前工作后投入',
+}
 
 export const roleLabels: Record<SkillRole, string> = {
   product: '产品',
@@ -161,4 +169,22 @@ export function assignmentText(
   return project
     ? `项目：${project.title}（${roleLabels[employee.assignedTo.role ?? 'product']}）`
     : '项目：未知项目'
+}
+
+export function pendingAssignmentText(
+  employee: Employee,
+  laborContracts: LaborContract[],
+  projectContracts: ProjectContract[],
+): string {
+  if (!employee.pendingAssignment) {
+    return '无'
+  }
+  if (employee.pendingAssignment.type === 'labor') {
+    const contract = laborContracts.find((item) => item.id === employee.pendingAssignment?.id)
+    return contract ? `做完当前工作后投入：${contract.title}` : '做完当前工作后投入：未知合同'
+  }
+
+  const project = projectContracts.find((item) => item.id === employee.pendingAssignment?.id)
+  const role = roleLabels[employee.pendingAssignment.role ?? 'product']
+  return project ? `做完当前工作后投入：${project.title}（${role}）` : `做完当前工作后投入：未知项目（${role}）`
 }

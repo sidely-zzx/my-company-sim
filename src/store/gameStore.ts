@@ -15,7 +15,7 @@ import {
 } from '../game/systems/projectSystem'
 import { refreshResumes, sendOffer } from '../game/systems/recruitingSystem'
 import { advanceGameTime, setOffWorkHour, setSpeed } from '../game/systems/timeSystem'
-import type { FinanceReport, GameSpeed, GameState, SkillRole, WorkHour } from '../game/types'
+import type { AssignmentMode, FinanceReport, GameSpeed, GameState, SkillRole, WorkHour } from '../game/types'
 
 export interface GameStore extends GameState {
   /** 开始一局新游戏；会重置全部游戏状态和市场数据。 */
@@ -35,11 +35,11 @@ export interface GameStore extends GameState {
   /** 接受一个人力外包合同，会生成签约邮件和事件。 */
   acceptLaborContract: (contractId: string) => void
   /** 把员工安排到人力外包合同中驻场。 */
-  assignEmployeeToLabor: (employeeId: string, contractId: string) => void
+  assignEmployeeToLabor: (employeeId: string, contractId: string, mode: AssignmentMode) => void
   /** 接受一个项目外包合同，会生成签约邮件和事件。 */
   acceptProjectContract: (projectId: string) => void
   /** 把员工按岗位分配到项目中，项目会按其真实能力推进。 */
-  assignEmployeeToProject: (employeeId: string, projectId: string, role: SkillRole) => void
+  assignEmployeeToProject: (employeeId: string, projectId: string, role: SkillRole, mode: AssignmentMode) => void
   /** 修改员工花名，用于玩家自定义员工显示名。 */
   renameEmployee: (employeeId: string, nickname: string) => void
   /** 辞退员工并按赔偿系数扣款；赔偿不足会提高后续风险。 */
@@ -92,12 +92,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => sendOffer(toGameState(state), resumeId, salaryPerDay, socialInsuranceRatio)),
   acceptLaborContract: (contractId) =>
     set((state) => acceptLaborContract(toGameState(state), contractId)),
-  assignEmployeeToLabor: (employeeId, contractId) =>
-    set((state) => assignEmployeeToLabor(toGameState(state), employeeId, contractId)),
+  assignEmployeeToLabor: (employeeId, contractId, mode) =>
+    set((state) => assignEmployeeToLabor(toGameState(state), employeeId, contractId, mode)),
   acceptProjectContract: (projectId) =>
     set((state) => acceptProjectContract(toGameState(state), projectId)),
-  assignEmployeeToProject: (employeeId, projectId, role) =>
-    set((state) => assignEmployeeToProject(toGameState(state), employeeId, projectId, role)),
+  assignEmployeeToProject: (employeeId, projectId, role, mode) =>
+    set((state) => assignEmployeeToProject(toGameState(state), employeeId, projectId, role, mode)),
   renameEmployee: (employeeId, nickname) =>
     set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   fireEmployee: (employeeId, compensationRatio) =>

@@ -1,6 +1,11 @@
 import { CLIENT_COMPANIES } from '../data/clientCompanies'
 import { cloneState, randomChoice, randomInt } from '../seed'
-import type { GameState, LaborContract, SkillRole } from '../types'
+import type { AssignmentMode, GameState, LaborContract, SkillRole } from '../types'
+import {
+  assignEmployeeToTarget,
+  cancelPendingAssignmentsForLaborContract,
+  releaseLaborContractAssignment,
+} from './assignmentSystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
@@ -75,38 +80,10 @@ export function assignEmployeeToLabor(
   state: GameState,
   employeeId: string,
   contractId: string,
+  mode: AssignmentMode = 'immediate',
 ): GameState {
   const draft = cloneState(state)
-  const contract = draft.laborContracts.find((item) => item.id === contractId)
-  const employee = draft.employees.find((item) => item.id === employeeId)
-  if (!contract || !employee || employee.status === 'fired') {
-    addEvent(draft, {
-      type: 'contract',
-      title: '分配失败',
-      message: '合同或员工不存在。',
-      severity: 'warning',
-    })
-    return draft
-  }
-  if (employee.assignedTo) {
-    addEvent(draft, {
-      type: 'contract',
-      title: '分配失败',
-      message: '该员工已经被分配到其他工作。',
-      severity: 'warning',
-    })
-    return draft
-  }
-  contract.assignedEmployeeId = employee.id
-  contract.status = 'active'
-  employee.assignedTo = { type: 'labor', id: contract.id, role: contract.requiredRole }
-  addEvent(draft, {
-    type: 'contract',
-    title: '员工已安排驻场',
-    message: `${employee.nickname ?? employee.name} 已安排到 ${contract.clientName}。`,
-    severity: 'success',
-    relatedEntityId: contract.id,
-  })
+  assignEmployeeToTarget(draft, employeeId, { type: 'labor', id: contractId }, mode)
   return draft
 }
 
@@ -169,6 +146,8 @@ export function settleLaborContractsEndOfDay(state: GameState, endedDay: number)
     if (contract.status === 'warning' && contract.warningDay && endedDay > contract.warningDay) {
       if (contract.satisfaction < 50) {
         contract.status = 'terminated'
+        releaseLaborContractAssignment(draft, contract)
+        cancelPendingAssignmentsForLaborContract(draft, contract)
         sendMail(draft, {
           type: 'contract_breach',
           from: contract.clientName,

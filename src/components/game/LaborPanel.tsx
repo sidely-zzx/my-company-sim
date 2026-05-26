@@ -1,6 +1,15 @@
 import { useState } from 'react'
 
-import { laborStatusLabels, roleLabels, urgencyLabels } from '../../game/ui'
+import type { AssignmentMode, LaborContract } from '../../game/types'
+import {
+  assignmentModeLabels,
+  assignmentModes,
+  assignmentText,
+  laborStatusLabels,
+  pendingAssignmentText,
+  roleLabels,
+  urgencyLabels,
+} from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
 import {
   button,
@@ -16,13 +25,41 @@ import {
 } from '../../styles/tw'
 import { money } from '../../utils'
 
+type LaborAssignmentDraft = {
+  employeeId: string
+  mode: AssignmentMode
+}
+
+function defaultAssignment(): LaborAssignmentDraft {
+  return {
+    employeeId: '',
+    mode: 'immediate',
+  }
+}
+
+function canAssignLaborContract(contract: LaborContract): boolean {
+  return ['accepted', 'active', 'warning'].includes(contract.status)
+}
+
 export function LaborPanel() {
   const laborContracts = useGameStore((state) => state.laborContracts)
   const employees = useGameStore((state) => state.employees)
+  const projectContracts = useGameStore((state) => state.projectContracts)
   const acceptLaborContract = useGameStore((state) => state.acceptLaborContract)
   const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
-  const [assignments, setAssignments] = useState<Record<string, string>>({})
-  const availableEmployees = employees.filter((employee) => employee.status !== 'fired' && !employee.assignedTo)
+  const [assignments, setAssignments] = useState<Record<string, LaborAssignmentDraft>>({})
+  const assignableEmployees = employees.filter((employee) => employee.status !== 'fired')
+
+  function updateAssignment(contractId: string, patch: Partial<LaborAssignmentDraft>) {
+    setAssignments((current) => ({
+      ...current,
+      [contractId]: {
+        ...defaultAssignment(),
+        ...current[contractId],
+        ...patch,
+      },
+    }))
+  }
 
   return (
     <section className={`${panel} ${dialogPanel}`}>
@@ -49,6 +86,11 @@ export function LaborPanel() {
           <tbody>
             {laborContracts.map((contract) => {
               const assigned = employees.find((employee) => employee.id === contract.assignedEmployeeId)
+              const assignment = assignments[contract.id] ?? defaultAssignment()
+              const selectedEmployee = employees.find((employee) => employee.id === assignment.employeeId)
+              const showLaborPendingHint =
+                selectedEmployee?.assignedTo?.type === 'labor' && assignment.mode === 'after_current'
+              const canAssignContract = canAssignLaborContract(contract)
               return (
                 <tr key={contract.id}>
                   <td>
@@ -69,26 +111,46 @@ export function LaborPanel() {
                         <select
                           className={select}
                           name={`labor-assignment-${contract.id}`}
-                          value={assignments[contract.id] ?? ''}
-                          onChange={(event) =>
-                            setAssignments((current) => ({ ...current, [contract.id]: event.target.value }))
-                          }
+                          value={assignment.employeeId}
+                          onChange={(event) => updateAssignment(contract.id, { employeeId: event.target.value })}
                         >
                           <option value="">选择员工</option>
-                          {availableEmployees.map((employee) => (
+                          {assignableEmployees.map((employee) => (
                             <option key={employee.id} value={employee.id}>
-                              {employee.nickname || employee.name}
+                              {employee.nickname || employee.name} · {assignmentText(employee, laborContracts, projectContracts)}
+                              {' · 后续 '}
+                              {pendingAssignmentText(employee, laborContracts, projectContracts)}
                             </option>
+                          ))}
+                        </select>
+                        <select
+                          className={select}
+                          name={`labor-mode-${contract.id}`}
+                          value={assignment.mode}
+                          onChange={(event) => updateAssignment(contract.id, { mode: event.target.value as AssignmentMode })}
+                        >
+                          {assignmentModes.map((mode) => (
+                            <option key={mode} value={mode}>{assignmentModeLabels[mode]}</option>
                           ))}
                         </select>
                         <button
                           type="button"
                           className={button}
-                          disabled={!assignments[contract.id]}
-                          onClick={() => assignEmployeeToLabor(assignments[contract.id] ?? '', contract.id)}
+                          disabled={!assignment.employeeId || !canAssignContract}
+                          onClick={() => assignEmployeeToLabor(assignment.employeeId, contract.id, assignment.mode)}
                         >
-                          分配
+                          安排
                         </button>
+                        {showLaborPendingHint && (
+                          <small className="basis-full text-[#e4b45b]">
+                            驻场合同通常不会自动完成，后续安排要等合同结束、被替换或立即调走后才会执行。
+                          </small>
+                        )}
+                        {assignment.employeeId && !canAssignContract && (
+                          <small className="basis-full text-[#ff7968]">
+                            该人力合同状态不允许继续安排员工。
+                          </small>
+                        )}
                       </div>
                     )}
                   </td>

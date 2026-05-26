@@ -12,6 +12,8 @@ export type SchoolType = 'normal' | '211' | '985' | 'qs100'
 export type EmployeeStatus = 'idle' | 'working' | 'slacking' | 'fired'
 /** 员工被分配到的工作类型：人力外包或项目外包。 */
 export type AssignmentType = 'labor' | 'project'
+/** 员工投入方式；立即投入会中断当前工作，做完当前工作后投入会写入后续安排。 */
+export type AssignmentMode = 'immediate' | 'after_current'
 /** 项目当前阶段，阶段只能按顺序推进。 */
 export type ProjectPhase = 'product' | 'design' | 'development' | 'testing'
 /** 项目进度轨道；开发阶段拆成前端和后端两个轨道。 */
@@ -133,6 +135,12 @@ export interface Employee {
   workYears: number
   /** 当前工作分配；未分配时为空。 */
   assignedTo?: Assignment
+  /**
+   * 员工后续工作安排；它不会立刻改变 assignedTo，也不会立刻影响员工产出。
+   * 只有员工从当前项目岗位、人力外包或其他工作中释放为空闲后才会尝试生效；
+   * 生效后会改变员工当前分配，并影响项目岗位人力、项目进度推进或人力合同履约状态。
+   */
+  pendingAssignment?: Assignment
   /** 员工状态，用于 UI 展示和产出判断。 */
   status: EmployeeStatus
   /** 被辞退的游戏日；用于后续仲裁或历史记录。 */

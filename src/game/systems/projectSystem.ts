@@ -2,7 +2,13 @@ import { PROJECT_WORK_TRACKS } from '../constants'
 import { CLIENT_COMPANIES } from '../data/clientCompanies'
 import { PROJECT_TEMPLATES } from '../data/projectTemplates'
 import { cloneState, randomChoice } from '../seed'
-import type { GameState, ProjectContract, ProjectPhase, ProjectWorkTrack, SkillRole } from '../types'
+import type { AssignmentMode, GameState, ProjectContract, ProjectPhase, ProjectWorkTrack, SkillRole } from '../types'
+import {
+  assignEmployeeToTarget,
+  cancelPendingAssignmentsForProject,
+  releaseCompletedProjectRoleAssignments,
+  releaseProjectAssignments,
+} from './assignmentSystem'
 import { calculateEmployeeOutput } from './employeeSystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
@@ -79,49 +85,10 @@ export function assignEmployeeToProject(
   employeeId: string,
   projectId: string,
   role: SkillRole,
+  mode: AssignmentMode = 'immediate',
 ): GameState {
   const draft = cloneState(state)
-  const project = draft.projectContracts.find((item) => item.id === projectId)
-  const employee = draft.employees.find((item) => item.id === employeeId)
-  if (!project || !employee || employee.status === 'fired') {
-    addEvent(draft, {
-      type: 'project',
-      title: '项目分配失败',
-      message: '项目或员工不存在。',
-      severity: 'warning',
-    })
-    return draft
-  }
-  if (!['accepted', 'active', 'overdue'].includes(project.status)) {
-    addEvent(draft, {
-      type: 'project',
-      title: '项目分配失败',
-      message: '该项目当前不能分配员工。',
-      severity: 'warning',
-    })
-    return draft
-  }
-  if (employee.assignedTo && employee.assignedTo.id !== project.id) {
-    addEvent(draft, {
-      type: 'project',
-      title: '项目分配失败',
-      message: '该员工已经被分配到其他工作。',
-      severity: 'warning',
-    })
-    return draft
-  }
-  project.assignedEmployees[role] = Array.from(
-    new Set([...(project.assignedEmployees[role] ?? []), employee.id]),
-  )
-  project.status = project.status === 'overdue' ? 'overdue' : 'active'
-  employee.assignedTo = { type: 'project', id: project.id, role }
-  addEvent(draft, {
-    type: 'project',
-    title: '项目成员已分配',
-    message: `${employee.nickname ?? employee.name} 负责 ${role}。`,
-    severity: 'success',
-    relatedEntityId: project.id,
-  })
+  assignEmployeeToTarget(draft, employeeId, { type: 'project', id: projectId, role }, mode)
   return draft
 }
 
@@ -158,6 +125,8 @@ function completeProject(state: GameState, project: ProjectContract): void {
   }
   project.status = 'completed'
   project.completedDay = state.time.day
+  cancelPendingAssignmentsForProject(state, project)
+  releaseProjectAssignments(state, project)
   const recordId = addFinanceRecord(state, {
     type: 'project_income',
     amount: project.amount,
@@ -192,7 +161,7 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
       updateCurrentPhase(project)
       for (const track of tracksForPhase(project.currentPhase)) {
         const role = track as SkillRole
-        const employeeIds = project.assignedEmployees[role] ?? []
+        const employeeIds = [...(project.assignedEmployees[role] ?? [])]
         for (const employeeId of employeeIds) {
           const employee = draft.employees.find((item) => item.id === employeeId)
           if (!employee || employee.status === 'fired') {
@@ -203,6 +172,7 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
             project.phaseProgress[track] + calculateEmployeeOutput(draft, employee, role),
           )
         }
+        releaseCompletedProjectRoleAssignments(draft, project, role)
       }
       updateCurrentPhase(project)
       if (isProjectComplete(project)) {

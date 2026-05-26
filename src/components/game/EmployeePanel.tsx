@@ -5,6 +5,7 @@ import {
   assignmentText,
   clampNumber,
   employeeStatusLabels,
+  pendingAssignmentText,
   percent,
   schoolLabels,
   skillClaimsText,
@@ -56,7 +57,8 @@ export function EmployeePanel() {
                 <th>满意度</th>
                 <th>简历技能</th>
                 <th>真实能力</th>
-                <th>分配</th>
+                <th>当前分配</th>
+                <th>后续安排</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -73,6 +75,7 @@ export function EmployeePanel() {
                   <td>{skillClaimsText(employee.resumeSkills)}</td>
                   <td>{abilitiesText(employee)}</td>
                   <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
+                  <td>{pendingAssignmentText(employee, laborContracts, projectContracts)}</td>
                   <td>
                     <div className={formGrid}>
                       <Input

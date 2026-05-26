@@ -1,6 +1,7 @@
 import { BASE_OUTPUT_PER_MINUTE } from '../constants'
 import { clamp, cloneState, nextRandom } from '../seed'
 import type { Employee, GameState, SkillRole } from '../types'
+import { processIdlePendingAssignments, releaseEmployeeFromCurrentAssignment } from './assignmentSystem'
 import { addEvent } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 
@@ -106,8 +107,9 @@ export function fireEmployee(
   }
   const years = Math.max(1, employee.workYears)
   const compensation = Math.round(employee.salaryPerDay * 30 * years * compensationRatio)
+  releaseEmployeeFromCurrentAssignment(draft, employee)
+  employee.pendingAssignment = undefined
   employee.status = 'fired'
-  employee.assignedTo = undefined
   employee.firedDay = draft.time.day
   addFinanceRecord(draft, {
     type: 'fire_compensation',
@@ -122,5 +124,6 @@ export function fireEmployee(
     severity: compensationRatio < 1 ? 'warning' : 'info',
     relatedEntityId: employee.id,
   })
+  processIdlePendingAssignments(draft)
   return draft
 }

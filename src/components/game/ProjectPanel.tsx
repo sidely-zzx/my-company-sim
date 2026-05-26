@@ -1,8 +1,12 @@
 import { useState } from 'react'
 
-import type { SkillRole } from '../../game/types'
+import type { AssignmentMode, ProjectContract, SkillRole } from '../../game/types'
 import {
+  assignmentModeLabels,
+  assignmentModes,
+  assignmentText,
   phaseLabels,
+  pendingAssignmentText,
   projectStatusLabels,
   projectTracks,
   roleLabels,
@@ -11,6 +15,7 @@ import {
 import { useGameStore } from '../../store/gameStore'
 import {
   button,
+  cn,
   dialogPanel,
   eyebrow,
   formGrid,
@@ -23,20 +28,46 @@ import {
 } from '../../styles/tw'
 import { money } from '../../utils'
 
+type ProjectAssignmentDraft = {
+  employeeId: string
+  role: SkillRole
+  mode: AssignmentMode
+}
+
+function defaultAssignment(): ProjectAssignmentDraft {
+  return {
+    employeeId: '',
+    role: 'product',
+    mode: 'immediate',
+  }
+}
+
+function isCurrentPhaseRole(project: ProjectContract, role: SkillRole): boolean {
+  if (project.currentPhase === 'development') {
+    return role === 'frontend' || role === 'backend'
+  }
+  return project.currentPhase === role
+}
+
+function canAssignProjectRole(project: ProjectContract, role: SkillRole): boolean {
+  return ['accepted', 'active', 'overdue'].includes(project.status) && project.phaseProgress[role] < 100
+}
+
 export function ProjectPanel() {
   const projectContracts = useGameStore((state) => state.projectContracts)
   const employees = useGameStore((state) => state.employees)
+  const laborContracts = useGameStore((state) => state.laborContracts)
   const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
-  const [assignments, setAssignments] = useState<Record<string, { employeeId: string; role: SkillRole }>>({})
-  const availableEmployees = employees.filter((employee) => employee.status !== 'fired')
+  const [assignments, setAssignments] = useState<Record<string, ProjectAssignmentDraft>>({})
+  const assignableEmployees = employees.filter((employee) => employee.status !== 'fired')
 
-  function updateAssignment(projectId: string, patch: Partial<{ employeeId: string; role: SkillRole }>) {
+  function updateAssignment(projectId: string, patch: Partial<ProjectAssignmentDraft>) {
     setAssignments((current) => ({
       ...current,
       [projectId]: {
-        employeeId: current[projectId]?.employeeId ?? '',
-        role: current[projectId]?.role ?? 'product',
+        ...defaultAssignment(),
+        ...current[projectId],
         ...patch,
       },
     }))
@@ -66,7 +97,11 @@ export function ProjectPanel() {
           </thead>
           <tbody>
             {projectContracts.map((project) => {
-              const assignment = assignments[project.id] ?? { employeeId: '', role: 'product' as SkillRole }
+              const assignment = assignments[project.id] ?? defaultAssignment()
+              const selectedEmployee = employees.find((employee) => employee.id === assignment.employeeId)
+              const showLaborPendingHint =
+                selectedEmployee?.assignedTo?.type === 'labor' && assignment.mode === 'after_current'
+              const canAssignSelectedRole = canAssignProjectRole(project, assignment.role)
               return (
                 <tr key={project.id}>
                   <td>
@@ -92,8 +127,21 @@ export function ProjectPanel() {
                   <td>
                     <div className="grid gap-1">
                       {skillRoles.map((role) => (
-                        <span key={role}>
-                          {roleLabels[role]} {(project.assignedEmployees[role] ?? []).length} 人
+                        <span
+                          key={role}
+                          className={cn(isCurrentPhaseRole(project, role) && 'font-extrabold text-[#efe2c8]')}
+                        >
+                          {roleLabels[role]} 当前 {(project.assignedEmployees[role] ?? []).length} 人
+                          {' / '}
+                          待投入 {
+                            employees.filter((employee) =>
+                              employee.pendingAssignment?.type === 'project' &&
+                              employee.pendingAssignment.id === project.id &&
+                              employee.pendingAssignment.role === role,
+                            ).length
+                          } 人
+                          {' / '}
+                          建议 {project.requirements.find((item) => item.role === role)?.headcount ?? 0} 人
                         </span>
                       ))}
                     </div>
@@ -110,9 +158,11 @@ export function ProjectPanel() {
                           onChange={(event) => updateAssignment(project.id, { employeeId: event.target.value })}
                         >
                           <option value="">选择员工</option>
-                          {availableEmployees.map((employee) => (
+                          {assignableEmployees.map((employee) => (
                             <option key={employee.id} value={employee.id}>
-                              {employee.nickname || employee.name}
+                              {employee.nickname || employee.name} · {assignmentText(employee, laborContracts, projectContracts)}
+                              {' · 后续 '}
+                              {pendingAssignmentText(employee, laborContracts, projectContracts)}
                             </option>
                           ))}
                         </select>
@@ -126,14 +176,36 @@ export function ProjectPanel() {
                             <option key={role} value={role}>{roleLabels[role]}</option>
                           ))}
                         </select>
+                        <select
+                          className={select}
+                          name={`project-mode-${project.id}`}
+                          value={assignment.mode}
+                          onChange={(event) => updateAssignment(project.id, { mode: event.target.value as AssignmentMode })}
+                        >
+                          {assignmentModes.map((mode) => (
+                            <option key={mode} value={mode}>{assignmentModeLabels[mode]}</option>
+                          ))}
+                        </select>
                         <button
                           type="button"
                           className={button}
-                          disabled={!assignment.employeeId || project.status === 'completed'}
-                          onClick={() => assignEmployeeToProject(assignment.employeeId, project.id, assignment.role)}
+                          disabled={!assignment.employeeId || !canAssignSelectedRole}
+                          onClick={() =>
+                            assignEmployeeToProject(assignment.employeeId, project.id, assignment.role, assignment.mode)
+                          }
                         >
-                          分配
+                          安排
                         </button>
+                        {showLaborPendingHint && (
+                          <small className="basis-full text-[#e4b45b]">
+                            驻场合同通常不会自动完成，后续安排要等合同结束、被替换或立即调走后才会执行。
+                          </small>
+                        )}
+                        {assignment.employeeId && !canAssignSelectedRole && (
+                          <small className="basis-full text-[#ff7968]">
+                            该项目状态或岗位进度不允许继续安排员工。
+                          </small>
+                        )}
                       </div>
                     )}
                   </td>
