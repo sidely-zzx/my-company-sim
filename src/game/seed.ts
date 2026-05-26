@@ -26,6 +26,15 @@ export function randomChoice<T>(seed: number, items: readonly T[]): { value: T; 
     seed: result.seed,
   }
 }
+export function randomChoiceName(seed: number, firstName: readonly string[], middleName: readonly string[], lastName: readonly string[]): { value: string; seed: number } {
+  const result = randomInt(seed, 0, firstName.length - 1)
+  const result2 = randomInt(seed, 0, middleName.length - 1)
+  const result3 = randomInt(seed, 0, lastName.length - 1)
+  return {
+    value: firstName[result.value] + middleName[result2.value] + lastName[result3.value],
+    seed: result.seed,
+  }
+}
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))

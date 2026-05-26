@@ -3,8 +3,8 @@ import {
   RESUMES_PER_REFRESH,
   VIP_DAILY_RESUME_REFRESH_LIMIT,
 } from '../constants'
-import { CANDIDATE_INTROS, CANDIDATE_NAMES } from '../data/candidateTemplates'
-import { clamp, cloneState, nextRandom, randomChoice, randomInt } from '../seed'
+import { CANDIDATE_INTROS, FIRST_NAME, MIDDLE_NAME, LAST_NAME } from '../data/candidateTemplates'
+import { clamp, cloneState, nextRandom, randomChoice, randomInt, randomChoiceName } from '../seed'
 import type {
   GameState,
   Resume,
@@ -30,7 +30,7 @@ function levelFromAbility(ability: number): ResumeSkillLevel {
 }
 
 function generateResume(state: GameState): Resume {
-  const name = randomChoice(state.rngSeed, CANDIDATE_NAMES)
+  const name = randomChoiceName(state.rngSeed, FIRST_NAME, MIDDLE_NAME, LAST_NAME)
   state.rngSeed = name.seed
   const school = randomChoice(state.rngSeed, schoolTypes)
   state.rngSeed = school.seed
