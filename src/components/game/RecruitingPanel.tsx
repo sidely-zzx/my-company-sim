@@ -73,40 +73,46 @@ export function RecruitingPanel() {
                   <td>{money(resume.expectedSalaryPerDay)}</td>
                   <td>{resume.introduction}</td>
                   <td>
-                    <div className={formGrid}>
-                      <input
-                        className={input}
-                        aria-label={`${resume.name} offer 日薪`}
-                        name={`offer-salary-${resume.id}`}
-                        type="number"
-                        value={salary}
-                        min={0}
-                        onChange={(event) => updateForm(resume.id, { salary: event.target.value })}
-                      />
-                      <input
-                        className={input}
-                        aria-label={`${resume.name} 社保比例`}
-                        name={`offer-social-${resume.id}`}
-                        type="number"
-                        value={social}
-                        min={0}
-                        max={100}
-                        onChange={(event) => updateForm(resume.id, { social: event.target.value })}
-                      />
-                      <button
-                        type="button"
-                        className={button}
-                        onClick={() =>
-                          sendOffer(
-                            resume.id,
-                            clampNumber(salary, resume.expectedSalaryPerDay),
-                            clampNumber(social, 100) / 100,
-                          )
-                        }
-                      >
-                        发 Offer
-                      </button>
-                    </div>
+                    {resume.offerRejected ? (
+                      <strong className="block rounded-md border border-[#8f3d34] bg-[#321d1a] px-2.5 py-1.5 text-[#ff9a8d]">
+                        Offer 已被拒绝
+                      </strong>
+                    ) : (
+                      <div className={formGrid}>
+                        <input
+                          className={input}
+                          aria-label={`${resume.name} offer 日薪`}
+                          name={`offer-salary-${resume.id}`}
+                          type="number"
+                          value={salary}
+                          min={0}
+                          onChange={(event) => updateForm(resume.id, { salary: event.target.value })}
+                        />
+                        <input
+                          className={input}
+                          aria-label={`${resume.name} 社保比例`}
+                          name={`offer-social-${resume.id}`}
+                          type="number"
+                          value={social}
+                          min={0}
+                          max={100}
+                          onChange={(event) => updateForm(resume.id, { social: event.target.value })}
+                        />
+                        <button
+                          type="button"
+                          className={button}
+                          onClick={() =>
+                            sendOffer(
+                              resume.id,
+                              clampNumber(salary, resume.expectedSalaryPerDay),
+                              clampNumber(social, 100) / 100,
+                            )
+                          }
+                        >
+                          发 Offer
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               )

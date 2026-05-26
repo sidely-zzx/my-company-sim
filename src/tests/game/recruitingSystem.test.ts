@@ -29,4 +29,21 @@ describe('recruitingSystem', () => {
     expect(result.employees).toHaveLength(1)
     expect(result.resumes.some((item) => item.id === resume.id)).toBe(false)
   })
+
+  it('keeps a rejected candidate visible and blocks another offer', () => {
+    const state = createTestState(1)
+    const resume = state.resumes[0]
+    if (!resume) {
+      throw new Error('expected initial resume')
+    }
+
+    const result = sendOffer(state, resume.id, 0, 0)
+    const blocked = sendOffer(result, resume.id, resume.expectedSalaryPerDay * 2, 1)
+
+    expect(result.employees).toHaveLength(0)
+    expect(result.events.at(-1)?.title).toBe('Offer 被拒')
+    expect(result.resumes.find((item) => item.id === resume.id)?.offerRejected).toBe(true)
+    expect(blocked.employees).toHaveLength(0)
+    expect(blocked.events.at(-1)?.message).toBe(`${resume.name} 已经拒绝过 offer。`)
+  })
 })

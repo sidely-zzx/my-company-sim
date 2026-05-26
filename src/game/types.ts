@@ -156,6 +156,8 @@ export interface Resume {
   introduction: string
   /** 候选人的隐藏真实技能，入职后复制到员工身上。 */
   realSkillAbilities: Partial<Record<SkillRole, number>>
+  /** Offer 是否已被候选人拒绝；受发 offer 结果影响，影响招聘弹窗展示并阻止继续给同一人发送 offer。 */
+  offerRejected?: boolean
   /** 候选人初始满意度，入职后成为员工满意度。 */
   satisfaction: number
   /** 候选人隐藏仲裁倾向，入职后成为员工风险属性。 */

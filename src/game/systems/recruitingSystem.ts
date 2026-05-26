@@ -148,12 +148,24 @@ export function sendOffer(
     });
     return draft;
   }
+  if (resume.offerRejected) {
+    addEvent(draft, {
+      type: 'recruiting',
+      title: 'Offer 发送失败',
+      message: `${resume.name} 已经拒绝过 offer。`,
+      severity: 'warning',
+      relatedEntityId: resume.id,
+    });
+    return draft;
+  }
 
   const salaryFit = salaryPerDay / resume.expectedSalaryPerDay;
   const chance = clamp(0.2 + (salaryFit - 0.8) * 0.8 + socialInsuranceRatio * 0.25, 0.01, 0.95);
   const roll = nextRandom(draft.rngSeed);
   draft.rngSeed = roll.seed;
   if (roll.value > chance) {
+    // 候选人拒绝后保留在简历池展示结果，但标记为不可再次发送 offer。
+    resume.offerRejected = true;
     addEvent(draft, {
       type: 'recruiting',
       title: 'Offer 被拒',
