@@ -127,6 +127,8 @@ export interface Employee {
   arbitrationTendency: number
   /** 员工摸鱼倾向；每分钟工作时按这个概率产出为 0。 */
   slackingTendency: number
+  /** 员工行为随机种子；入职时由全局种子生成，之后每次个人行为判定都会推进它。它受员工自身行为消耗影响，并影响摸鱼、产出等个人随机行为，使员工表现不再受其他系统随机数顺序干扰。 */
+  behaviorSeed: number
   /** 员工工作年限；影响薪资期望和仲裁赔偿规模。 */
   workYears: number
   /** 当前工作分配；未分配时为空。 */

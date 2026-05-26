@@ -157,6 +157,8 @@ export function sendOffer(
   }
 
   const employeeId = createId(draft, 'employee')
+  const behaviorSeed = nextRandom(draft.rngSeed)
+  draft.rngSeed = behaviorSeed.seed
   draft.employees.push({
     id: employeeId,
     name: resume.name,
@@ -168,6 +170,7 @@ export function sendOffer(
     satisfaction: resume.satisfaction,
     arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
+    behaviorSeed: behaviorSeed.seed,
     workYears: resume.workYears,
     status: 'idle',
   })

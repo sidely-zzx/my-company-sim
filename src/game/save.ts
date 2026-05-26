@@ -1,4 +1,5 @@
-import type { GameState } from './types'
+import { nextRandom } from './seed'
+import type { Employee, GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
 export const GAME_SAVE_VERSION = 1
@@ -58,6 +59,20 @@ function hasGameStateShape(value: unknown): value is GameState {
   )
 }
 
+function normalizeGameState(state: GameState): GameState {
+  for (const employee of state.employees as Array<Employee & { behaviorSeed?: number }>) {
+    if (Number.isFinite(employee.behaviorSeed)) {
+      continue
+    }
+
+    const behaviorSeed = nextRandom(state.rngSeed)
+    state.rngSeed = behaviorSeed.seed
+    employee.behaviorSeed = behaviorSeed.seed
+  }
+
+  return state
+}
+
 export function createGameSaveJson(state: GameState, savedAt = new Date()): string {
   const saveFile: GameSaveFile = {
     format: GAME_SAVE_FORMAT,
@@ -111,7 +126,7 @@ export function parseGameSaveFileJson(json: string): GameSaveFile {
     format: GAME_SAVE_FORMAT,
     version: GAME_SAVE_VERSION,
     savedAt: parsed.savedAt,
-    state: parsed.state,
+    state: normalizeGameState(parsed.state),
   }
 }
 

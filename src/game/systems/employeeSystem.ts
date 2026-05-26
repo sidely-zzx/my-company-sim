@@ -8,9 +8,21 @@ export function getSkillEfficiency(employee: Employee, role: SkillRole): number 
   return (employee.realSkillAbilities[role] ?? 0) / 100
 }
 
-export function rollSlacking(state: GameState, employee: Employee): boolean {
+function ensureEmployeeBehaviorSeed(state: GameState, employee: Employee): number {
+  if (Number.isFinite(employee.behaviorSeed)) {
+    return employee.behaviorSeed
+  }
+
   const random = nextRandom(state.rngSeed)
   state.rngSeed = random.seed
+  employee.behaviorSeed = random.seed
+  return employee.behaviorSeed
+}
+
+export function rollSlacking(state: GameState, employee: Employee): boolean {
+  // 员工行为种子只由该员工自己的随机行为推进；摸鱼会影响本分钟产出，避免被市场刷新、合同生成或其他员工的判定顺序影响。
+  const random = nextRandom(ensureEmployeeBehaviorSeed(state, employee))
+  employee.behaviorSeed = random.seed
   return random.value < employee.slackingTendency
 }
 
