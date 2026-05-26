@@ -10,7 +10,6 @@ import {
   schoolLabels,
   skillClaimsText,
 } from '../../game/ui'
-import { Input } from '../ui/input'
 import { useGameStore } from '../../store/gameStore'
 import { EmployeeDetailPanel, type EmployeeCompensationFormState } from './EmployeeDetailPanel'
 import {
@@ -18,7 +17,6 @@ import {
   dialogPanel,
   emptyState,
   eyebrow,
-  formGrid,
   panel,
   panelHeader,
   panelTitle,
@@ -143,51 +141,13 @@ export function EmployeePanel() {
                   <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
                   <td>{pendingAssignmentText(employee, laborContracts, projectContracts)}</td>
                   <td>
-                    <div className={formGrid}>
-                      <button
-                        type="button"
-                        className={button}
-                        onClick={() => setSelectedEmployeeId(employee.id)}
-                      >
-                        详情
-                      </button>
-                      <Input
-                        aria-label={`${employee.name} 花名`}
-                        name={`employee-nickname-${employee.id}`}
-                        value={nicknames[employee.id] ?? ''}
-                        placeholder="花名"
-                        onChange={(event) =>
-                          setNicknames((current) => ({ ...current, [employee.id]: event.target.value }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        className={button}
-                        onClick={() => renameEmployee(employee.id, nicknames[employee.id] || employee.name)}
-                      >
-                        改名
-                      </button>
-                      <Input
-                        aria-label={`${employee.name} 赔偿系数`}
-                        name={`employee-compensation-${employee.id}`}
-                        type="number"
-                        value={compensations[employee.id] ?? '1'}
-                        step="0.1"
-                        min="0"
-                        max="2"
-                        onChange={(event) =>
-                          setCompensations((current) => ({ ...current, [employee.id]: event.target.value }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        className={button}
-                        disabled={employee.status === 'fired'}
-                        onClick={() => fireEmployee(employee.id, clampNumber(compensations[employee.id] ?? '1', 1))}
-                      >
-                        辞退
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className={button}
+                      onClick={() => setSelectedEmployeeId(employee.id)}
+                    >
+                      详情
+                    </button>
                   </td>
                 </tr>
               ))}

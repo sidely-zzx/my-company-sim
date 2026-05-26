@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import {
   assignmentText,
   employeeStatusLabels,
@@ -61,6 +63,13 @@ export function EmployeeDetailPanel({
   onSaveCompensation,
 }: EmployeeDetailPanelProps) {
   const isFired = employee.status === 'fired'
+  const [isEditingNickname, setIsEditingNickname] = useState(false)
+  const displayNickname = employee.nickname || '未设置花名'
+
+  function saveNickname() {
+    onRename()
+    setIsEditingNickname(false)
+  }
 
   return (
     <div className="grid gap-4">
@@ -69,21 +78,34 @@ export function EmployeeDetailPanel({
           <p className="m-0 text-xs font-extrabold text-[#aaa48f]">员工详情</p>
           <div className="flex max-w-[760px] flex-wrap items-center gap-2">
             <h2 className="m-0 text-[22px] text-[#efe2c8]">{employee.name}</h2>
-            <label className="text-[13px] font-extrabold text-[#d4cbb6]" htmlFor={`detail-nickname-${employee.id}`}>
-              花名
-            </label>
-            <Input
-              id={`detail-nickname-${employee.id}`}
-              className="w-52 max-[560px]:w-full"
-              aria-label={`${employee.name} 花名`}
-              name={`detail-nickname-${employee.id}`}
-              value={nickname}
-              placeholder={employee.nickname || employee.name}
-              onChange={(event) => onNicknameChange(event.target.value)}
-            />
-            <button type="button" className={button} onClick={onRename}>
-              保存花名
-            </button>
+            {isEditingNickname ? (
+              <>
+                <label className="text-[13px] font-extrabold text-[#d4cbb6]" htmlFor={`detail-nickname-${employee.id}`}>
+                  花名
+                </label>
+                <Input
+                  id={`detail-nickname-${employee.id}`}
+                  className="w-52 max-[560px]:w-full"
+                  aria-label={`${employee.name} 花名`}
+                  name={`detail-nickname-${employee.id}`}
+                  value={nickname}
+                  placeholder={employee.nickname || employee.name}
+                  onChange={(event) => onNicknameChange(event.target.value)}
+                />
+                <button type="button" className={button} onClick={saveNickname}>
+                  保存花名
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2.5 py-1 text-[13px] font-extrabold text-[#d4cbb6]">
+                  花名：{displayNickname}
+                </span>
+                <button type="button" className={button} onClick={() => setIsEditingNickname(true)}>
+                  修改花名
+                </button>
+              </>
+            )}
           </div>
           <p className="m-0 mt-1 text-[13px] text-[#9aa29a]">
             {schoolLabels[employee.school]} · {employee.workYears} 年经验
