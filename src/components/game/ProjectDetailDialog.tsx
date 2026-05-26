@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import {
   Dialog,
@@ -40,6 +40,7 @@ type RoleFilter = 'all' | SkillRole
 
 interface ProjectDetailDialogProps {
   project: ProjectContract
+  trigger?: ReactNode
 }
 
 function defaultSelectedRole(project: ProjectContract): SkillRole {
@@ -108,7 +109,7 @@ function isCurrentPhaseRole(project: ProjectContract, role: SkillRole): boolean 
   return project.currentPhase === role
 }
 
-export function ProjectDetailDialog({ project }: ProjectDetailDialogProps) {
+export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogProps) {
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
@@ -155,9 +156,11 @@ export function ProjectDetailDialog({ project }: ProjectDetailDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className={button}>
-          详情
-        </button>
+        {trigger ?? (
+          <button type="button" className={button}>
+            详情
+          </button>
+        )}
       </DialogTrigger>
       <DialogContent className="w-[min(calc(100vw-32px),1400px)]">
         <DialogTitle>{project.title}</DialogTitle>

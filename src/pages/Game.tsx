@@ -1,5 +1,3 @@
-import { useMemo } from 'react'
-
 import {
   Dialog,
   DialogContent,
@@ -16,15 +14,13 @@ import { LaborPanel } from '../components/game/LaborPanel'
 import { MailPanel } from '../components/game/MailPanel'
 import { ProjectPanel } from '../components/game/ProjectPanel'
 import { RecruitingPanel } from '../components/game/RecruitingPanel'
+import { RunningProjectList } from '../components/game/RunningProjectList'
 import { StatusBar } from '../components/game/StatusBar'
 import {
   average,
   eventIcon,
   formatTime,
   percent,
-  progressTone,
-  projectProgress,
-  projectRisk,
   signedMoney,
 } from '../game/ui'
 import { useGameStore } from '../store/gameStore'
@@ -35,10 +31,6 @@ import {
   cn,
   emptyState,
   eventTokenToneClass,
-  progressFill,
-  progressToneClass,
-  progressTrack,
-  riskToneClass,
   srOnly,
   surface,
 } from '../styles/tw'
@@ -81,17 +73,6 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   )
   const netTotal = incomeTotal - expenseTotal
   const burnRate = Math.round(expenseTotal / Math.max(1, time.day))
-  const keyProjects = useMemo(
-    () =>
-      [...projectContracts]
-        .sort((left, right) => {
-          const leftActive = left.status === 'available' ? 1 : 0
-          const rightActive = right.status === 'available' ? 1 : 0
-          return leftActive - rightActive || left.deadlineDay - right.deadlineDay
-        })
-        .slice(0, 3),
-    [projectContracts],
-  )
   const todos = [
     { text: '处理未读邮件', meta: `${mailbox.filter((mail) => !mail.read).length} 封` },
     { text: '筛选候选人简历', meta: `${resumes.length} 份` },
@@ -178,27 +159,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
       </div>
       <div className="fixed left-0 top-25">
         <aside className="grid w-[230px] min-w-0 content-start gap-2">
-          <section className={cn(surface, 'min-w-0 p-3.5')}>
-            <h2 className="mb-3 mt-0 text-[17px] text-[#efe2c8]">项目</h2>
-            <div className="grid gap-2.5">
-              {keyProjects.map((project) => {
-                const progress = projectProgress(project)
-                const risk = projectRisk(project, time.day)
-                return (
-                  <article key={project.id} className="grid gap-2 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-2.5">
-                    <div className="flex justify-between gap-2">
-                      <strong className="text-[13px] text-[#e7dcc3]">{project.title}</strong>
-                      <span className={cn('text-xs font-extrabold', riskToneClass[risk.tone])}>{risk.label}</span>
-                    </div>
-                    <div className={progressTrack}>
-                      <i className={cn(progressFill, progressToneClass[progressTone(progress)])} style={{ width: `${progress}%` }} />
-                    </div>
-                    <small className="text-xs font-extrabold text-[#aeb5ac]">{progress}%</small>
-                  </article>
-                )
-              })}
-            </div>
-          </section>
+          <RunningProjectList />
           <section className={cn(surface, 'min-w-0 p-3.5')}>
             <h2 className="mb-3 mt-0 text-[17px] text-[#efe2c8]">待办事项</h2>
             <ul className="m-0 grid list-none gap-2.5 p-0">
