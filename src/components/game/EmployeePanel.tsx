@@ -12,6 +12,7 @@ import {
 } from '../../game/ui'
 import { Input } from '../ui/input'
 import { useGameStore } from '../../store/gameStore'
+import { EmployeeDetailPanel, type EmployeeCompensationFormState } from './EmployeeDetailPanel'
 import {
   button,
   dialogPanel,
@@ -31,9 +32,74 @@ export function EmployeePanel() {
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
   const renameEmployee = useGameStore((state) => state.renameEmployee)
+  const updateEmployeeCompensation = useGameStore((state) => state.updateEmployeeCompensation)
   const fireEmployee = useGameStore((state) => state.fireEmployee)
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>()
   const [nicknames, setNicknames] = useState<Record<string, string>>({})
   const [compensations, setCompensations] = useState<Record<string, string>>({})
+  const [compensationForms, setCompensationForms] = useState<Record<string, EmployeeCompensationFormState>>({})
+  const selectedEmployee = selectedEmployeeId
+    ? employees.find((employee) => employee.id === selectedEmployeeId)
+    : undefined
+
+  function getCompensationForm(employeeId: string): EmployeeCompensationFormState {
+    const employee = employees.find((item) => item.id === employeeId)
+    return compensationForms[employeeId] ?? {
+      salary: employee ? String(employee.salaryPerDay) : '0',
+      socialPercent: employee ? Math.round(employee.socialInsuranceRatio * 100) : 100,
+    }
+  }
+
+  function updateCompensationForm(employeeId: string, patch: Partial<EmployeeCompensationFormState>) {
+    setCompensationForms((current) => ({
+      ...current,
+      [employeeId]: {
+        ...getCompensationForm(employeeId),
+        ...current[employeeId],
+        ...patch,
+      },
+    }))
+  }
+
+  if (selectedEmployee) {
+    return (
+      <section className={`${panel} ${dialogPanel}`}>
+        <EmployeeDetailPanel
+          employee={selectedEmployee}
+          laborContracts={laborContracts}
+          projectContracts={projectContracts}
+          nickname={nicknames[selectedEmployee.id] ?? selectedEmployee.nickname ?? ''}
+          fireCompensationRatio={compensations[selectedEmployee.id] ?? '1'}
+          compensationForm={getCompensationForm(selectedEmployee.id)}
+          onBack={() => setSelectedEmployeeId(undefined)}
+          onNicknameChange={(value) =>
+            setNicknames((current) => ({ ...current, [selectedEmployee.id]: value }))
+          }
+          onRename={() => renameEmployee(
+            selectedEmployee.id,
+            (nicknames[selectedEmployee.id] ?? selectedEmployee.nickname ?? selectedEmployee.name) || selectedEmployee.name,
+          )}
+          onFireCompensationRatioChange={(value) =>
+            setCompensations((current) => ({ ...current, [selectedEmployee.id]: value }))
+          }
+          onFire={() =>
+            fireEmployee(selectedEmployee.id, clampNumber(compensations[selectedEmployee.id] ?? '1', 1))
+          }
+          onCompensationFormChange={(patch) => updateCompensationForm(selectedEmployee.id, patch)}
+          onSaveCompensation={(salaryPerDay, socialInsuranceRatio) => {
+            updateEmployeeCompensation(selectedEmployee.id, salaryPerDay, socialInsuranceRatio)
+            setCompensationForms((current) => ({
+              ...current,
+              [selectedEmployee.id]: {
+                salary: String(salaryPerDay),
+                socialPercent: Math.round(socialInsuranceRatio * 100),
+              },
+            }))
+          }}
+        />
+      </section>
+    )
+  }
 
   return (
     <section className={`${panel} ${dialogPanel}`}>
@@ -78,6 +144,13 @@ export function EmployeePanel() {
                   <td>{pendingAssignmentText(employee, laborContracts, projectContracts)}</td>
                   <td>
                     <div className={formGrid}>
+                      <button
+                        type="button"
+                        className={button}
+                        onClick={() => setSelectedEmployeeId(employee.id)}
+                      >
+                        详情
+                      </button>
                       <Input
                         aria-label={`${employee.name} 花名`}
                         name={`employee-nickname-${employee.id}`}

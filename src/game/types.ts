@@ -119,11 +119,20 @@ export interface Employee {
   resumeSkills: SkillClaim[]
   /** 员工隐藏真实技能能力值；项目效率等于对应能力值 / 100。 */
   realSkillAbilities: Partial<Record<SkillRole, number>>
-  /** 员工每日税前工资，是每天固定现金支出。 */
+  /**
+   * 员工每日税前工资；它受 offer 和详情页调薪影响，
+   * 会影响每日工资支出、社保公司成本、辞退赔偿和仲裁诉求金额。
+   */
   salaryPerDay: number
-  /** 社保公积金缴纳比例；1 表示按工资 100% 缴纳。 */
+  /**
+   * 社保公积金缴纳比例；1 表示按工资 100% 缴纳。
+   * 它受 offer 和详情页社保设置影响，会影响每日社保成本、满意度下降、社保投诉概率和仲裁风险。
+   */
   socialInsuranceRatio: number
-  /** 员工满意度；过低会触发投诉、仲裁等风险。 */
+  /**
+   * 员工满意度；它受加班、社保不足和工资调整影响，
+   * 过低会提高社保投诉、劳动仲裁等风险，并影响公司运营稳定性展示。
+   */
   satisfaction: number
   /** 员工仲裁倾向；越高越容易在不满时发起仲裁。 */
   arbitrationTendency: number

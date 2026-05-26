@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { CircleHelp } from 'lucide-react'
 
 import {
   Dialog,
@@ -9,18 +8,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
-import { Input } from '../ui/input'
-import { Slider } from '../ui/slider'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../ui/tooltip'
-import { SOCIAL_INSURANCE_COMPANY_RATE } from '../../game/constants'
 import type { Resume, SkillRole } from '../../game/types'
-import { clampNumber, schoolLabels, skillClaimsText } from '../../game/ui'
+import { schoolLabels, skillClaimsText } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import { CompensationSettings, type CompensationFormState } from './CompensationSettings'
 import {
   button,
   dialogPanel,
@@ -34,13 +25,7 @@ import {
 } from '../../styles/tw'
 import { money } from '../../utils'
 
-const SOCIAL_INSURANCE_TIP =
-  '法律规定社保基数为实际工资，实际工资*26%社保+实际工资*12%公积金。如果未足额缴纳员工投诉举报后要双倍补缴'
-
-interface OfferFormState {
-  salary: string
-  socialPercent: number
-}
+type OfferFormState = CompensationFormState
 
 interface OfferDialogProps {
   resume: Resume
@@ -50,17 +35,6 @@ interface OfferDialogProps {
 }
 
 function OfferDialog({ resume, form, onUpdateForm, onSendOffer }: OfferDialogProps) {
-  const salaryPerDay = Math.max(0, clampNumber(form.salary, resume.expectedSalaryPerDay))
-  const salarySliderValue = Math.round(
-    Math.min(salaryPerDay, resume.expectedSalaryPerDay * 2) / resume.expectedSalaryPerDay * 100,
-  )
-  const socialPercent = form.socialPercent
-  const socialInsuranceCost = Math.round(
-    // 社保公积金支出受工资和缴纳比例影响，并会影响入职后的每日现金流。
-    salaryPerDay * (socialPercent / 100) * SOCIAL_INSURANCE_COMPANY_RATE,
-  )
-  const totalCost = salaryPerDay + socialInsuranceCost
-
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -98,97 +72,32 @@ function OfferDialog({ resume, form, onUpdateForm, onSendOffer }: OfferDialogPro
           </p>
         </div>
 
-        <div className="mt-5 grid gap-4 border-t border-[#303834] pt-4">
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-3">
-              <label
-                className="text-[13px] font-extrabold text-[#d4cbb6]"
-                htmlFor={`offer-salary-${resume.id}`}
-              >
-                Offer 日薪
-              </label>
-              <Input
-                id={`offer-salary-${resume.id}`}
-                className="w-32 text-right"
-                aria-label={`${resume.name} offer 日薪`}
-                name={`offer-salary-${resume.id}`}
-                type="number"
-                value={form.salary}
-                min={0}
-                onChange={(event) => onUpdateForm(resume.id, { salary: event.target.value })}
-              />
+        <CompensationSettings
+          id={`offer-${resume.id}`}
+          personName={resume.name}
+          value={form}
+          salaryBase={resume.expectedSalaryPerDay}
+          salaryLabel="Offer 日薪"
+          costLabel="总支出（工资 + 社保支出）"
+          className="mt-5 border-t border-[#303834] pt-4"
+          onChange={(patch) => onUpdateForm(resume.id, patch)}
+          footer={(summary) => (
+            <div className="flex flex-wrap justify-end gap-2">
+              <DialogClose asChild>
+                <button type="button" className={button}>取消</button>
+              </DialogClose>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className={button}
+                  onClick={() => onSendOffer(resume.id, summary.salaryPerDay, summary.socialInsuranceRatio)}
+                >
+                  确认发送
+                </button>
+              </DialogClose>
             </div>
-            <Slider
-              aria-label={`${resume.name} offer 日薪快捷调整`}
-              name={`offer-salary-slider-${resume.id}`}
-              min={0}
-              max={200}
-              step={1}
-              value={[salarySliderValue]}
-              onValueChange={(value) => {
-                const salaryPercent = value[0] ?? 100
-                const salary = Math.round(resume.expectedSalaryPerDay * salaryPercent / 100)
-                onUpdateForm(resume.id, { salary: String(salary) })
-              }}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#d4cbb6]">
-                <span>社保公积金 {socialPercent}%</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="社保公积金说明"
-                    >
-                      <CircleHelp className="size-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{SOCIAL_INSURANCE_TIP}</TooltipContent>
-                </Tooltip>
-              </div>
-              <strong className="text-[#efe2c8]">{socialPercent}%</strong>
-            </div>
-            <Slider
-              aria-label={`${resume.name} 社保比例`}
-              name={`offer-social-${resume.id}`}
-              min={0}
-              max={100}
-              step={1}
-              value={[socialPercent]}
-              onValueChange={(value) =>
-                onUpdateForm(resume.id, {
-                  salary: form.salary,
-                  socialPercent: value[0] ?? 0,
-                })
-              }
-            />
-          </div>
-
-          <div className="grid gap-1.5 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-[13px]">
-            <span className="text-[#d8cfbb]">
-              社保支出：{socialPercent * Number(form.salary) / 100} * 38% = {money(socialInsuranceCost)}
-            </span>
-            <strong className="text-[#efe2c8]">总支出（工资 + 社保支出）：{money(totalCost)}</strong>
-          </div>
-
-          <div className="flex flex-wrap justify-end gap-2">
-            <DialogClose asChild>
-              <button type="button" className={button}>取消</button>
-            </DialogClose>
-            <DialogClose asChild>
-              <button
-                type="button"
-                className={button}
-                onClick={() => onSendOffer(resume.id, salaryPerDay, socialPercent / 100)}
-              >
-                确认发送
-              </button>
-            </DialogClose>
-          </div>
-        </div>
+          )}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -220,8 +129,7 @@ export function RecruitingPanel() {
   }
 
   return (
-    <TooltipProvider>
-      <section className={`${panel} ${dialogPanel}`}>
+    <section className={`${panel} ${dialogPanel}`}>
         <div className={panelHeader}>
           <div>
             <p className={eyebrow}>招聘</p>
@@ -274,7 +182,6 @@ export function RecruitingPanel() {
             </tbody>
           </table>
         </div>
-      </section>
-    </TooltipProvider>
+    </section>
   )
 }

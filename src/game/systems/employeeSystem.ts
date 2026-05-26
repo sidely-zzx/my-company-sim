@@ -89,6 +89,62 @@ export function renameEmployee(state: GameState, employeeId: string, nickname: s
   return draft
 }
 
+export function updateEmployeeCompensation(
+  state: GameState,
+  employeeId: string,
+  salaryPerDay: number,
+  socialInsuranceRatio: number,
+): GameState {
+  const draft = cloneState(state)
+  const employee = draft.employees.find((item) => item.id === employeeId)
+  if (!employee) {
+    addEvent(draft, {
+      type: 'employee',
+      title: '薪酬调整失败',
+      message: '没有找到对应员工。',
+      severity: 'warning',
+    })
+    return draft
+  }
+  if (employee.status === 'fired') {
+    addEvent(draft, {
+      type: 'employee',
+      title: '薪酬调整失败',
+      message: `${employee.nickname ?? employee.name} 已离职，不能调整薪酬。`,
+      severity: 'warning',
+      relatedEntityId: employee.id,
+    })
+    return draft
+  }
+
+  const previousSalary = employee.salaryPerDay
+  const previousSocialRatio = employee.socialInsuranceRatio
+  const nextSalary = Number.isFinite(salaryPerDay) ? Math.max(0, Math.round(salaryPerDay)) : 0
+  const nextSocialRatio = Number.isFinite(socialInsuranceRatio)
+    ? clamp(socialInsuranceRatio, 0, 1)
+    : 0
+  const salaryDelta = nextSalary - previousSalary
+  const salaryDeltaRatio = salaryDelta / Math.max(previousSalary, 1)
+  const satisfactionDelta =
+    salaryDelta > 0
+      ? Math.min(10, Math.round(salaryDeltaRatio * 20))
+      : -Math.min(20, Math.round(Math.abs(salaryDeltaRatio) * 30))
+
+  employee.salaryPerDay = nextSalary
+  employee.socialInsuranceRatio = nextSocialRatio
+  // 工资调整会立刻改变满意度；满意度随后还会继续被加班、社保不足和仲裁系统读取。
+  employee.satisfaction = clamp(employee.satisfaction + satisfactionDelta, 0, 100)
+
+  addEvent(draft, {
+    type: 'employee',
+    title: '员工薪酬已调整',
+    message: `${employee.nickname ?? employee.name} 日薪 ${previousSalary} -> ${nextSalary}，社保 ${Math.round(previousSocialRatio * 100)}% -> ${Math.round(nextSocialRatio * 100)}%，满意度 ${satisfactionDelta >= 0 ? '+' : ''}${satisfactionDelta}。`,
+    severity: satisfactionDelta < 0 ? 'warning' : 'success',
+    relatedEntityId: employee.id,
+  })
+  return draft
+}
+
 export function fireEmployee(
   state: GameState,
   employeeId: string,
@@ -105,8 +161,8 @@ export function fireEmployee(
     })
     return draft
   }
-  const years = Math.max(1, employee.workYears)
-  const compensation = Math.round(employee.salaryPerDay * 30 * years * compensationRatio)
+  // 辞退赔偿按当前日工资作为 N 的基数；赔偿系数越低，现金支出越少但劳动风险越高。
+  const compensation = Math.round(employee.salaryPerDay * compensationRatio)
   releaseEmployeeFromCurrentAssignment(draft, employee)
   employee.pendingAssignment = undefined
   employee.status = 'fired'
