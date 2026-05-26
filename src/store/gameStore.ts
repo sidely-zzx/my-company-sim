@@ -12,6 +12,7 @@ import { markAllMailRead, markMailRead } from '../game/systems/mailSystem'
 import {
   acceptProjectContract,
   assignEmployeeToProject,
+  breachProjectContract,
 } from '../game/systems/projectSystem'
 import { refreshResumes, sendOffer } from '../game/systems/recruitingSystem'
 import { advanceGameTime, setOffWorkHour, setSpeed } from '../game/systems/timeSystem'
@@ -40,6 +41,8 @@ export interface GameStore extends GameState {
   acceptProjectContract: (projectId: string) => void
   /** 把员工按岗位分配到项目中，项目会按其真实能力推进。 */
   assignEmployeeToProject: (employeeId: string, projectId: string, role: SkillRole, mode: AssignmentMode) => void
+  /** 主动毁约项目外包；会扣除项目金额 30% 的违约金，并释放项目员工、取消后续安排。 */
+  breachProjectContract: (projectId: string) => void
   /** 修改员工花名，用于玩家自定义员工显示名。 */
   renameEmployee: (employeeId: string, nickname: string) => void
   /** 调整员工日薪和社保公积金比例；会立即影响成本、满意度和后续劳动风险。 */
@@ -100,6 +103,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => acceptProjectContract(toGameState(state), projectId)),
   assignEmployeeToProject: (employeeId, projectId, role, mode) =>
     set((state) => assignEmployeeToProject(toGameState(state), employeeId, projectId, role, mode)),
+  breachProjectContract: (projectId) =>
+    set((state) => breachProjectContract(toGameState(state), projectId)),
   renameEmployee: (employeeId, nickname) =>
     set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   updateEmployeeCompensation: (employeeId, salaryPerDay, socialInsuranceRatio) =>

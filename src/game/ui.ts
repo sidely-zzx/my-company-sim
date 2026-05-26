@@ -43,6 +43,7 @@ export const projectStatusLabels: Record<ProjectStatus, string> = {
   active: '进行中',
   overdue: '延期中',
   completed: '已完成',
+  breached: '已毁约',
 }
 
 export const schoolLabels = {

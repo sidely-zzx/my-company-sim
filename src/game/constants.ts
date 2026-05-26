@@ -12,6 +12,8 @@ export const VIP_DAILY_RESUME_REFRESH_LIMIT = 10
 export const RESUMES_PER_REFRESH = 5
 export const MAX_RECENT_EVENTS = 200
 export const SOCIAL_INSURANCE_COMPANY_RATE = 0.38
+/** 项目主动毁约赔偿比例；受项目金额影响，会直接扣现金并计入财报支出。 */
+export const PROJECT_BREACH_PENALTY_RATE = 0.3
 export const DEFAULT_SEED = 20260523
 export const PROJECT_PHASES: ProjectPhase[] = ['product', 'design', 'development', 'testing']
 export const PROJECT_WORK_TRACKS: ProjectWorkTrack[] = [

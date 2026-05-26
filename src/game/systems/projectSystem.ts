@@ -1,4 +1,4 @@
-import { PROJECT_WORK_TRACKS } from '../constants'
+import { PROJECT_BREACH_PENALTY_RATE, PROJECT_WORK_TRACKS } from '../constants'
 import { CLIENT_COMPANIES } from '../data/clientCompanies'
 import { PROJECT_TEMPLATES } from '../data/projectTemplates'
 import { cloneState, randomChoice } from '../seed'
@@ -13,6 +13,8 @@ import { calculateEmployeeOutput } from './employeeSystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
+
+const breachableProjectStatuses = ['accepted', 'active', 'overdue'] as const
 
 function createProjectContract(state: GameState): ProjectContract {
   const client = randomChoice(state.rngSeed, CLIENT_COMPANIES)
@@ -92,6 +94,60 @@ export function assignEmployeeToProject(
   return draft
 }
 
+export function breachProjectContract(state: GameState, projectId: string): GameState {
+  const draft = cloneState(state)
+  const project = draft.projectContracts.find((item) => item.id === projectId)
+  if (!project) {
+    addEvent(draft, {
+      type: 'project',
+      title: '项目毁约失败',
+      message: '没有找到可毁约的项目外包。',
+      severity: 'warning',
+    })
+    return draft
+  }
+
+  if (!breachableProjectStatuses.includes(project.status as (typeof breachableProjectStatuses)[number])) {
+    addEvent(draft, {
+      type: 'project',
+      title: '项目毁约失败',
+      message: project.status === 'available' ? '项目尚未签约，不能毁约。' : '项目已结束，不能重复毁约。',
+      severity: 'warning',
+      relatedEntityId: project.id,
+    })
+    return draft
+  }
+
+  const penalty = Math.round(project.amount * PROJECT_BREACH_PENALTY_RATE)
+  project.status = 'breached'
+  project.breachedDay = draft.time.day
+  cancelPendingAssignmentsForProject(draft, project)
+  releaseProjectAssignments(draft, project)
+  const recordId = addFinanceRecord(draft, {
+    type: 'project_penalty',
+    amount: -penalty,
+    reason: `${project.title} 项目毁约违约金`,
+    relatedEntityId: project.id,
+  })
+  project.breachFinanceRecordId = recordId
+  sendMail(draft, {
+    type: 'contract_breach',
+    from: project.clientName,
+    subject: `项目毁约：${project.title}`,
+    body: `公司主动毁约，需赔偿项目金额 30% 的违约金 ${penalty}。项目已终止，不再推进或产生延期扣款。`,
+    relatedEntityId: project.id,
+    financeRecordId: recordId,
+  })
+  addEvent(draft, {
+    type: 'project',
+    title: '项目已毁约',
+    message: `${project.title} 已终止，扣除毁约违约金 ${penalty}。`,
+    severity: 'danger',
+    relatedEntityId: project.id,
+  })
+  return draft
+}
+
 function tracksForPhase(phase: ProjectPhase): ProjectWorkTrack[] {
   if (phase === 'development') {
     return ['frontend', 'backend']
@@ -120,7 +176,7 @@ function isProjectComplete(project: ProjectContract): boolean {
 }
 
 function completeProject(state: GameState, project: ProjectContract): void {
-  if (project.status === 'completed') {
+  if (project.status === 'completed' || project.status === 'breached') {
     return
   }
   project.status = 'completed'
@@ -186,7 +242,7 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
 export function settleProjectsEndOfDay(state: GameState, endedDay: number): GameState {
   const draft = cloneState(state)
   for (const project of draft.projectContracts) {
-    if (project.status === 'completed' || project.status === 'available') {
+    if (project.status === 'completed' || project.status === 'available' || project.status === 'breached') {
       continue
     }
     if (isProjectComplete(project)) {

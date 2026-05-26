@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { PROJECT_BREACH_PENALTY_RATE } from '../../game/constants'
 import type { AssignmentMode, Employee, ProjectContract, SkillRole } from '../../game/types'
 import {
   assignmentModeLabels,
@@ -56,12 +57,22 @@ function canAssignProjectRole(project: ProjectContract, role: SkillRole): boolea
 
 function assignDisabledReason(project: ProjectContract, role: SkillRole): string {
   if (!['accepted', 'active', 'overdue'].includes(project.status)) {
-    return project.status === 'available' ? '项目未签约，不能安排员工。' : '项目已完成，不能继续安排员工。'
+    if (project.status === 'available') {
+      return '项目未签约，不能安排员工。'
+    }
+    if (project.status === 'breached') {
+      return '项目已毁约，不能继续安排员工。'
+    }
+    return '项目已完成，不能继续安排员工。'
   }
   if (project.phaseProgress[role] >= 100) {
     return `${roleLabels[role]} 已完成，不能继续安排员工。`
   }
   return ''
+}
+
+function canBreachProject(project: ProjectContract): boolean {
+  return ['accepted', 'active', 'overdue'].includes(project.status)
 }
 
 function isEmployeeIdle(employee: Employee): boolean {
@@ -114,13 +125,18 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
+  const breachProjectContract = useGameStore((state) => state.breachProjectContract)
   const [selectedRole, setSelectedRole] = useState<SkillRole>(() => defaultSelectedRole(project))
   const [selectedMode, setSelectedMode] = useState<AssignmentMode>('immediate')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [availabilityFilter, setAvailabilityFilter] = useState<EmployeeAvailabilityFilter>('all')
+  const [confirmingBreach, setConfirmingBreach] = useState(false)
   const totalProgress = projectProgress(project)
   const disabledReason = assignDisabledReason(project, selectedRole)
   const canAssignSelectedRole = canAssignProjectRole(project, selectedRole)
+  const breachPenalty = Math.round(project.amount * PROJECT_BREACH_PENALTY_RATE)
+  const breachPenaltyPercent = Math.round(PROJECT_BREACH_PENALTY_RATE * 100)
+  const breachAvailable = canBreachProject(project)
 
   const filteredEmployees = useMemo(() => {
     // 员工筛选受离职状态、空闲状态和岗位能力影响；它只决定右侧列表展示，不直接改变员工、项目或合同数据。
@@ -151,6 +167,16 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
 
     // 点击员工会按当前岗位和投入方式写入项目分配；这会影响员工当前分配、后续安排，以及项目后续进度推进。
     assignEmployeeToProject(employeeId, project.id, selectedRole, selectedMode)
+  }
+
+  function confirmBreachProject() {
+    if (!breachAvailable) {
+      return
+    }
+
+    // 毁约会扣除项目金额 30% 的违约金，并释放当前项目员工、取消后续投入该项目的安排。
+    breachProjectContract(project.id)
+    setConfirmingBreach(false)
   }
 
   return (
@@ -189,6 +215,41 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{project.overdueDays} 天</dd>
                 </div>
               </dl>
+
+              {breachAvailable && (
+                <div className="rounded-md border border-[#5a352f] bg-[#241717] p-3 text-sm text-[#d8cfbb]">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <strong className="block text-[#ffb0a3]">毁约赔偿</strong>
+                      <span className="text-xs text-[#d8cfbb]">
+                        项目金额 {breachPenaltyPercent}% · {money(breachPenalty)}
+                      </span>
+                    </div>
+                    {!confirmingBreach ? (
+                      <button
+                        type="button"
+                        className={cn(button, 'border-[#7c3a31] bg-[#4a201b] text-[#ffe5df] hover:bg-[#5a2a23]')}
+                        onClick={() => setConfirmingBreach(true)}
+                      >
+                        毁约
+                      </button>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className={cn(button, 'border-[#7c3a31] bg-[#4a201b] text-[#ffe5df] hover:bg-[#5a2a23]')}
+                          onClick={confirmBreachProject}
+                        >
+                          确认毁约
+                        </button>
+                        <button type="button" className={button} onClick={() => setConfirmingBreach(false)}>
+                          取消
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
                 <div className="mb-2 flex items-center justify-between gap-3">

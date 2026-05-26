@@ -18,8 +18,8 @@ export type AssignmentMode = 'immediate' | 'after_current'
 export type ProjectPhase = 'product' | 'design' | 'development' | 'testing'
 /** 项目进度轨道；开发阶段拆成前端和后端两个轨道。 */
 export type ProjectWorkTrack = 'product' | 'design' | 'frontend' | 'backend' | 'testing'
-/** 项目合同状态；延期项目会继续推进直到 completed。 */
-export type ProjectStatus = 'available' | 'accepted' | 'active' | 'overdue' | 'completed'
+/** 项目合同状态；延期项目会继续推进直到 completed，毁约项目会停止推进并释放人员。 */
+export type ProjectStatus = 'available' | 'accepted' | 'active' | 'overdue' | 'completed' | 'breached'
 /** 人力外包合同状态。 */
 export type LaborContractStatus =
   | 'available'
@@ -276,6 +276,10 @@ export interface ProjectContract {
   completedDay?: number
   /** 项目完成收款对应的财务流水 ID。 */
   settlementFinanceRecordId?: string
+  /** 项目毁约的游戏日；毁约会终止项目推进，并影响人员释放和后续安排取消。 */
+  breachedDay?: number
+  /** 项目毁约赔偿对应的财务流水 ID；金额为项目金额的 30%，会减少现金并进入财报支出。 */
+  breachFinanceRecordId?: string
 }
 
 export interface GameEvent {

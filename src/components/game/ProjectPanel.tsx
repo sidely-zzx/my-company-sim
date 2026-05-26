@@ -1,13 +1,7 @@
-import { useState } from 'react'
-
-import type { AssignmentMode, ProjectContract, SkillRole } from '../../game/types'
+import type { ProjectContract, SkillRole } from '../../game/types'
 import { ProjectDetailDialog } from './ProjectDetailDialog'
 import {
-  assignmentModeLabels,
-  assignmentModes,
-  assignmentText,
   phaseLabels,
-  pendingAssignmentText,
   projectStatusLabels,
   projectTracks,
   roleLabels,
@@ -23,25 +17,10 @@ import {
   panel,
   panelHeader,
   panelTitle,
-  select,
   table,
   tableWrap,
 } from '../../styles/tw'
 import { money } from '../../utils'
-
-type ProjectAssignmentDraft = {
-  employeeId: string
-  role: SkillRole
-  mode: AssignmentMode
-}
-
-function defaultAssignment(): ProjectAssignmentDraft {
-  return {
-    employeeId: '',
-    role: 'product',
-    mode: 'immediate',
-  }
-}
 
 function isCurrentPhaseRole(project: ProjectContract, role: SkillRole): boolean {
   if (project.currentPhase === 'development') {
@@ -50,29 +29,10 @@ function isCurrentPhaseRole(project: ProjectContract, role: SkillRole): boolean 
   return project.currentPhase === role
 }
 
-function canAssignProjectRole(project: ProjectContract, role: SkillRole): boolean {
-  return ['accepted', 'active', 'overdue'].includes(project.status) && project.phaseProgress[role] < 100
-}
-
 export function ProjectPanel() {
   const projectContracts = useGameStore((state) => state.projectContracts)
   const employees = useGameStore((state) => state.employees)
-  const laborContracts = useGameStore((state) => state.laborContracts)
   const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
-  const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
-  const [assignments, setAssignments] = useState<Record<string, ProjectAssignmentDraft>>({})
-  const assignableEmployees = employees.filter((employee) => employee.status !== 'fired')
-
-  function updateAssignment(projectId: string, patch: Partial<ProjectAssignmentDraft>) {
-    setAssignments((current) => ({
-      ...current,
-      [projectId]: {
-        ...defaultAssignment(),
-        ...current[projectId],
-        ...patch,
-      },
-    }))
-  }
 
   return (
     <section className={`${panel} ${dialogPanel}`}>
@@ -98,11 +58,6 @@ export function ProjectPanel() {
           </thead>
           <tbody>
             {projectContracts.map((project) => {
-              const assignment = assignments[project.id] ?? defaultAssignment()
-              const selectedEmployee = employees.find((employee) => employee.id === assignment.employeeId)
-              const showLaborPendingHint =
-                selectedEmployee?.assignedTo?.type === 'labor' && assignment.mode === 'after_current'
-              const canAssignSelectedRole = canAssignProjectRole(project, assignment.role)
               return (
                 <tr key={project.id}>
                   <td>
@@ -155,62 +110,7 @@ export function ProjectPanel() {
                       </div>
                     ) : (
                       <div className={formGrid}>
-                        <select
-                          className={select}
-                          name={`project-employee-${project.id}`}
-                          value={assignment.employeeId}
-                          onChange={(event) => updateAssignment(project.id, { employeeId: event.target.value })}
-                        >
-                          <option value="">选择员工</option>
-                          {assignableEmployees.map((employee) => (
-                            <option key={employee.id} value={employee.id}>
-                              {employee.nickname || employee.name} · {assignmentText(employee, laborContracts, projectContracts)}
-                              {' · 后续 '}
-                              {pendingAssignmentText(employee, laborContracts, projectContracts)}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          className={select}
-                          name={`project-role-${project.id}`}
-                          value={assignment.role}
-                          onChange={(event) => updateAssignment(project.id, { role: event.target.value as SkillRole })}
-                        >
-                          {skillRoles.map((role) => (
-                            <option key={role} value={role}>{roleLabels[role]}</option>
-                          ))}
-                        </select>
-                        <select
-                          className={select}
-                          name={`project-mode-${project.id}`}
-                          value={assignment.mode}
-                          onChange={(event) => updateAssignment(project.id, { mode: event.target.value as AssignmentMode })}
-                        >
-                          {assignmentModes.map((mode) => (
-                            <option key={mode} value={mode}>{assignmentModeLabels[mode]}</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className={button}
-                          disabled={!assignment.employeeId || !canAssignSelectedRole}
-                          onClick={() =>
-                            assignEmployeeToProject(assignment.employeeId, project.id, assignment.role, assignment.mode)
-                          }
-                        >
-                          安排
-                        </button>
                         <ProjectDetailDialog project={project} />
-                        {showLaborPendingHint && (
-                          <small className="basis-full text-[#e4b45b]">
-                            驻场合同通常不会自动完成，后续安排要等合同结束、被替换或立即调走后才会执行。
-                          </small>
-                        )}
-                        {assignment.employeeId && !canAssignSelectedRole && (
-                          <small className="basis-full text-[#ff7968]">
-                            该项目状态或岗位进度不允许继续安排员工。
-                          </small>
-                        )}
                       </div>
                     )}
                   </td>
