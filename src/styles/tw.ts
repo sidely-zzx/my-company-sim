@@ -16,10 +16,8 @@ export const secondaryButton =
 export const menuAction =
   'flex min-h-12 w-full cursor-pointer items-center justify-start rounded-md border border-[#3d4642] bg-[#1d2322] px-4 text-left text-base font-extrabold text-[#efe2c8] hover:border-[#8b7f63] hover:bg-[#28302d] focus-visible:border-[#8b7f63] focus-visible:bg-[#28302d] focus-visible:outline-none max-[560px]:min-h-11 max-[560px]:text-[15px]'
 
-export const input =
+export const select =
   'min-h-8 w-24 rounded-md border border-[#4b514d] bg-[#171c1b] px-2 text-[#e8ddc7]'
-
-export const select = input
 
 export const panel = cn(surface, 'min-w-0 p-[18px]')
 

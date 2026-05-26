@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { Input } from '../ui/input'
 import { button, cn, emptyState, menuAction, srOnly } from '../../styles/tw'
 import type { ImportedSave } from '../../type'
 import { money } from '../../utils'
@@ -59,7 +60,7 @@ export function ContinueGameDialog({
           <button type="button" className={button} onClick={() => fileInputRef.current?.click()}>
             导入存档
           </button>
-          <input
+          <Input
             ref={fileInputRef}
             aria-label="导入本地存档"
             className={srOnly}

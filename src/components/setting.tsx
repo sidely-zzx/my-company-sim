@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog'
+import { Input } from './ui/input'
 import type { WorkHour } from '../game/types'
 import { workHours } from '../game/ui'
 import { useGameStore } from '../store/gameStore'
@@ -87,7 +88,7 @@ export function VisualSettingsFields({
       ) : null}
       <label>
         音量 {visualSettings.volume}
-        <input
+        <Input
           className="min-h-8 w-full rounded-md border border-[#4b514d] bg-[#171c1b] p-0 text-[#e8ddc7]"
           name="visual-volume"
           type="range"
@@ -228,7 +229,7 @@ export function DashboardSettingsPanel({
         <button type="button" className={button} onClick={downloadSave}>保存 JSON</button>
         <button type="button" className={button} onClick={() => saveInputRef.current?.click()}>读取 JSON</button>
         <button type="button" className={button} onClick={resetGame}>重开</button>
-        <input
+        <Input
           ref={saveInputRef}
           aria-label="选择 JSON 存档"
           className={srOnly}

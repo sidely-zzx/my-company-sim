@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { Input } from '../ui/input'
 import { Slider } from '../ui/slider'
 import {
   Tooltip,
@@ -50,6 +51,9 @@ interface OfferDialogProps {
 
 function OfferDialog({ resume, form, onUpdateForm, onSendOffer }: OfferDialogProps) {
   const salaryPerDay = Math.max(0, clampNumber(form.salary, resume.expectedSalaryPerDay))
+  const salarySliderValue = Math.round(
+    Math.min(salaryPerDay, resume.expectedSalaryPerDay * 2) / resume.expectedSalaryPerDay * 100,
+  )
   const socialPercent = form.socialPercent
   const socialInsuranceCost = Math.round(
     // 社保公积金支出受工资和缴纳比例影响，并会影响入职后的每日现金流。
@@ -95,18 +99,39 @@ function OfferDialog({ resume, form, onUpdateForm, onSendOffer }: OfferDialogPro
         </div>
 
         <div className="mt-5 grid gap-4 border-t border-[#303834] pt-4">
-          <label className="grid gap-1.5 text-[13px] font-extrabold text-[#d4cbb6]">
-            Offer 日薪
-            <input
-              className="min-h-8 w-full rounded-md border border-[#4b514d] bg-[#171c1b] px-2 text-[#e8ddc7]"
-              aria-label={`${resume.name} offer 日薪`}
-              name={`offer-salary-${resume.id}`}
-              type="number"
-              value={form.salary}
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <label
+                className="text-[13px] font-extrabold text-[#d4cbb6]"
+                htmlFor={`offer-salary-${resume.id}`}
+              >
+                Offer 日薪
+              </label>
+              <Input
+                id={`offer-salary-${resume.id}`}
+                className="w-32 text-right"
+                aria-label={`${resume.name} offer 日薪`}
+                name={`offer-salary-${resume.id}`}
+                type="number"
+                value={form.salary}
+                min={0}
+                onChange={(event) => onUpdateForm(resume.id, { salary: event.target.value })}
+              />
+            </div>
+            <Slider
+              aria-label={`${resume.name} offer 日薪快捷调整`}
+              name={`offer-salary-slider-${resume.id}`}
               min={0}
-              onChange={(event) => onUpdateForm(resume.id, { salary: event.target.value })}
+              max={200}
+              step={1}
+              value={[salarySliderValue]}
+              onValueChange={(value) => {
+                const salaryPercent = value[0] ?? 100
+                const salary = Math.round(resume.expectedSalaryPerDay * salaryPercent / 100)
+                onUpdateForm(resume.id, { salary: String(salary) })
+              }}
             />
-          </label>
+          </div>
 
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-3">

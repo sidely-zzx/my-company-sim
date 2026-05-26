@@ -9,6 +9,7 @@ import {
   schoolLabels,
   skillClaimsText,
 } from '../../game/ui'
+import { Input } from '../ui/input'
 import { useGameStore } from '../../store/gameStore'
 import {
   button,
@@ -16,7 +17,6 @@ import {
   emptyState,
   eyebrow,
   formGrid,
-  input,
   panel,
   panelHeader,
   panelTitle,
@@ -75,8 +75,7 @@ export function EmployeePanel() {
                   <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
                   <td>
                     <div className={formGrid}>
-                      <input
-                        className={input}
+                      <Input
                         aria-label={`${employee.name} 花名`}
                         name={`employee-nickname-${employee.id}`}
                         value={nicknames[employee.id] ?? ''}
@@ -92,8 +91,7 @@ export function EmployeePanel() {
                       >
                         改名
                       </button>
-                      <input
-                        className={input}
+                      <Input
                         aria-label={`${employee.name} 赔偿系数`}
                         name={`employee-compensation-${employee.id}`}
                         type="number"
