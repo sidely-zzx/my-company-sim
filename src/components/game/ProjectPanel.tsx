@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { AssignmentMode, ProjectContract, SkillRole } from '../../game/types'
+import { ProjectDetailDialog } from './ProjectDetailDialog'
 import {
   assignmentModeLabels,
   assignmentModes,
@@ -148,7 +149,10 @@ export function ProjectPanel() {
                   </td>
                   <td>
                     {project.status === 'available' ? (
-                      <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>签约</button>
+                      <div className={formGrid}>
+                        <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>签约</button>
+                        <ProjectDetailDialog project={project} />
+                      </div>
                     ) : (
                       <div className={formGrid}>
                         <select
@@ -196,6 +200,7 @@ export function ProjectPanel() {
                         >
                           安排
                         </button>
+                        <ProjectDetailDialog project={project} />
                         {showLaborPendingHint && (
                           <small className="basis-full text-[#e4b45b]">
                             驻场合同通常不会自动完成，后续安排要等合同结束、被替换或立即调走后才会执行。
