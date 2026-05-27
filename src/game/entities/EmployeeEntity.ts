@@ -92,7 +92,10 @@ export function createInitialEmployeeBehaviorProfile(
 }
 
 export class EmployeeEntity {
-  constructor(private readonly employee: Employee) {}
+   private readonly employee: Employee
+  constructor(employee: Employee) {
+    this.employee = employee;
+  }
 
   updateBehavior(totalMinutes: number): void {
     if (this.employee.status === 'fired') {
@@ -153,7 +156,7 @@ export class EmployeeEntity {
       this.employee.discipline = clampAttribute(this.employee.discipline + (lightWarning ? 2 : 4))
       this.employee.loyalty = clampAttribute(this.employee.loyalty - 1)
       this.employee.satisfaction = clampAttribute(this.employee.satisfaction - (lightWarning ? 1 : 2))
-      this.restoreWorkAfterSlacking()
+      this.restoreWorkAfterDiscipline()
       return {
         applied: true,
         action,
@@ -175,7 +178,7 @@ export class EmployeeEntity {
       this.employee.loyalty = clampAttribute(this.employee.loyalty - 6)
       this.employee.satisfaction = clampAttribute(this.employee.satisfaction - 8)
       this.employee.arbitrationTendency = clampAttribute(this.employee.arbitrationTendency + 3)
-      this.restoreWorkAfterSlacking()
+      this.restoreWorkAfterDiscipline()
       return {
         applied: true,
         action,
@@ -189,7 +192,7 @@ export class EmployeeEntity {
     this.employee.loyalty = clampAttribute(this.employee.loyalty - 10)
     this.employee.satisfaction = clampAttribute(this.employee.satisfaction - 12)
     this.employee.arbitrationTendency = clampAttribute(this.employee.arbitrationTendency + 8)
-    this.restoreWorkAfterSlacking()
+    this.restoreWorkAfterDiscipline()
     return {
       applied: true,
       action,
@@ -198,8 +201,9 @@ export class EmployeeEntity {
     }
   }
 
-  private restoreWorkAfterSlacking(): void {
-    if (this.employee.status === 'slacking') {
+  private restoreWorkAfterDiscipline(): void {
+    // 玩家主动提醒、警告或罚款会打断当前摸鱼/离岗行为；只要员工仍有当前工作，就立刻回到正常工作状态。
+    if (this.employee.assignedTo) {
       this.employee.status = 'working'
     }
   }

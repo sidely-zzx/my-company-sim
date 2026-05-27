@@ -46,6 +46,7 @@ describe('employeeSystem', () => {
         salaryPerDay: 300,
         loyalty: 70,
         satisfaction: 80,
+        assignedTo: { type: 'project', id: 'project-test', role: 'product' },
       }),
     ]
 
@@ -57,20 +58,26 @@ describe('employeeSystem', () => {
     expect(result.employees[0]?.satisfaction).toBeLessThan(80)
   })
 
-  it('changes slacking employee back to working after warning or penalty', () => {
+  it('changes caught employees back to working after warning or penalty', () => {
     const state = createTestState()
     state.employees = [
       createTestEmployee({
         id: 'employee-1',
-        status: 'slacking',
+        status: 'job_browsing',
+        assignedTo: { type: 'project', id: 'project-test', role: 'product' },
+      }),
+      createTestEmployee({
+        id: 'employee-2',
+        status: 'gaming',
+        assignedTo: { type: 'project', id: 'project-test', role: 'product' },
       }),
     ]
 
     const warned = applyEmployeeDiscipline(state, 'employee-1', 'verbal_warn')
-    const fined = applyEmployeeDiscipline(state, 'employee-1', 'fine')
+    const fined = applyEmployeeDiscipline(state, 'employee-2', 'fine')
 
     expect(warned.employees[0]?.status).toBe('working')
-    expect(fined.employees[0]?.status).toBe('working')
+    expect(fined.employees[1]?.status).toBe('working')
   })
 
   it('uses workDays for fire compensation and employee shape', () => {
