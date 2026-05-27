@@ -1,0 +1,284 @@
+import { useMemo, useState } from 'react'
+
+import type { AssignmentMode, Employee, LaborContract, ProjectContract, SkillRole } from '../../game/types'
+import {
+  assignmentModeLabels,
+  assignmentModes,
+  assignmentText,
+  laborStatusLabels,
+  pendingAssignmentText,
+  roleLabels,
+  skillClaimsText,
+  skillRoles,
+  urgencyLabels,
+} from '../../game/ui'
+import { cn, emptyState, riskToneClass, select } from '../../styles/tw'
+import { money } from '../../utils'
+
+type EmployeeAvailabilityFilter = 'all' | 'idle' | 'busy'
+type LaborMatchFilter = 'all' | 'role' | 'qualified'
+
+interface LaborEmployeePickerProps {
+  contract?: LaborContract
+  employees: Employee[]
+  laborContracts: LaborContract[]
+  projectContracts: ProjectContract[]
+  canAssign: boolean
+  onAssignEmployee: (employeeId: string, mode: AssignmentMode) => void
+}
+
+function isEmployeeIdle(employee: Employee): boolean {
+  return !employee.assignedTo
+}
+
+function roleAbility(employee: Employee, role: SkillRole): number {
+  return employee.realSkillAbilities[role] ?? 0
+}
+
+// 主工种是从真实能力最高的岗位推导出的展示属性，只影响人力外包分配列表的展示、筛选和排序，不会写回员工数据。
+function primaryRole(employee: Employee): SkillRole | undefined {
+  let bestRole: SkillRole | undefined
+  let bestAbility = 0
+
+  for (const role of skillRoles) {
+    const ability = roleAbility(employee, role)
+    if (ability > bestAbility) {
+      bestRole = role
+      bestAbility = ability
+    }
+  }
+
+  return bestRole ?? employee.resumeSkills[0]?.role
+}
+
+function resumeMatchesRole(employee: Employee, role: SkillRole): boolean {
+  return employee.resumeSkills.some((skill) => skill.role === role)
+}
+
+function employeeMatchesContractRole(employee: Employee, contract: LaborContract): boolean {
+  return primaryRole(employee) === contract.requiredRole || resumeMatchesRole(employee, contract.requiredRole)
+}
+
+function employeeMatchesAvailability(employee: Employee, filter: EmployeeAvailabilityFilter): boolean {
+  if (filter === 'all') {
+    return true
+  }
+  return filter === 'idle' ? isEmployeeIdle(employee) : !isEmployeeIdle(employee)
+}
+
+function employeeMatchesLaborFilter(employee: Employee, contract: LaborContract, filter: LaborMatchFilter): boolean {
+  if (filter === 'all') {
+    return true
+  }
+  if (filter === 'role') {
+    return employeeMatchesContractRole(employee, contract)
+  }
+  return roleAbility(employee, contract.requiredRole) >= contract.requiredAbility
+}
+
+export function LaborEmployeePicker({
+  contract,
+  employees,
+  laborContracts,
+  projectContracts,
+  canAssign,
+  onAssignEmployee,
+}: LaborEmployeePickerProps) {
+  const [selectedMode, setSelectedMode] = useState<AssignmentMode>('immediate')
+  const [availabilityFilter, setAvailabilityFilter] = useState<EmployeeAvailabilityFilter>('all')
+  const [matchFilter, setMatchFilter] = useState<LaborMatchFilter>('all')
+
+  const filteredEmployees = useMemo(() => {
+    if (!contract) {
+      return []
+    }
+
+    return employees
+      .filter((employee) => employee.status !== 'fired')
+      .filter((employee) => employeeMatchesAvailability(employee, availabilityFilter))
+      .filter((employee) => employeeMatchesLaborFilter(employee, contract, matchFilter))
+      .sort((left, right) => {
+        const idleDiff = Number(isEmployeeIdle(right)) - Number(isEmployeeIdle(left))
+        if (idleDiff !== 0) {
+          return idleDiff
+        }
+
+        // 合同岗位能力会参与人力合同日结满意度判断，因此排序优先把达标员工和能力更高的员工放在前面。
+        const qualifiedDiff =
+          Number(roleAbility(right, contract.requiredRole) >= contract.requiredAbility) -
+          Number(roleAbility(left, contract.requiredRole) >= contract.requiredAbility)
+        if (qualifiedDiff !== 0) {
+          return qualifiedDiff
+        }
+
+        const roleDiff =
+          Number(employeeMatchesContractRole(right, contract)) -
+          Number(employeeMatchesContractRole(left, contract))
+        if (roleDiff !== 0) {
+          return roleDiff
+        }
+
+        const abilityDiff = roleAbility(right, contract.requiredRole) - roleAbility(left, contract.requiredRole)
+        if (abilityDiff !== 0) {
+          return abilityDiff
+        }
+
+        return right.satisfaction - left.satisfaction
+      })
+  }, [availabilityFilter, contract, employees, matchFilter])
+
+  if (!contract) {
+    return (
+      <div className="grid gap-3">
+        <p className={emptyState}>先签约一份可安排的人力外包合同。</p>
+      </div>
+    )
+  }
+
+  function assignEmployee(employeeId: string) {
+    if (!canAssign) {
+      return
+    }
+
+    // 后续安排只会写入员工 pendingAssignment，不会立刻改变当前分配；员工释放为空闲后才会影响驻场履约状态。
+    onAssignEmployee(employeeId, selectedMode)
+  }
+
+  return (
+    <div className="grid min-w-0 gap-3">
+      <div className="rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-3">
+        <div className="mb-3 grid gap-1 text-sm text-[#d8cfbb]">
+          <strong className="text-[#efe2c8]">{contract.title}</strong>
+          <span className="text-xs text-[#aeb5ac]">
+            {contract.clientName} · {laborStatusLabels[contract.status]} · {urgencyLabels[contract.urgency]} · 第 {contract.deadlineDay} 天
+          </span>
+          <span className="text-xs font-extrabold text-[#d8cfbb]">
+            需求 {roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility} · {money(contract.dailyBudget)}/天
+          </span>
+        </div>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
+            投入方式
+            <select
+              className={select}
+              name={`labor-mode-${contract.id}`}
+              value={selectedMode}
+              onChange={(event) => setSelectedMode(event.target.value as AssignmentMode)}
+            >
+              {assignmentModes.map((mode) => (
+                <option key={mode} value={mode}>{assignmentModeLabels[mode]}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
+            空闲筛选
+            <select
+              className={select}
+              name={`labor-availability-${contract.id}`}
+              value={availabilityFilter}
+              onChange={(event) => setAvailabilityFilter(event.target.value as EmployeeAvailabilityFilter)}
+            >
+              <option value="all">全部</option>
+              <option value="idle">仅空闲</option>
+              <option value="busy">仅忙碌</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
+            匹配筛选
+            <select
+              className={select}
+              name={`labor-match-${contract.id}`}
+              value={matchFilter}
+              onChange={(event) => setMatchFilter(event.target.value as LaborMatchFilter)}
+            >
+              <option value="all">全部</option>
+              <option value="role">仅对口</option>
+              <option value="qualified">仅达标</option>
+            </select>
+          </label>
+        </div>
+        {!canAssign && (
+          <p className={cn('mb-0 mt-2 text-xs font-extrabold', riskToneClass.danger)}>
+            该人力合同状态不允许继续安排员工。
+          </p>
+        )}
+      </div>
+
+      {filteredEmployees.length === 0 ? (
+        <p className={emptyState}>没有符合筛选条件的员工。</p>
+      ) : (
+        <div className="grid max-h-[560px] gap-2 overflow-auto pr-1">
+          {filteredEmployees.map((employee) => {
+            const employeePrimaryRole = primaryRole(employee)
+            const ability = roleAbility(employee, contract.requiredRole)
+            const abilityGap = ability - contract.requiredAbility
+            const qualified = abilityGap >= 0
+            const idle = isEmployeeIdle(employee)
+            const matchesRole = employeeMatchesContractRole(employee, contract)
+            const showLaborPendingHint = employee.assignedTo?.type === 'labor' && selectedMode === 'after_current'
+
+            return (
+              <button
+                key={employee.id}
+                type="button"
+                className={cn(
+                  'grid gap-2 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-left text-[#d8cfbb]',
+                  idle && 'border-[#56684d] bg-[#1d251d]',
+                  qualified && matchesRole && 'shadow-[inset_4px_0_0_#6f9d51]',
+                  !canAssign
+                    ? 'cursor-not-allowed opacity-60'
+                    : 'cursor-pointer hover:border-[#b59d65] hover:bg-[#242a28] focus-visible:border-[#b59d65] focus-visible:outline-none',
+                )}
+                disabled={!canAssign}
+                onClick={() => assignEmployee(employee.id)}
+              >
+                <span className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                  <strong className="truncate text-[#efe2c8]">{employee.nickname || employee.name}</strong>
+                  <span className={cn('text-xs font-extrabold', idle ? riskToneClass.success : riskToneClass.warning)}>
+                    {idle ? '空闲' : '忙碌'}
+                  </span>
+                </span>
+
+                <span className="flex flex-wrap gap-2 text-xs font-extrabold">
+                  <span className="rounded border border-[#3d4642] bg-[#202624] px-2 py-1 text-[#d8cfbb]">
+                    主工种 {employeePrimaryRole ? roleLabels[employeePrimaryRole] : '未知'}
+                  </span>
+                  <span className="rounded border border-[#3d4642] bg-[#202624] px-2 py-1 text-[#d8cfbb]">
+                    {roleLabels[contract.requiredRole]}能力 {ability} / 要求 {contract.requiredAbility}
+                  </span>
+                  <span
+                    className={cn(
+                      'rounded border px-2 py-1',
+                      qualified
+                        ? 'border-[#56684d] bg-[#1d251d] text-[#92d16e]'
+                        : 'border-[#5a352f] bg-[#241717] text-[#ff7968]',
+                    )}
+                  >
+                    {qualified ? (idle && matchesRole ? '推荐' : '达标') : `差距 ${abilityGap}`}
+                  </span>
+                </span>
+
+                <span className="grid gap-1 text-xs text-[#aeb5ac]">
+                  <span>当前：{assignmentText(employee, laborContracts, projectContracts)}</span>
+                  <span>后续：{pendingAssignmentText(employee, laborContracts, projectContracts)}</span>
+                  <span>简历：{skillClaimsText(employee.resumeSkills)}</span>
+                </span>
+
+                <span className="flex flex-wrap gap-2 text-xs font-extrabold text-[#d8cfbb]">
+                  <span>满意度 {employee.satisfaction}</span>
+                  <span>日薪 {money(employee.salaryPerDay)}</span>
+                </span>
+
+                {showLaborPendingHint && (
+                  <span className="text-xs font-extrabold text-[#e4b45b]">
+                    驻场合同通常不会自动完成，后续安排要等合同结束、被替换或立即调走后才会执行。
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
