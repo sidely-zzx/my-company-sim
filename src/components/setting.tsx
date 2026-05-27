@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from './ui/dialog'
 import { Input } from './ui/input'
+import { SelectField, type SelectFieldOption } from './ui/select-field'
 import type { WorkHour } from '../game/types'
 import { workHours } from '../game/ui'
 import { useGameStore } from '../store/gameStore'
@@ -22,8 +23,6 @@ import {
   panel,
   panelHeader,
   panelTitle,
-  secondaryButton,
-  select,
   srOnly,
 } from '../styles/tw'
 import type { VisualSettings } from '../type'
@@ -34,6 +33,27 @@ interface VisualSettingsFieldsProps {
   includeMotion?: boolean
 }
 
+const densityOptions = [
+  { value: 'compact', label: '紧凑' },
+  { value: 'comfortable', label: '舒展' },
+] satisfies SelectFieldOption<VisualSettings['density']>[]
+
+const themeOptions = [
+  { value: 'system', label: '跟随系统' },
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+] satisfies SelectFieldOption<VisualSettings['theme']>[]
+
+const motionOptions = [
+  { value: 'standard', label: '标准' },
+  { value: 'reduced', label: '减少' },
+] satisfies SelectFieldOption<VisualSettings['motion']>[]
+
+const workHourOptions = workHours.map((hour) => ({
+  value: String(hour),
+  label: `${hour}:00`,
+}))
+
 export function VisualSettingsFields({
   visualSettings,
   onUpdateVisualSettings,
@@ -41,50 +61,34 @@ export function VisualSettingsFields({
 }: VisualSettingsFieldsProps) {
   return (
     <>
-      <label>
-        界面密度
-        <select
-          className={select}
-          name="visual-density"
-          value={visualSettings.density}
-          onChange={(event) =>
-            onUpdateVisualSettings({ density: event.target.value as VisualSettings['density'] })
-          }
-        >
-          <option value="compact">紧凑</option>
-          <option value="comfortable">舒展</option>
-        </select>
-      </label>
-      <label>
-        主题模式
-        <select
-          className={select}
-          name="visual-theme"
-          value={visualSettings.theme}
-          onChange={(event) =>
-            onUpdateVisualSettings({ theme: event.target.value as VisualSettings['theme'] })
-          }
-        >
-          <option value="system">跟随系统</option>
-          <option value="light">浅色</option>
-          <option value="dark">深色</option>
-        </select>
-      </label>
+      <SelectField
+        className="text-[13px] text-[#d4cbb6]"
+        triggerClassName="w-full"
+        label="界面密度"
+        name="visual-density"
+        value={visualSettings.density}
+        options={densityOptions}
+        onValueChange={(density) => onUpdateVisualSettings({ density })}
+      />
+      <SelectField
+        className="text-[13px] text-[#d4cbb6]"
+        triggerClassName="w-full"
+        label="主题模式"
+        name="visual-theme"
+        value={visualSettings.theme}
+        options={themeOptions}
+        onValueChange={(theme) => onUpdateVisualSettings({ theme })}
+      />
       {includeMotion ? (
-        <label>
-          动效
-          <select
-            className={select}
-            name="visual-motion"
-            value={visualSettings.motion}
-            onChange={(event) =>
-              onUpdateVisualSettings({ motion: event.target.value as VisualSettings['motion'] })
-            }
-          >
-            <option value="standard">标准</option>
-            <option value="reduced">减少</option>
-          </select>
-        </label>
+        <SelectField
+          className="text-[13px] text-[#d4cbb6]"
+          triggerClassName="w-full"
+          label="动效"
+          name="visual-motion"
+          value={visualSettings.motion}
+          options={motionOptions}
+          onValueChange={(motion) => onUpdateVisualSettings({ motion })}
+        />
       ) : null}
       <label>
         音量 {visualSettings.volume}
@@ -123,7 +127,7 @@ export function HomeSettingsDialog({
         <DialogDescription className="mb-[18px] mt-0 text-[#aab0a8]">
           当前为视觉占位设置，不影响游戏结算。
         </DialogDescription>
-        <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6] [&_select]:w-full">
+        <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6]">
           <VisualSettingsFields
             visualSettings={visualSettings}
             onUpdateVisualSettings={onUpdateVisualSettings}
@@ -147,7 +151,6 @@ interface DashboardSettingsPanelProps {
 
 export function DashboardSettingsPanel({
   visualSettings,
-  onOpenHome,
   onUpdateVisualSettings,
 }: DashboardSettingsPanelProps) {
   const offWorkHour = useGameStore((state) => state.settings.offWorkHour)
@@ -199,24 +202,17 @@ export function DashboardSettingsPanel({
           <p className={eyebrow}>系统</p>
           <h2 className={panelTitle}>设置</h2>
         </div>
-        {/* <button type="button" className={secondaryButton} onClick={onOpenHome}>
-          返回主菜单
-        </button> */}
       </div>
-      <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6] [&_select]:w-full">
-        <label>
-          下班时间
-          <select
-            className={select}
-            name="dashboard-off-work-hour"
-            value={offWorkHour}
-            onChange={(event) => setOffWorkHour(Number(event.target.value) as WorkHour)}
-          >
-            {workHours.map((hour) => (
-              <option key={hour} value={hour}>{hour}:00</option>
-            ))}
-          </select>
-        </label>
+      <div className="mb-4 grid gap-3 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[13px] [&_label]:font-extrabold [&_label]:text-[#d4cbb6]">
+        <SelectField
+          className="text-[13px] text-[#d4cbb6]"
+          triggerClassName="w-full"
+          label="下班时间"
+          name="dashboard-off-work-hour"
+          value={String(offWorkHour)}
+          options={workHourOptions}
+          onValueChange={(hour) => setOffWorkHour(Number(hour) as WorkHour)}
+        />
         <VisualSettingsFields
           visualSettings={visualSettings}
           onUpdateVisualSettings={onUpdateVisualSettings}

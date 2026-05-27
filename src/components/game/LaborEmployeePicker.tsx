@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 
+import { SelectField, type SelectFieldOption } from '../ui/select-field'
 import type { AssignmentMode, Employee, LaborContract, ProjectContract, SkillRole } from '../../game/types'
 import {
   assignmentModeLabels,
@@ -12,11 +13,28 @@ import {
   skillRoles,
   urgencyLabels,
 } from '../../game/ui'
-import { cn, emptyState, riskToneClass, select } from '../../styles/tw'
+import { cn, emptyState, riskToneClass } from '../../styles/tw'
 import { money } from '../../utils'
 
 type EmployeeAvailabilityFilter = 'all' | 'idle' | 'busy'
 type LaborMatchFilter = 'all' | 'role' | 'qualified'
+
+const assignmentModeOptions = assignmentModes.map((mode) => ({
+  value: mode,
+  label: assignmentModeLabels[mode],
+})) satisfies SelectFieldOption<AssignmentMode>[]
+
+const availabilityFilterOptions = [
+  { value: 'all', label: '全部' },
+  { value: 'idle', label: '仅空闲' },
+  { value: 'busy', label: '仅忙碌' },
+] satisfies SelectFieldOption<EmployeeAvailabilityFilter>[]
+
+const matchFilterOptions = [
+  { value: 'all', label: '全部' },
+  { value: 'role', label: '仅对口' },
+  { value: 'qualified', label: '仅达标' },
+] satisfies SelectFieldOption<LaborMatchFilter>[]
 
 interface LaborEmployeePickerProps {
   contract?: LaborContract
@@ -157,45 +175,27 @@ export function LaborEmployeePicker({
           </span>
         </div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-            投入方式
-            <select
-              className={select}
-              name={`labor-mode-${contract.id}`}
-              value={selectedMode}
-              onChange={(event) => setSelectedMode(event.target.value as AssignmentMode)}
-            >
-              {assignmentModes.map((mode) => (
-                <option key={mode} value={mode}>{assignmentModeLabels[mode]}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-            空闲筛选
-            <select
-              className={select}
-              name={`labor-availability-${contract.id}`}
-              value={availabilityFilter}
-              onChange={(event) => setAvailabilityFilter(event.target.value as EmployeeAvailabilityFilter)}
-            >
-              <option value="all">全部</option>
-              <option value="idle">仅空闲</option>
-              <option value="busy">仅忙碌</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-            匹配筛选
-            <select
-              className={select}
-              name={`labor-match-${contract.id}`}
-              value={matchFilter}
-              onChange={(event) => setMatchFilter(event.target.value as LaborMatchFilter)}
-            >
-              <option value="all">全部</option>
-              <option value="role">仅对口</option>
-              <option value="qualified">仅达标</option>
-            </select>
-          </label>
+          <SelectField
+            label="投入方式"
+            name={`labor-mode-${contract.id}`}
+            value={selectedMode}
+            options={assignmentModeOptions}
+            onValueChange={setSelectedMode}
+          />
+          <SelectField
+            label="空闲筛选"
+            name={`labor-availability-${contract.id}`}
+            value={availabilityFilter}
+            options={availabilityFilterOptions}
+            onValueChange={setAvailabilityFilter}
+          />
+          <SelectField
+            label="匹配筛选"
+            name={`labor-match-${contract.id}`}
+            value={matchFilter}
+            options={matchFilterOptions}
+            onValueChange={setMatchFilter}
+          />
         </div>
         {!canAssign && (
           <p className={cn('mb-0 mt-2 text-xs font-extrabold', riskToneClass.danger)}>

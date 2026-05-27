@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { SelectField, type SelectFieldOption } from '../ui/select-field'
 import { PROJECT_BREACH_PENALTY_RATE } from '../../game/constants'
 import type { AssignmentMode, Employee, ProjectContract, SkillRole } from '../../game/types'
 import {
@@ -32,12 +33,35 @@ import {
   progressToneClass,
   progressTrack,
   riskToneClass,
-  select,
 } from '../../styles/tw'
 import { money } from '../../utils'
 
 type EmployeeAvailabilityFilter = 'all' | 'idle' | 'busy'
 type RoleFilter = 'all' | SkillRole
+
+const roleOptions = skillRoles.map((role) => ({
+  value: role,
+  label: roleLabels[role],
+})) satisfies SelectFieldOption<SkillRole>[]
+
+const assignmentModeOptions = assignmentModes.map((mode) => ({
+  value: mode,
+  label: assignmentModeLabels[mode],
+})) satisfies SelectFieldOption<AssignmentMode>[]
+
+const roleFilterOptions = [
+  { value: 'all', label: '全部岗位' },
+  ...skillRoles.map((role) => ({
+    value: role,
+    label: roleLabels[role],
+  })),
+] satisfies SelectFieldOption<RoleFilter>[]
+
+const availabilityFilterOptions = [
+  { value: 'all', label: '全部' },
+  { value: 'idle', label: '仅空闲' },
+  { value: 'busy', label: '仅忙碌' },
+] satisfies SelectFieldOption<EmployeeAvailabilityFilter>[]
 
 interface ProjectDetailDialogProps {
   project: ProjectContract
@@ -353,55 +377,30 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
           <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
             <div className="rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-                  分配岗位
-                  <select
-                    className={select}
-                    value={selectedRole}
-                    onChange={(event) => setSelectedRole(event.target.value as SkillRole)}
-                  >
-                    {skillRoles.map((role) => (
-                      <option key={role} value={role}>{roleLabels[role]}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-                  投入方式
-                  <select
-                    className={select}
-                    value={selectedMode}
-                    onChange={(event) => setSelectedMode(event.target.value as AssignmentMode)}
-                  >
-                    {assignmentModes.map((mode) => (
-                      <option key={mode} value={mode}>{assignmentModeLabels[mode]}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-                  岗位筛选
-                  <select
-                    className={select}
-                    value={roleFilter}
-                    onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
-                  >
-                    <option value="all">全部岗位</option>
-                    {skillRoles.map((role) => (
-                      <option key={role} value={role}>{roleLabels[role]}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-extrabold text-[#aaa48f]">
-                  空闲筛选
-                  <select
-                    className={select}
-                    value={availabilityFilter}
-                    onChange={(event) => setAvailabilityFilter(event.target.value as EmployeeAvailabilityFilter)}
-                  >
-                    <option value="all">全部</option>
-                    <option value="idle">仅空闲</option>
-                    <option value="busy">仅忙碌</option>
-                  </select>
-                </label>
+                <SelectField
+                  label="分配岗位"
+                  value={selectedRole}
+                  options={roleOptions}
+                  onValueChange={setSelectedRole}
+                />
+                <SelectField
+                  label="投入方式"
+                  value={selectedMode}
+                  options={assignmentModeOptions}
+                  onValueChange={setSelectedMode}
+                />
+                <SelectField
+                  label="岗位筛选"
+                  value={roleFilter}
+                  options={roleFilterOptions}
+                  onValueChange={setRoleFilter}
+                />
+                <SelectField
+                  label="空闲筛选"
+                  value={availabilityFilter}
+                  options={availabilityFilterOptions}
+                  onValueChange={setAvailabilityFilter}
+                />
               </div>
               {disabledReason && (
                 <p className={cn('mb-0 mt-3 text-xs font-extrabold', riskToneClass.danger)}>
