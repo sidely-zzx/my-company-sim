@@ -103,16 +103,12 @@ export function ProjectPanel() {
                     </div>
                   </td>
                   <td>
-                    {project.status === 'available' ? (
-                      <div className={formGrid}>
+                    <div className={formGrid}>
+                      <ProjectDetailDialog project={project} />
+                      {project.status === 'available' && (
                         <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>签约</button>
-                        <ProjectDetailDialog project={project} />
-                      </div>
-                    ) : (
-                      <div className={formGrid}>
-                        <ProjectDetailDialog project={project} />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               )

@@ -31,6 +31,7 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const acceptLaborContract = useGameStore((state) => state.acceptLaborContract)
   const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
   const assigned = employees.find((employee) => employee.id === contract.assignedEmployeeId)
   // 当前驻场员工的合同岗位能力会影响人力合同日结满意度；低于要求会让甲方满意度下降并可能触发预警或终止。
@@ -82,6 +83,22 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                 </div>
               </dl>
 
+              {contract.status === 'available' && (
+                <div className="rounded-md border border-[#4b514d] bg-[#171c1b] p-3 text-sm text-[#d8cfbb]">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <strong className="block text-[#efe2c8]">签约后安排驻场人员</strong>
+                      <span className="text-xs text-[#aeb5ac]">
+                        签约会把合同状态改为已签约，并允许在本详情页继续安排员工。
+                      </span>
+                    </div>
+                    <button type="button" className={button} onClick={() => acceptLaborContract(contract.id)}>
+                      签约
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3 text-sm text-[#d8cfbb]">
                 <strong className="block text-[#efe2c8]">当前驻场员工</strong>
                 {assigned ? (
@@ -101,7 +118,7 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
 
               {!canAssign && (
                 <p className={cn('m-0 text-xs font-extrabold', riskToneClass.danger)}>
-                  该人力合同状态不允许继续安排员工。
+                  {contract.status === 'available' ? '未签约合同只能查看详情，签约后才能安排员工。' : '该人力合同状态不允许继续安排员工。'}
                 </p>
               )}
             </div>

@@ -12,6 +12,7 @@ import {
   panel,
   panelHeader,
   panelTitle,
+  inlineActions,
   table,
   tableWrap,
 } from '../../styles/tw'
@@ -71,11 +72,12 @@ export function LaborPanel() {
                     ) : '未分配'}
                   </td>
                   <td>
-                    {contract.status === 'available' ? (
-                      <button type="button" className={button} onClick={() => acceptLaborContract(contract.id)}>签约</button>
-                    ) : (
+                    <div className={inlineActions}>
                       <LaborDetailDialog contract={contract} />
-                    )}
+                      {contract.status === 'available' && (
+                        <button type="button" className={button} onClick={() => acceptLaborContract(contract.id)}>签约</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )

@@ -124,6 +124,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
   const breachProjectContract = useGameStore((state) => state.breachProjectContract)
   const [selectedRole, setSelectedRole] = useState<SkillRole>(() => defaultSelectedRole(project))
@@ -215,6 +216,22 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{project.overdueDays} 天</dd>
                 </div>
               </dl>
+
+              {project.status === 'available' && (
+                <div className="rounded-md border border-[#4b514d] bg-[#171c1b] p-3 text-sm text-[#d8cfbb]">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <strong className="block text-[#efe2c8]">签约后配置项目人员</strong>
+                      <span className="text-xs text-[#aeb5ac]">
+                        签约会把项目状态改为已签约，并允许在本详情页继续安排岗位人员。
+                      </span>
+                    </div>
+                    <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>
+                      签约
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {breachAvailable && (
                 <div className="rounded-md border border-[#5a352f] bg-[#241717] p-3 text-sm text-[#d8cfbb]">
