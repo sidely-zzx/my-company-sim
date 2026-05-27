@@ -62,6 +62,8 @@ export function createTestProject(overrides: Partial<ProjectContract> = {}): Pro
     },
     notifiedCompletedTracks: [],
     assignedEmployees: {},
+    clientEventCount: 0,
+    scopeChangeLevel: 0,
     ...overrides,
   }
 }

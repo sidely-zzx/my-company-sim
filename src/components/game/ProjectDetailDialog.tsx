@@ -16,6 +16,7 @@ import {
   assignmentText,
   pendingAssignmentText,
   phaseLabels,
+  formatTime,
   projectProgress,
   projectStatusLabels,
   projectTracks,
@@ -29,6 +30,7 @@ import {
   button,
   cn,
   emptyState,
+  eventBorderToneClass,
   progressFill,
   progressToneClass,
   progressTrack,
@@ -148,9 +150,12 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const events = useGameStore((state) => state.events)
+  const pendingProjectClientEvents = useGameStore((state) => state.pendingProjectClientEvents)
   const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
   const breachProjectContract = useGameStore((state) => state.breachProjectContract)
+  const resolveProjectClientEvent = useGameStore((state) => state.resolveProjectClientEvent)
   const [selectedRole, setSelectedRole] = useState<SkillRole>(() => defaultSelectedRole(project))
   const [selectedMode, setSelectedMode] = useState<AssignmentMode>('immediate')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
@@ -172,6 +177,11 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
         { label: '信任', value: clientProfile.trust },
       ]
     : []
+  const projectPendingClientEvents = pendingProjectClientEvents.filter((event) => event.projectId === project.id)
+  const recentProjectEvents = events
+    .filter((event) => event.relatedEntityId === project.id)
+    .slice(-6)
+    .reverse()
 
   const filteredEmployees = useMemo(() => {
     // 员工筛选受离职状态、空闲状态和岗位能力影响；它只决定右侧列表展示，不直接改变员工、项目或合同数据。
@@ -267,6 +277,75 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   </dl>
                 </div>
               )}
+
+              <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-sm text-[#efe2c8]">项目事件</strong>
+                  <span className="text-xs font-extrabold text-[#aeb5ac]">
+                    待处理 {projectPendingClientEvents.length} · 历史 {recentProjectEvents.length}
+                  </span>
+                </div>
+                {projectPendingClientEvents.length === 0 && recentProjectEvents.length === 0 ? (
+                  <p className={cn(emptyState, 'm-0 p-3 text-xs')}>暂无项目事件。</p>
+                ) : (
+                  <div className="grid gap-2.5">
+                    {projectPendingClientEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className={cn('rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-3 py-3', eventBorderToneClass[event.severity])}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="m-0 text-xs font-extrabold text-[#d5c4a1]">第 {event.triggeredDay} 天 · 待处理</p>
+                            <h3 className="m-0 mt-1 text-sm text-[#efe2c8]">{event.title}</h3>
+                          </div>
+                          <span className="rounded border border-[#4b514d] bg-[#202625] px-2 py-1 text-xs font-extrabold text-[#aeb5ac]">
+                            甲方事件
+                          </span>
+                        </div>
+                        <p className="mb-3 mt-2 text-xs leading-5 text-[#c9c1ad]">{event.description}</p>
+                        <div className="grid gap-2">
+                          {event.options.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={cn(button, 'min-h-11 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]')}
+                              onClick={() => {
+                                // 在项目详情内处理事件，会立即结算该选项对项目、甲方信任和项目成员状态的影响。
+                                resolveProjectClientEvent(event.id, option.id)
+                              }}
+                            >
+                              <span className="grid gap-1">
+                                <strong>{option.label}</strong>
+                                <small className="font-medium leading-5 text-[#aeb5ac]">{option.description}</small>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {recentProjectEvents.length > 0 && (
+                      <ol className="m-0 grid list-none gap-2 p-0">
+                        {recentProjectEvents.map((event) => (
+                          <li
+                            key={event.id}
+                            className={cn('rounded-md border-l-4 bg-[rgba(12,15,15,0.5)] px-3 py-2.5', eventBorderToneClass[event.severity])}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <strong className="text-sm text-[#efe2c8]">{event.title}</strong>
+                              <span className="text-xs font-extrabold text-[#aeb5ac]">
+                                第 {event.day} 天 {formatTime(event.minute)}
+                              </span>
+                            </div>
+                            <p className="mb-0 mt-1 text-xs leading-5 text-[#aeb5ac]">{event.message}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {project.status === 'available' && (
                 <div className="rounded-md border border-[#4b514d] bg-[#171c1b] p-3 text-sm text-[#d8cfbb]">

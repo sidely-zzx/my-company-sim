@@ -16,6 +16,7 @@ import { updateEmployeeSatisfaction } from './employeeSystem'
 import { addEvent } from './eventSystem'
 import { settleDailyFinance } from './financeSystem'
 import { generateFinanceReport } from './financeReportSystem'
+import { processDailyProjectClientEvents } from './projectClientEventSystem'
 import { advanceProjectProgress, generateProjectContracts, settleProjectsEndOfDay } from './projectSystem'
 import { refreshResumes, resetDailyRecruiting } from './recruitingSystem'
 
@@ -33,6 +34,7 @@ function settleEndOfDay(state: GameState): GameState {
   nextState = processArbitrationFilings(nextState)
   nextState = processArbitrationResults(nextState, endedDay)
   nextState = generateFinanceReport(nextState, endedDay)
+  nextState = processDailyProjectClientEvents(nextState, endedDay)
   nextState.time.day += 1
   nextState.time.minuteOfDay = WORK_START_MINUTE
   nextState = resetDailyRecruiting(nextState)

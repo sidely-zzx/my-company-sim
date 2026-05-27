@@ -1,12 +1,12 @@
 import { PROJECT_BREACH_PENALTY_RATE, PROJECT_WORK_TRACKS } from '../constants'
 import { PROJECT_TEMPLATES } from '../data/projectTemplates'
+import { projectTracksForPhase, resolveProjectPhase } from '../projectPhase'
 import { clamp, cloneState, randomChoice } from '../seed'
 import type {
   AssignmentMode,
   ClientCompanyProfile,
   GameState,
   ProjectContract,
-  ProjectPhase,
   ProjectRequirement,
   ProjectWorkTrack,
   SkillRole,
@@ -142,6 +142,8 @@ function createProjectContract(state: GameState): ProjectContract | undefined {
     },
     notifiedCompletedTracks: [],
     assignedEmployees: {},
+    clientEventCount: 0,
+    scopeChangeLevel: 0,
   }
 }
 
@@ -253,27 +255,8 @@ export function breachProjectContract(state: GameState, projectId: string): Game
   return draft
 }
 
-function tracksForPhase(phase: ProjectPhase): ProjectWorkTrack[] {
-  if (phase === 'development') {
-    return ['frontend', 'backend']
-  }
-  return [phase]
-}
-
 function updateCurrentPhase(project: ProjectContract): void {
-  if (project.phaseProgress.product < 100) {
-    project.currentPhase = 'product'
-    return
-  }
-  if (project.phaseProgress.design < 100) {
-    project.currentPhase = 'design'
-    return
-  }
-  if (project.phaseProgress.frontend < 100 || project.phaseProgress.backend < 100) {
-    project.currentPhase = 'development'
-    return
-  }
-  project.currentPhase = 'testing'
+  project.currentPhase = resolveProjectPhase(project)
 }
 
 function isProjectComplete(project: ProjectContract): boolean {
@@ -339,7 +322,7 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
         continue
       }
       updateCurrentPhase(project)
-      for (const track of tracksForPhase(project.currentPhase)) {
+      for (const track of projectTracksForPhase(project.currentPhase)) {
         const role = track as SkillRole
         const employeeIds = [...(project.assignedEmployees[role] ?? [])]
         for (const employeeId of employeeIds) {

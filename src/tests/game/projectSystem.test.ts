@@ -2,11 +2,43 @@ import { describe, expect, it } from 'vitest'
 
 import {
   advanceProjectProgress,
+  assignEmployeeToProject,
   settleProjectsEndOfDay,
 } from '../../game/systems/projectSystem'
 import { createTestEmployee, createTestProject, createTestState } from './testHelpers'
 
 describe('projectSystem', () => {
+  it('keeps assigned future-phase employees idle while preserving project assignment', () => {
+    const state = createTestState()
+    state.employees = [
+      createTestEmployee({
+        id: 'employee-1',
+        status: 'idle',
+      }),
+    ]
+    state.projectContracts = [
+      createTestProject({
+        currentPhase: 'product',
+        phaseProgress: {
+          product: 0,
+          design: 0,
+          frontend: 0,
+          backend: 0,
+          testing: 0,
+        },
+      }),
+    ]
+
+    const result = assignEmployeeToProject(state, 'employee-1', 'project-test', 'design')
+
+    expect(result.employees[0]?.assignedTo).toEqual({
+      type: 'project',
+      id: 'project-test',
+      role: 'design',
+    })
+    expect(result.employees[0]?.status).toBe('idle')
+  })
+
   it('uses skill ability divided by 100 as project efficiency', () => {
     const state = createTestState()
     state.employees = [

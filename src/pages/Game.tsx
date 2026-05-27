@@ -11,7 +11,6 @@ import { EmployeePanel } from '../components/game/EmployeePanel'
 import { EventPanel } from '../components/game/EventPanel'
 import { FinanceReportPanel } from '../components/game/FinanceReportPanel'
 import { LaborPanel } from '../components/game/LaborPanel'
-import { MailPanel } from '../components/game/MailPanel'
 import { ProjectPanel } from '../components/game/ProjectPanel'
 import { RecruitingPanel } from '../components/game/RecruitingPanel'
 import { RunningProjectList } from '../components/game/RunningProjectList'
@@ -51,6 +50,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const resumes = useGameStore((state) => state.resumes)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const pendingProjectClientEvents = useGameStore((state) => state.pendingProjectClientEvents)
   const events = useGameStore((state) => state.events)
   const financeRecords = useGameStore((state) => state.financeRecords)
   const mailbox = useGameStore((state) => state.mailbox)
@@ -89,11 +89,8 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const overtime = Math.max(10, Math.min(95, 25 + (settings.offWorkHour - 18) * 14))
   const stability = Math.round(employees.length > 0 ? (activeEmployees.length / employees.length) * 100 : 72)
   const recentEvents = events.slice(-5).reverse()
-  const alertMail = [...mailbox].reverse().find((mail) => !mail.read)
-  const alertEvent = [...events].reverse().find((event) =>
-    event.severity === 'danger' || event.severity === 'warning',
-  )
-  const alertText = alertMail?.subject ?? alertEvent?.title ?? '今日暂无紧急风险'
+  const hasPendingActions = pendingProjectClientEvents.length > 0
+  const alertText = `待处理甲方事件 ${pendingProjectClientEvents.length} 个`
   const activeProjectCount = projectContracts.filter((project) =>
     ['accepted', 'active', 'overdue'].includes(project.status),
   ).length
@@ -194,20 +191,22 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
 
       <div className='fixed right-0 bottom-25'>
          <aside className="grid w-[260px] min-w-0 content-start gap-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button type="button" className={cn(button, 'grid min-h-[58px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]')}>
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-[#bb594b] font-black text-[#fff1df]">!</span>
-                <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{alertText}</strong>
-                <em className="not-italic text-[#d5c4a1]">查看</em>
-              </button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogTitle className={srOnly}>提醒详情</DialogTitle>
-              <DialogDescription className={srOnly}>查看邮件和事件</DialogDescription>
-              <MailPanel />
-            </DialogContent>
-          </Dialog>
+          {hasPendingActions && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <button type="button" className={cn(button, 'grid min-h-[58px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]')}>
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[#bb594b] font-black text-[#fff1df]">!</span>
+                  <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{alertText}</strong>
+                  <em className="not-italic text-[#d5c4a1]">查看</em>
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle className={srOnly}>待处理事项</DialogTitle>
+                <DialogDescription className={srOnly}>查看需要玩家处理的事件</DialogDescription>
+                <EventPanel />
+              </DialogContent>
+            </Dialog>
+          )}
           <section className={cn(surface, 'min-w-0 p-3.5')}>
             <div className="flex items-center justify-between">
               <h2 className="mb-3 mt-0 text-[17px] text-[#efe2c8]">事件日志</h2>

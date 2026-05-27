@@ -9,6 +9,7 @@ import {
 import { applyEmployeeDiscipline, fireEmployee, renameEmployee, updateEmployeeCompensation } from '../game/systems/employeeSystem'
 import { getFinanceReport, getYesterdayFinanceReport } from '../game/systems/financeReportSystem'
 import { markAllMailRead, markMailRead } from '../game/systems/mailSystem'
+import { resolveProjectClientEvent } from '../game/systems/projectClientEventSystem'
 import {
   acceptProjectContract,
   assignEmployeeToProject,
@@ -43,13 +44,15 @@ export interface GameStore extends GameState {
   assignEmployeeToProject: (employeeId: string, projectId: string, role: SkillRole, mode: AssignmentMode) => void
   /** 主动毁约项目外包；会扣除项目金额 30% 的违约金，并释放项目员工、取消后续安排。 */
   breachProjectContract: (projectId: string) => void
+  /** 处理一个待选择的甲方项目随机事件；会立即应用玩家选择的项目、员工和甲方关系效果。 */
+  resolveProjectClientEvent: (eventId: string, optionId: string) => void
   /** 修改员工花名，用于玩家自定义员工显示名。 */
   renameEmployee: (employeeId: string, nickname: string) => void
   /** 调整员工日薪和社保公积金比例；会立即影响成本、满意度和后续劳动风险。 */
   updateEmployeeCompensation: (employeeId: string, salaryPerDay: number, socialInsuranceRatio: number) => void
   /** 辞退员工并按赔偿系数扣款；赔偿不足会提高后续风险。 */
   fireEmployee: (employeeId: string, compensationRatio: number) => void
-  /** 对员工当前状态执行管理动作，例如提醒、警告、罚款或辞退。 */
+  /** 对员工当前状态执行管理动作，例如提醒、警告或罚款。 */
   applyEmployeeDiscipline: (employeeId: string, action: EmployeeDisciplineAction, fineRatio?: number) => void
   /** 将指定邮件标记为已读。 */
   markMailRead: (mailId: string) => void
@@ -77,6 +80,7 @@ function toGameState(state: GameStore): GameState {
     laborContracts: state.laborContracts,
     projectContracts: state.projectContracts,
     clientRelations: state.clientRelations,
+    pendingProjectClientEvents: state.pendingProjectClientEvents,
     events: state.events,
     financeRecords: state.financeRecords,
     financeReports: state.financeReports,
@@ -108,6 +112,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => assignEmployeeToProject(toGameState(state), employeeId, projectId, role, mode)),
   breachProjectContract: (projectId) =>
     set((state) => breachProjectContract(toGameState(state), projectId)),
+  resolveProjectClientEvent: (eventId, optionId) =>
+    set((state) => resolveProjectClientEvent(toGameState(state), eventId, optionId)),
   renameEmployee: (employeeId, nickname) =>
     set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   updateEmployeeCompensation: (employeeId, salaryPerDay, socialInsuranceRatio) =>

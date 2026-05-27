@@ -1,5 +1,6 @@
 import { BASE_OUTPUT_PER_MINUTE } from '../constants'
 import { EmployeeEntity } from '../entities/EmployeeEntity'
+import { isProjectRoleActive } from '../projectPhase'
 import { clamp, cloneState } from '../seed'
 import type { Employee, EmployeeDisciplineAction, GameState, SkillRole } from '../types'
 import { processIdlePendingAssignments, releaseEmployeeFromCurrentAssignment } from './assignmentSystem'
@@ -25,9 +26,27 @@ export function calculateEmployeeOutput(
   return BASE_OUTPUT_PER_MINUTE * getSkillEfficiency(employee, role) * new EmployeeEntity(employee).calculateOutputMultiplier()
 }
 
+function hasProductiveWork(state: GameState, employee: Employee): boolean {
+  if (!employee.assignedTo) {
+    return false
+  }
+
+  if (employee.assignedTo.type === 'labor') {
+    return true
+  }
+
+  const project = state.projectContracts.find((item) => item.id === employee.assignedTo?.id)
+  // 项目员工是否真正工作取决于项目状态和当前阶段；未到阶段的预安排仍保留分配，但状态和产出都按空闲处理。
+  return Boolean(
+    project &&
+      ['active', 'overdue'].includes(project.status) &&
+      isProjectRoleActive(project, employee.assignedTo.role),
+  )
+}
+
 export function advanceEmployeeBehavior(state: GameState, totalMinutes: number): void {
   for (const employee of state.employees) {
-    new EmployeeEntity(employee).updateBehavior(totalMinutes)
+    new EmployeeEntity(employee).updateBehavior(totalMinutes, hasProductiveWork(state, employee))
   }
 }
 

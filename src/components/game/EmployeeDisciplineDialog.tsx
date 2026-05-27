@@ -7,7 +7,12 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
-import { employeeDisciplineActionLabels, employeeStatusLabels } from '../../game/ui'
+import {
+  employeeDisciplineActionLabels,
+  employeeStatusLabels,
+  projectStatusLabels,
+  roleLabels,
+} from '../../game/ui'
 import type { Employee, EmployeeDisciplineAction, EmployeeStatus } from '../../game/types'
 import { useGameStore } from '../../store/gameStore'
 import { button, cn } from '../../styles/tw'
@@ -19,6 +24,7 @@ interface EmployeeDisciplineDialogProps {
   employee?: Employee
   open: boolean
   onOpenChange: (open: boolean) => void
+  onOpenDetail?: (employeeId: string) => void
 }
 
 const actionIcons: Record<EmployeeDisciplineAction, LucideIcon> = {
@@ -62,8 +68,10 @@ export function EmployeeDisciplineDialog({
   employee,
   open,
   onOpenChange,
+  onOpenDetail,
 }: EmployeeDisciplineDialogProps) {
   const applyEmployeeDiscipline = useGameStore((state) => state.applyEmployeeDiscipline)
+  const projectContracts = useGameStore((state) => state.projectContracts)
   const [fineRatio, setFineRatio] = useState(0.1)
 
   function handleAction(action: EmployeeDisciplineAction, nextFineRatio?: number) {
@@ -78,6 +86,9 @@ export function EmployeeDisciplineDialog({
   const normalActions = actions.filter((action) => action !== 'fine')
   const canFine = actions.includes('fine')
   const fineAmount = employee ? Math.round(employee.salaryPerDay * fineRatio) : 0
+  const currentProject = employee?.assignedTo?.type === 'project'
+    ? projectContracts.find((project) => project.id === employee.assignedTo?.id)
+    : undefined
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,9 +117,23 @@ export function EmployeeDisciplineDialog({
                 <span>满意度 {employee.satisfaction}</span>
                 <span>入职 {employee.workDays} 天</span>
               </div>
+              {currentProject ? (
+                <div className="rounded-md border border-[#3d4642] bg-[#202624] p-2 text-xs font-extrabold text-[#d8cfbb]">
+                  当前项目：{currentProject.title} / {roleLabels[employee.assignedTo?.role ?? 'product']} / {projectStatusLabels[currentProject.status]}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
+              {onOpenDetail ? (
+                <button
+                  type="button"
+                  className={cn(button, 'inline-flex items-center gap-1.5 border-[#4b514d] bg-[#242a28] text-[#efe2c8] hover:border-[#8b7f63] hover:bg-[#2d3431]')}
+                  onClick={() => onOpenDetail(employee.id)}
+                >
+                  员工详情
+                </button>
+              ) : null}
               {normalActions.map((action) => {
                 const Icon = actionIcons[action]
                 return (

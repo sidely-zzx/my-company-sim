@@ -34,6 +34,7 @@ export function createInitialGameState(seed = DEFAULT_SEED): GameState {
       clientCompanyId: client.id,
       trust: client.trust,
     })),
+    pendingProjectClientEvents: [],
     events: [],
     financeRecords: [],
     financeReports: [],

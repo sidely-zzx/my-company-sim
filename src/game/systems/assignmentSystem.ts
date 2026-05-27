@@ -7,6 +7,7 @@ import type {
   ProjectContract,
   SkillRole,
 } from '../types'
+import { isProjectRoleActive } from '../projectPhase'
 import { roleLabels } from '../ui'
 import { addEvent } from './eventSystem'
 
@@ -99,7 +100,8 @@ function applyProjectAssignment(
   )
   project.status = project.status === 'overdue' ? 'overdue' : 'active'
   employee.assignedTo = { type: 'project', id: project.id, role }
-  employee.status = 'working'
+  // 项目分配会占用员工，但状态由项目当前阶段决定；岗位阶段未开始时显示空闲，等阶段推进到该岗位后才恢复工作并产生进度。
+  employee.status = isProjectRoleActive(project, role) ? 'working' : 'idle'
   addEvent(state, {
     type: 'project',
     title: '项目成员已投入',

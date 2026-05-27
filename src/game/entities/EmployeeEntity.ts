@@ -97,14 +97,19 @@ export class EmployeeEntity {
     this.employee = employee;
   }
 
-  updateBehavior(totalMinutes: number): void {
+  updateBehavior(totalMinutes: number, hasProductiveWork: boolean): void {
     if (this.employee.status === 'fired') {
       return
     }
 
-    if (!this.employee.assignedTo) {
+    if (!this.employee.assignedTo || !hasProductiveWork) {
+      // 员工状态受当前是否有真实产出工作影响：已预安排但项目阶段未到时保持空闲，不消耗精力，也不会推动项目进度。
       this.employee.status = 'idle'
       return
+    }
+
+    if (this.employee.status === 'idle') {
+      this.employee.status = 'working'
     }
 
     if (totalMinutes % 10 !== 0) {

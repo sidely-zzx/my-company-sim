@@ -11,11 +11,12 @@ import {
   skillClaimsText,
   skillRoles,
 } from '../../game/ui'
-import type { Employee, LaborContract, ProjectContract } from '../../game/types'
+import type { AssignmentMode, Employee, LaborContract, ProjectContract, SkillRole } from '../../game/types'
 import { amountNegative, amountPositive, button, cn, emptyState, progressFill, progressToneClass, progressTrack } from '../../styles/tw'
 import { money } from '../../utils'
 import { Input } from '../ui/input'
 import { CompensationSettings, type CompensationFormState } from './CompensationSettings'
+import { EmployeeAssignmentControl } from './EmployeeAssignmentControl'
 import { FireCompensationControl } from './FireCompensationControl'
 
 export type EmployeeCompensationFormState = CompensationFormState
@@ -34,6 +35,9 @@ interface EmployeeDetailPanelProps {
   onFire: () => void
   onCompensationFormChange: (patch: Partial<EmployeeCompensationFormState>) => void
   onSaveCompensation: (salaryPerDay: number, socialInsuranceRatio: number) => void
+  onAssignToLabor: (employeeId: string, contractId: string, mode: AssignmentMode) => void
+  onAssignToProject: (employeeId: string, projectId: string, role: SkillRole, mode: AssignmentMode) => void
+  backLabel?: string
 }
 
 function DetailStat({ label, value, tone }: { label: string; value: string; tone?: 'positive' | 'negative' }) {
@@ -61,6 +65,9 @@ export function EmployeeDetailPanel({
   onFire,
   onCompensationFormChange,
   onSaveCompensation,
+  onAssignToLabor,
+  onAssignToProject,
+  backLabel = '返回列表',
 }: EmployeeDetailPanelProps) {
   const isFired = employee.status === 'fired'
   const [isEditingNickname, setIsEditingNickname] = useState(false)
@@ -112,7 +119,7 @@ export function EmployeeDetailPanel({
           </p>
         </div>
         <button type="button" className={button} onClick={onBack}>
-          返回列表
+          {backLabel}
         </button>
       </div>
 
@@ -167,6 +174,14 @@ export function EmployeeDetailPanel({
           </div>
         </section>
       </div>
+
+      <EmployeeAssignmentControl
+        employee={employee}
+        laborContracts={laborContracts}
+        projectContracts={projectContracts}
+        onAssignToLabor={onAssignToLabor}
+        onAssignToProject={onAssignToProject}
+      />
 
       <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
         <section className="grid gap-3 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-4">

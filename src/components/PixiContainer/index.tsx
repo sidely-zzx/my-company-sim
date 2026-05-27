@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { employeeStatusLabels } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
 import { EmployeeDisciplineDialog } from '../game/EmployeeDisciplineDialog'
+import { EmployeeDetailDialog } from '../game/EmployeeDetailDialog'
 import createGameApp, { type GameAppHandle } from './gameApp'
 import type { PixiEmployeeView } from './employee'
 
@@ -11,6 +12,7 @@ const MyComponent = () => {
   const employeeViewsRef = useRef<PixiEmployeeView[]>([])
   const employees = useGameStore((state) => state.employees)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>()
+  const [detailEmployeeId, setDetailEmployeeId] = useState<string>()
   const employeeViews = useMemo<PixiEmployeeView[]>(() => (
     employees
       .filter((employee) => employee.status !== 'fired')
@@ -67,6 +69,19 @@ const MyComponent = () => {
         onOpenChange={(open) => {
           if (!open) {
             setSelectedEmployeeId(undefined)
+          }
+        }}
+        onOpenDetail={(employeeId) => {
+          setSelectedEmployeeId(undefined)
+          setDetailEmployeeId(employeeId)
+        }}
+      />
+      <EmployeeDetailDialog
+        employeeId={detailEmployeeId}
+        open={Boolean(detailEmployeeId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailEmployeeId(undefined)
           }
         }}
       />

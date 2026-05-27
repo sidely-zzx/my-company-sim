@@ -37,6 +37,86 @@ describe('employeeSystem', () => {
     expect(calculateEmployeeOutput(state, slacking, 'product')).toBe(0)
   })
 
+  it('keeps project employees idle before their assigned phase starts', () => {
+    const state = createTestState()
+    state.employees = [
+      createTestEmployee({
+        assignedTo: { type: 'project', id: 'project-test', role: 'design' },
+        status: 'working',
+        behaviorSeed: 1,
+      }),
+    ]
+    state.projectContracts = [
+      {
+        id: 'project-test',
+        clientName: '测试甲方',
+        title: '测试项目',
+        amount: 10000,
+        deadlineDay: 2,
+        dailyPenalty: 1000,
+        overdueDays: 0,
+        status: 'active',
+        currentPhase: 'product',
+        requirements: [],
+        phaseProgress: {
+          product: 0,
+          design: 0,
+          frontend: 0,
+          backend: 0,
+          testing: 0,
+        },
+        notifiedCompletedTracks: [],
+        assignedEmployees: { design: ['employee-test'] },
+        clientEventCount: 0,
+        scopeChangeLevel: 0,
+      },
+    ]
+
+    advanceEmployeeBehavior(state, 10)
+
+    expect(state.employees[0]?.status).toBe('idle')
+    expect(state.employees[0]?.behaviorSeed).toBe(1)
+  })
+
+  it('restores project employees to working when their assigned phase starts', () => {
+    const state = createTestState()
+    state.employees = [
+      createTestEmployee({
+        assignedTo: { type: 'project', id: 'project-test', role: 'design' },
+        status: 'idle',
+      }),
+    ]
+    state.projectContracts = [
+      {
+        id: 'project-test',
+        clientName: '测试甲方',
+        title: '测试项目',
+        amount: 10000,
+        deadlineDay: 2,
+        dailyPenalty: 1000,
+        overdueDays: 0,
+        status: 'active',
+        currentPhase: 'design',
+        requirements: [],
+        phaseProgress: {
+          product: 100,
+          design: 0,
+          frontend: 0,
+          backend: 0,
+          testing: 0,
+        },
+        notifiedCompletedTracks: [],
+        assignedEmployees: { design: ['employee-test'] },
+        clientEventCount: 0,
+        scopeChangeLevel: 0,
+      },
+    ]
+
+    advanceEmployeeBehavior(state, 11)
+
+    expect(state.employees[0]?.status).toBe('working')
+  })
+
   it('records fine income with selected ratio and changes employee attributes', () => {
     const state = createTestState()
     state.employees = [

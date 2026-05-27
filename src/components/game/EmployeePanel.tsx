@@ -32,6 +32,8 @@ export function EmployeePanel() {
   const renameEmployee = useGameStore((state) => state.renameEmployee)
   const updateEmployeeCompensation = useGameStore((state) => state.updateEmployeeCompensation)
   const fireEmployee = useGameStore((state) => state.fireEmployee)
+  const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
+  const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>()
   const [nicknames, setNicknames] = useState<Record<string, string>>({})
   const [compensations, setCompensations] = useState<Record<string, string>>({})
@@ -94,6 +96,8 @@ export function EmployeePanel() {
               },
             }))
           }}
+          onAssignToLabor={assignEmployeeToLabor}
+          onAssignToProject={assignEmployeeToProject}
         />
       </section>
     )

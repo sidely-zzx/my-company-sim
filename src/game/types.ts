@@ -32,6 +32,13 @@ export type ProjectPhase = 'product' | 'design' | 'development' | 'testing'
 export type ProjectWorkTrack = 'product' | 'design' | 'frontend' | 'backend' | 'testing'
 /** 项目合同状态；延期项目会继续推进直到 completed，毁约项目会停止推进并释放人员。 */
 export type ProjectStatus = 'available' | 'accepted' | 'active' | 'overdue' | 'completed' | 'breached'
+/** 甲方项目随机事件类型；只用于项目外包的待处理选择事件。 */
+export type ProjectClientEventKind =
+  | 'scope_change'
+  | 'deadline_cut'
+  | 'design_rework'
+  | 'acceptance_dispute'
+  | 'budget_for_scope'
 /** 人力外包合同状态。 */
 export type LaborContractStatus =
   | 'available'
@@ -354,6 +361,80 @@ export interface ProjectContract {
   breachedDay?: number
   /** 项目毁约赔偿对应的财务流水 ID；金额为项目金额的 30%，会减少现金并进入财报支出。 */
   breachFinanceRecordId?: string
+  /**
+   * 上次触发甲方项目随机事件的游戏日。
+   * 它受每日事件判定影响，会限制同一项目短期内重复出事，并影响玩家对项目风险的节奏感。
+   */
+  lastClientEventDay?: number
+  /**
+   * 项目累计触发过的甲方随机事件数量。
+   * 它受事件生成影响，会限制单个项目最多出事次数，并间接影响项目后续经营压力。
+   */
+  clientEventCount?: number
+  /**
+   * 需求变更层级；数值越高表示项目范围越失控。
+   * 它受需求追加、追加预算等甲方事件影响，并会提高后续项目事件权重和交付压力。
+   */
+  scopeChangeLevel?: number
+}
+
+export interface ProjectClientEventEffect {
+  /** 项目截止日增减；负数代表甲方压缩周期，会提高延期风险。 */
+  deadlineDayDelta?: number
+  /** 项目金额增减；正数通常来自谈判或追加预算，会影响完成后的项目收入。 */
+  amountDelta?: number
+  /** 每日延期违约金增减；数值越高，逾期后的现金流压力越大。 */
+  dailyPenaltyDelta?: number
+  /** 各轨道进度增减；负数代表返工，会影响当前阶段和完成时间。 */
+  progressDelta?: Partial<Record<ProjectWorkTrack, number>>
+  /** 岗位最低能力要求增减；要求越高，低能力员工推进项目的风险越大。 */
+  requirementAbilityDelta?: Partial<Record<SkillRole, number>>
+  /** 岗位建议人数增减；人数要求越高，玩家越需要调配更多员工。 */
+  requirementHeadcountDelta?: Partial<Record<SkillRole, number>>
+  /** 需求变更层级增减；会影响后续甲方事件权重和项目风险。 */
+  scopeChangeLevelDelta?: number
+  /** 甲方动态信任度增减；会影响后续项目市场刷新概率和黑名单风险。 */
+  clientTrustDelta?: number
+  /** 当前项目成员压力增减；压力会影响员工状态、满意度和劳动风险。 */
+  employeePressureDelta?: number
+  /** 当前项目成员精力增减；精力会影响工作状态概率和项目推进速度。 */
+  employeeEnergyDelta?: number
+  /** 当前项目成员满意度增减；满意度会影响离职、仲裁和社保投诉风险。 */
+  employeeSatisfactionDelta?: number
+}
+
+export interface ProjectClientEventOption {
+  /** 选项唯一 ID，用于玩家点击后定位效果。 */
+  id: string
+  /** 选项按钮文案。 */
+  label: string
+  /** 选项影响说明，展示给玩家做取舍。 */
+  description: string
+  /** 选项实际效果；选择后会立即写入项目、员工和甲方关系。 */
+  effects: ProjectClientEventEffect
+}
+
+export interface PendingProjectClientEvent {
+  /** 待处理事件唯一 ID。 */
+  id: string
+  /** 甲方项目事件类型，用于后续扩展筛选和权重分析。 */
+  kind: ProjectClientEventKind
+  /** 关联项目 ID；玩家处理事件时会用它找到要修改的项目。 */
+  projectId: string
+  /** 项目标题快照；即使项目状态变化，事件面板也能展示来源。 */
+  projectTitle: string
+  /** 甲方名称快照，用于事件面板展示。 */
+  clientName: string
+  /** 事件发生的游戏日。 */
+  triggeredDay: number
+  /** 事件标题，适合待办区域短展示。 */
+  title: string
+  /** 事件描述，说明甲方提出了什么问题。 */
+  description: string
+  /** 事件严重程度，影响 UI 颜色和提醒优先级。 */
+  severity: EventSeverity
+  /** 玩家可选择的应对方案。 */
+  options: ProjectClientEventOption[]
 }
 
 export interface GameEvent {
@@ -476,6 +557,8 @@ export interface GameState {
   projectContracts: ProjectContract[]
   /** 甲方动态关系；trust 会随项目合作结果变化，并影响后续可刷新到哪些甲方项目。 */
   clientRelations: ClientRelation[]
+  /** 待玩家处理的甲方项目随机事件；选择后会立即影响项目、员工和甲方关系。 */
+  pendingProjectClientEvents: PendingProjectClientEvent[]
   /** 最近发生的游戏事件，用于事件流和提示。 */
   events: GameEvent[]
   /** 所有财务流水，是财务报表的唯一数据来源。 */
