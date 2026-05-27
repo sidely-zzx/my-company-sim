@@ -95,7 +95,7 @@ export function processArbitrationFilings(state: GameState): GameState {
     const reason: ArbitrationReason =
       employee.socialInsuranceRatio < 1 ? 'underpaid_social_insurance' : 'low_satisfaction'
     const claimedAmount = Math.round(
-      employee.salaryPerDay * 30 * Math.max(1, employee.workYears || 1),
+      employee.salaryPerDay * Math.max(1, Math.ceil(employee.workDays / 30)),
     )
     const arbitrationCase = {
       id: createId(draft, 'arbitration'),

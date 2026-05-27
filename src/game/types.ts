@@ -8,8 +8,20 @@ export type SkillRole = 'product' | 'design' | 'frontend' | 'backend' | 'testing
 export type ResumeSkillLevel = 'junior' | 'mid' | 'senior'
 /** 学校背景，用于生成简历和影响候选人画像。 */
 export type SchoolType = 'normal' | '211' | '985' | 'qs100'
-/** 员工当前状态，用于 UI 展示和产出计算。 */
-export type EmployeeStatus = 'idle' | 'working' | 'slacking' | 'fired'
+/** 员工当前状态，用于 UI 展示、办公室头顶标签和项目产出计算。 */
+export type EmployeeStatus =
+  | 'idle'
+  | 'focused_work'
+  | 'working'
+  | 'slacking'
+  | 'drinking_water'
+  | 'smoking'
+  | 'toilet'
+  | 'job_browsing'
+  | 'gaming'
+  | 'fired'
+/** 玩家抓到员工摸鱼或离岗时可以执行的管理动作；辞退只在员工详情页执行。 */
+export type EmployeeDisciplineAction = 'ignore' | 'verbal_warn' | 'formal_warn' | 'fine'
 /** 员工被分配到的工作类型：人力外包或项目外包。 */
 export type AssignmentType = 'labor' | 'project'
 /** 员工投入方式；立即投入会中断当前工作，做完当前工作后投入会写入后续安排。 */
@@ -51,6 +63,7 @@ export type FinanceRecordType =
   | 'social_insurance_complaint'
   | 'arbitration'
   | 'fire_compensation'
+  | 'discipline_fine'
 /** 邮件类型，用于邮箱筛选和模板匹配。 */
 export type MailType =
   | 'contract_signed'
@@ -140,8 +153,36 @@ export interface Employee {
   slackingTendency: number
   /** 员工行为随机种子；入职时由全局种子生成，之后每次个人行为判定都会推进它。它受员工自身行为消耗影响，并影响摸鱼、产出等个人随机行为，使员工表现不再受其他系统随机数顺序干扰。 */
   behaviorSeed: number
-  /** 员工工作年限；影响薪资期望和仲裁赔偿规模。 */
-  workYears: number
+  /**
+   * 员工精力；受工作强度、休息类状态和每日恢复影响。
+   * 精力越高越容易全力工作，精力过低会提高喝水、上厕所、摸鱼等低产出状态概率，并最终影响项目推进速度。
+   */
+  energy: number
+  /**
+   * 员工忠诚度；受薪酬满意、管理处罚和长期压力影响。
+   * 忠诚度越低越容易刷招聘软件，也会放大离职、仲裁等后续系统的风险空间。
+   */
+  loyalty: number
+  /**
+   * 员工压力；受加班、正式处罚和高强度工作影响。
+   * 压力越高越容易抽烟、上厕所、刷招聘软件，且会影响满意度、忠诚度和劳动风险。
+   */
+  pressure: number
+  /**
+   * 员工自律；受个人性格、提醒、警告和罚款影响。
+   * 自律越高越不容易摸鱼或玩游戏，也会提高正常工作、全力工作的权重。
+   */
+  discipline: number
+  /**
+   * 员工进取心；受候选人能力、经验和入职画像影响。
+   * 进取心越高越容易全力工作，但在忠诚度低或压力高时也更可能关注外部机会。
+   */
+  ambition: number
+  /**
+   * 员工在本公司工作的天数；每日结算后增加。
+   * 它用于辞退赔偿和劳动风险计算，不再使用候选人简历里的过往工作年限。
+   */
+  workDays: number
   /** 当前工作分配；未分配时为空。 */
   assignedTo?: Assignment
   /**

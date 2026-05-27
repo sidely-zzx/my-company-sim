@@ -1,16 +1,31 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { employeeStatusLabels } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import { EmployeeDisciplineDialog } from '../game/EmployeeDisciplineDialog'
 import createGameApp, { type GameAppHandle } from './gameApp'
+import type { PixiEmployeeView } from './employee'
 
 const MyComponent = () => {
   const ref = useRef<HTMLDivElement>(null)
   const gameRef = useRef<GameAppHandle | null>(null)
-  const activeEmployeeCountRef = useRef(0)
-  const activeEmployeeCount = useGameStore((state) =>
-    state.employees.filter((employee) => employee.status !== 'fired').length,
-  )
+  const employeeViewsRef = useRef<PixiEmployeeView[]>([])
+  const employees = useGameStore((state) => state.employees)
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>()
+  const employeeViews = useMemo<PixiEmployeeView[]>(() => (
+    employees
+      .filter((employee) => employee.status !== 'fired')
+      .map((employee) => ({
+        id: employee.id,
+        name: employee.nickname ?? employee.name,
+        status: employee.status,
+        statusLabel: employeeStatusLabels[employee.status],
+      }))
+  ), [employees])
+  const selectedEmployee = selectedEmployeeId
+    ? employees.find((employee) => employee.id === selectedEmployeeId)
+    : undefined
 
-  activeEmployeeCountRef.current = activeEmployeeCount
+  employeeViewsRef.current = employeeViews
 
   useEffect(() => {
     let disposed = false
@@ -19,14 +34,17 @@ const MyComponent = () => {
       return undefined
     }
 
-    void createGameApp(ref.current, { activeEmployeeCount }).then((createdGame) => {
+    void createGameApp(ref.current, {
+      employees: employeeViewsRef.current,
+      onEmployeeClick: (employeeId) => setSelectedEmployeeId(employeeId),
+    }).then((createdGame) => {
       if (disposed) {
         createdGame.destroy()
         return
       }
 
       gameRef.current = createdGame
-      createdGame.setActiveEmployeeCount(activeEmployeeCountRef.current)
+      createdGame.setEmployees(employeeViewsRef.current)
     })
 
     return () => {
@@ -37,9 +55,22 @@ const MyComponent = () => {
   }, [])
 
   useEffect(() => {
-    gameRef.current?.setActiveEmployeeCount(activeEmployeeCount)
-  }, [activeEmployeeCount])
+    gameRef.current?.setEmployees(employeeViews)
+  }, [employeeViews])
 
-  return <div ref={ref} className="h-full w-full" />
+  return (
+    <>
+      <div ref={ref} className="h-full w-full" />
+      <EmployeeDisciplineDialog
+        employee={selectedEmployee}
+        open={Boolean(selectedEmployee)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedEmployeeId(undefined)
+          }
+        }}
+      />
+    </>
+  )
 }
 export default MyComponent

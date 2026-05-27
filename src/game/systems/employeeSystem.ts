@@ -1,6 +1,7 @@
 import { BASE_OUTPUT_PER_MINUTE } from '../constants'
-import { clamp, cloneState, nextRandom } from '../seed'
-import type { Employee, GameState, SkillRole } from '../types'
+import { EmployeeEntity } from '../entities/EmployeeEntity'
+import { clamp, cloneState } from '../seed'
+import type { Employee, EmployeeDisciplineAction, GameState, SkillRole } from '../types'
 import { processIdlePendingAssignments, releaseEmployeeFromCurrentAssignment } from './assignmentSystem'
 import { addEvent } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
@@ -9,35 +10,25 @@ export function getSkillEfficiency(employee: Employee, role: SkillRole): number 
   return (employee.realSkillAbilities[role] ?? 0) / 100
 }
 
-function ensureEmployeeBehaviorSeed(state: GameState, employee: Employee): number {
-  if (Number.isFinite(employee.behaviorSeed)) {
-    return employee.behaviorSeed
-  }
-
-  const random = nextRandom(state.rngSeed)
-  state.rngSeed = random.seed
-  employee.behaviorSeed = random.seed
-  return employee.behaviorSeed
-}
-
-export function rollSlacking(state: GameState, employee: Employee): boolean {
-  // 员工行为种子只由该员工自己的随机行为推进；摸鱼会影响本分钟产出，避免被市场刷新、合同生成或其他员工的判定顺序影响。
-  const random = nextRandom(ensureEmployeeBehaviorSeed(state, employee))
-  employee.behaviorSeed = random.seed
-  return random.value < employee.slackingTendency
+export function calculateFireCompensation(employee: Employee, compensationRatio: number): number {
+  const normalizedRatio = Number.isFinite(compensationRatio) ? Math.max(0, compensationRatio) : 1
+  // 赔偿月份由本公司工作天数折算；workDays 只受入职后的日结影响，不再使用候选人过往工作经验。
+  const compensationMonths = Math.max(1, Math.ceil(employee.workDays / 30))
+  return Math.round(employee.salaryPerDay * compensationMonths * normalizedRatio)
 }
 
 export function calculateEmployeeOutput(
-  state: GameState,
+  _state: GameState,
   employee: Employee,
   role: SkillRole,
 ): number {
-  const slacking = rollSlacking(state, employee)
-  employee.status = slacking ? 'slacking' : 'working'
-  if (slacking) {
-    return 0
+  return BASE_OUTPUT_PER_MINUTE * getSkillEfficiency(employee, role) * new EmployeeEntity(employee).calculateOutputMultiplier()
+}
+
+export function advanceEmployeeBehavior(state: GameState, totalMinutes: number): void {
+  for (const employee of state.employees) {
+    new EmployeeEntity(employee).updateBehavior(totalMinutes)
   }
-  return BASE_OUTPUT_PER_MINUTE * getSkillEfficiency(employee, role)
 }
 
 export function updateEmployeeSatisfaction(state: GameState): GameState {
@@ -51,6 +42,9 @@ export function updateEmployeeSatisfaction(state: GameState): GameState {
       employee.socialInsuranceRatio < 1 ? Math.ceil((1 - employee.socialInsuranceRatio) * 5) : 0
     return {
       ...employee,
+      workDays: employee.workDays + 1,
+      energy: clamp(employee.energy + 30 - overtimePenalty * 2, 0, 100),
+      pressure: clamp(employee.pressure - 8 + overtimePenalty * 2 + socialPenalty, 0, 100),
       satisfaction: clamp(employee.satisfaction - overtimePenalty - socialPenalty, 0, 100),
       status: employee.assignedTo ? employee.status : 'idle',
     }
@@ -63,6 +57,57 @@ export function updateEmployeeSatisfaction(state: GameState): GameState {
       severity: 'warning',
     })
   }
+  return draft
+}
+
+export function applyEmployeeDiscipline(
+  state: GameState,
+  employeeId: string,
+  action: EmployeeDisciplineAction,
+  fineRatio = 0.1,
+): GameState {
+  const draft = cloneState(state)
+  const employee = draft.employees.find((item) => item.id === employeeId)
+  if (!employee || employee.status === 'fired') {
+    addEvent(draft, {
+      type: 'employee',
+      title: '员工处理失败',
+      message: '没有找到可处理的在职员工。',
+      severity: 'warning',
+    })
+    return draft
+  }
+
+  const result = new EmployeeEntity(employee).applyDiscipline(action, fineRatio)
+  if (!result.applied) {
+    addEvent(draft, {
+      type: 'employee',
+      title: '员工处理无效',
+      message: result.message,
+      severity: 'warning',
+      relatedEntityId: employee.id,
+    })
+    return draft
+  }
+
+  if (result.fineAmount && result.fineAmount > 0) {
+    addFinanceRecord(draft, {
+      type: 'discipline_fine',
+      amount: result.fineAmount,
+      reason: `${employee.nickname ?? employee.name} 纪律罚款`,
+      relatedEntityId: employee.id,
+    })
+  }
+
+  addEvent(draft, {
+    type: 'employee',
+    title: '员工处理完成',
+    message: result.fineAmount
+      ? `${result.message} 公司收到罚款 ${result.fineAmount}。`
+      : result.message,
+    severity: action === 'ignore' ? 'info' : 'warning',
+    relatedEntityId: employee.id,
+  })
   return draft
 }
 
@@ -161,8 +206,7 @@ export function fireEmployee(
     })
     return draft
   }
-  // 辞退赔偿按当前日工资作为 N 的基数；赔偿系数越低，现金支出越少但劳动风险越高。
-  const compensation = Math.round(employee.salaryPerDay * compensationRatio)
+  const compensation = calculateFireCompensation(employee, compensationRatio)
   releaseEmployeeFromCurrentAssignment(draft, employee)
   employee.pendingAssignment = undefined
   employee.status = 'fired'

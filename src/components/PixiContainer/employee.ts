@@ -3,9 +3,11 @@ import {
   Assets,
   Container,
   Rectangle,
+  Text,
   Texture,
   type Ticker,
 } from 'pixi.js';
+import type { EmployeeStatus } from '../../game/types';
 import {
   DESK_COLUMNS,
   DESK_COLUMN_CENTER_XS,
@@ -24,6 +26,7 @@ const WORKING_EMPLOYEE_DISPLAY_HEIGHT = WORKING_EMPLOYEE_DISPLAY_WIDTH;
 const WORKING_EMPLOYEE_OFFSET_X = -20;
 const WORKING_EMPLOYEE_OFFSET_Y = 0;
 const WORKING_EMPLOYEE_ANIMATION_SPEED = 0;
+const STATUS_LABEL_OFFSET_Y = -58;
 const MAX_VISIBLE_EMPLOYEES = DESK_COLUMNS * DESK_ROWS;
 
 interface WorkingEmployeeAtlasFrame {
@@ -55,8 +58,35 @@ interface WorkingEmployeeAtlas {
 
 export interface EmployeeLayerHandle {
   layer: Container;
-  setActiveEmployeeCount: (count: number) => void;
+  setEmployees: (employeeViews: PixiEmployeeView[]) => void;
   destroy: () => void;
+}
+
+export interface PixiEmployeeView {
+  id: string;
+  name: string;
+  status: EmployeeStatus;
+  statusLabel: string;
+}
+
+interface EmployeeStation {
+  layer: Container;
+  employee: AnimatedSprite;
+  statusText: Text;
+  employeeId?: string;
+}
+
+function statusLabelColor(status: EmployeeStatus): number {
+  if (status === 'focused_work' || status === 'working') {
+    return 0x92d16e;
+  }
+  if (status === 'slacking' || status === 'job_browsing' || status === 'gaming') {
+    return 0xffb86b;
+  }
+  if (status === 'smoking' || status === 'drinking_water' || status === 'toilet') {
+    return 0x7fd4ff;
+  }
+  return 0xd8cfbb;
 }
 
 const loadWorkingEmployeeAtlas = async () => {
@@ -113,9 +143,9 @@ const createWorkingEmployeeFrames = (atlas: WorkingEmployeeAtlas, baseTexture: T
   });
 };
 
-const createWorkingEmployeeMatrix = (frames: Texture[]) => {
+const createWorkingEmployeeMatrix = (frames: Texture[], onEmployeeClick: (employeeId: string) => void) => {
   const employeeLayer = new Container();
-  const employees: AnimatedSprite[] = [];
+  const stations: EmployeeStation[] = [];
   for (let row = 0; row < DESK_ROWS; row += 1) {
     for (let column = 0; column < DESK_COLUMNS; column += 1) {
       const employeeStationLayer = new Container();
@@ -126,53 +156,96 @@ const createWorkingEmployeeMatrix = (frames: Texture[]) => {
         loop: true,
       });
 
-      // 员工认真工作动画是工位状态的视觉反馈：显示数量受在职员工数量影响，不直接改变现金流、项目进度或满意度。
+      const statusText = new Text({
+        text: '',
+        style: {
+          fill: 0xd8cfbb,
+          fontFamily: 'Arial, sans-serif',
+          fontSize: 17,
+          fontWeight: '700',
+          stroke: { color: 0x111514, width: 4 },
+        },
+      });
+
+      // 员工动画和头顶状态都是工位状态的视觉反馈：显示内容受员工列表、员工状态和点击热区影响，不直接改变现金流或项目进度。
       // JSON 的 frame 去掉了人物两侧空白，spriteSourceSize/sourceSize 负责把人物放回虚拟画布中心，减少切帧左右晃动。
       employeeStationLayer.x = DESK_COLUMN_CENTER_XS[column] + WORKING_EMPLOYEE_OFFSET_X;
       employeeStationLayer.y = DESK_ROW_CENTER_YS[row] + WORKING_EMPLOYEE_OFFSET_Y;
+      employeeStationLayer.visible = false;
+      employeeStationLayer.eventMode = 'none';
+      employeeStationLayer.cursor = 'pointer';
+      employeeStationLayer.hitArea = new Rectangle(
+        -WORKING_EMPLOYEE_DISPLAY_WIDTH / 2,
+        -WORKING_EMPLOYEE_DISPLAY_HEIGHT / 2 + STATUS_LABEL_OFFSET_Y,
+        WORKING_EMPLOYEE_DISPLAY_WIDTH,
+        WORKING_EMPLOYEE_DISPLAY_HEIGHT - STATUS_LABEL_OFFSET_Y,
+      );
       employee.anchor.set(0.5);
       employee.width = WORKING_EMPLOYEE_DISPLAY_WIDTH;
       employee.height = WORKING_EMPLOYEE_DISPLAY_HEIGHT;
       employee.visible = false;
       employee.play();
+      statusText.anchor.set(0.5);
+      statusText.y = STATUS_LABEL_OFFSET_Y;
+      statusText.resolution = 2;
 
-      employees.push(employee);
+      const station: EmployeeStation = { layer: employeeStationLayer, employee, statusText };
+      employeeStationLayer.on('pointertap', () => {
+        if (station.employeeId) {
+          onEmployeeClick(station.employeeId);
+        }
+      });
+
+      stations.push(station);
       employeeStationLayer.addChild(employee);
+      employeeStationLayer.addChild(statusText);
       employeeLayer.addChild(employeeStationLayer);
     }
   }
 
-  return { employeeLayer, employees };
+  return { employeeLayer, stations };
 };
 
-async function createEmployeeLayer(ticker: Ticker, activeEmployeeCount: number): Promise<EmployeeLayerHandle> {
+async function createEmployeeLayer(
+  ticker: Ticker,
+  employeeViews: PixiEmployeeView[],
+  onEmployeeClick: (employeeId: string) => void,
+): Promise<EmployeeLayerHandle> {
   const atlas = await loadWorkingEmployeeAtlas();
   const baseTexture = await loadWorkingEmployeeTexture(atlas);
   const frames = createWorkingEmployeeFrames(atlas, baseTexture);
-  const { employeeLayer, employees } = createWorkingEmployeeMatrix(frames);
+  const { employeeLayer, stations } = createWorkingEmployeeMatrix(frames, onEmployeeClick);
 
-  const setActiveEmployeeCount = (count: number) => {
-    const visibleCount = Math.max(0, Math.min(MAX_VISIBLE_EMPLOYEES, count));
+  const setEmployees = (nextEmployeeViews: PixiEmployeeView[]) => {
+    const visibleEmployees = nextEmployeeViews.slice(0, MAX_VISIBLE_EMPLOYEES);
 
-    employees.forEach((employee, index) => {
-      employee.visible = index < visibleCount;
+    stations.forEach((station, index) => {
+      const employeeView = visibleEmployees[index];
+      const visible = Boolean(employeeView);
+      station.layer.visible = visible;
+      station.employee.visible = visible;
+      station.layer.eventMode = visible ? 'static' : 'none';
+      station.employeeId = employeeView?.id;
+      station.statusText.visible = visible;
+      station.statusText.text = employeeView?.statusLabel ?? '';
+      station.statusText.style.fill = employeeView ? statusLabelColor(employeeView.status) : 0xd8cfbb;
     });
   };
 
   const updateEmployees = (ticker: Ticker) => {
-    employees.forEach((employee) => {
-      if (employee.visible) {
-        employee.update(ticker);
+    stations.forEach((station) => {
+      if (station.employee.visible) {
+        station.employee.update(ticker);
       }
     });
   };
 
-  setActiveEmployeeCount(activeEmployeeCount);
+  setEmployees(employeeViews);
   ticker.add(updateEmployees);
 
   return {
     layer: employeeLayer,
-    setActiveEmployeeCount,
+    setEmployees,
     destroy: () => {
       ticker.remove(updateEmployees);
     },

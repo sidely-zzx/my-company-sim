@@ -6,7 +6,7 @@ import {
   acceptLaborContract,
   assignEmployeeToLabor,
 } from '../game/systems/contractSystem'
-import { fireEmployee, renameEmployee, updateEmployeeCompensation } from '../game/systems/employeeSystem'
+import { applyEmployeeDiscipline, fireEmployee, renameEmployee, updateEmployeeCompensation } from '../game/systems/employeeSystem'
 import { getFinanceReport, getYesterdayFinanceReport } from '../game/systems/financeReportSystem'
 import { markAllMailRead, markMailRead } from '../game/systems/mailSystem'
 import {
@@ -16,7 +16,7 @@ import {
 } from '../game/systems/projectSystem'
 import { refreshResumes, sendOffer } from '../game/systems/recruitingSystem'
 import { advanceGameTime, setOffWorkHour, setSpeed } from '../game/systems/timeSystem'
-import type { AssignmentMode, FinanceReport, GameSpeed, GameState, SkillRole, WorkHour } from '../game/types'
+import type { AssignmentMode, EmployeeDisciplineAction, FinanceReport, GameSpeed, GameState, SkillRole, WorkHour } from '../game/types'
 
 export interface GameStore extends GameState {
   /** 开始一局新游戏；会重置全部游戏状态和市场数据。 */
@@ -49,6 +49,8 @@ export interface GameStore extends GameState {
   updateEmployeeCompensation: (employeeId: string, salaryPerDay: number, socialInsuranceRatio: number) => void
   /** 辞退员工并按赔偿系数扣款；赔偿不足会提高后续风险。 */
   fireEmployee: (employeeId: string, compensationRatio: number) => void
+  /** 对员工当前状态执行管理动作，例如提醒、警告、罚款或辞退。 */
+  applyEmployeeDiscipline: (employeeId: string, action: EmployeeDisciplineAction, fineRatio?: number) => void
   /** 将指定邮件标记为已读。 */
   markMailRead: (mailId: string) => void
   /** 将全部邮件标记为已读。 */
@@ -114,6 +116,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     ),
   fireEmployee: (employeeId, compensationRatio) =>
     set((state) => fireEmployee(toGameState(state), employeeId, compensationRatio)),
+  applyEmployeeDiscipline: (employeeId, action, fineRatio) =>
+    set((state) => applyEmployeeDiscipline(toGameState(state), employeeId, action, fineRatio)),
   markMailRead: (mailId) => set((state) => markMailRead(toGameState(state), mailId)),
   markAllMailRead: () => set((state) => markAllMailRead(toGameState(state))),
   exportSaveJson: () => createGameSaveJson(toGameState(get())),

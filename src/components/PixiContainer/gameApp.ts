@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Sprite, type Texture } from 'pixi.js';
 import createChairLayer from './chair';
 import createDeskLayer from './desk';
-import createEmployeeLayer from './employee';
+import createEmployeeLayer, { type PixiEmployeeView } from './employee';
 import createPcLayer from './pc';
 
 const OFFICE_BACKGROUND_SRC = '/office.png';
@@ -10,11 +10,12 @@ const OFFICE_IMAGE_HEIGHT = 941;
 
 export interface GameAppHandle {
   destroy: () => void;
-  setActiveEmployeeCount: (count: number) => void;
+  setEmployees: (employees: PixiEmployeeView[]) => void;
 }
 
 interface GameAppOptions {
-  activeEmployeeCount: number;
+  employees: PixiEmployeeView[];
+  onEmployeeClick: (employeeId: string) => void;
 }
 
 interface DragState {
@@ -142,7 +143,7 @@ const createGameApp = async (
     Assets.load<Texture>(OFFICE_BACKGROUND_SRC),
     createDeskLayer(),
     createPcLayer(app.ticker),
-    createEmployeeLayer(app.ticker, options.activeEmployeeCount),
+    createEmployeeLayer(app.ticker, options.employees, options.onEmployeeClick),
     createChairLayer(),
   ]);
   const officeBackground = new Sprite(officeTexture);
@@ -153,8 +154,8 @@ const createGameApp = async (
   officeLayer.addChild(pcLayer.layer);
   officeLayer.addChild(employeeLayer.layer);
   officeLayer.addChild(chairLayer.layer);
-  pcLayer.setActiveScreenCount(options.activeEmployeeCount);
-  chairLayer.setOccupiedEmployeeCount(options.activeEmployeeCount);
+  pcLayer.setActiveScreenCount(options.employees.length);
+  chairLayer.setOccupiedEmployeeCount(options.employees.length);
 
   const resizeOfficeLayer = () => {
     fitOfficeLayer(officeLayer, app.screen.width, app.screen.height);
@@ -167,10 +168,10 @@ const createGameApp = async (
   const unbindRightButtonSceneDrag = bindRightButtonSceneDrag(app.canvas, sceneLayer);
 
   return {
-    setActiveEmployeeCount: (count) => {
-      employeeLayer.setActiveEmployeeCount(count);
-      pcLayer.setActiveScreenCount(count);
-      chairLayer.setOccupiedEmployeeCount(count);
+    setEmployees: (employees) => {
+      employeeLayer.setEmployees(employees);
+      pcLayer.setActiveScreenCount(employees.length);
+      chairLayer.setOccupiedEmployeeCount(employees.length);
     },
     destroy: () => {
       resizeObserver.disconnect();

@@ -108,7 +108,7 @@ export function EmployeeDetailPanel({
             )}
           </div>
           <p className="m-0 mt-1 text-[13px] text-[#9aa29a]">
-            {schoolLabels[employee.school]} · {employee.workYears} 年经验
+            {schoolLabels[employee.school]} · 入职 {employee.workDays} 天
           </p>
         </div>
         <button type="button" className={button} onClick={onBack}>
@@ -156,6 +156,11 @@ export function EmployeeDetailPanel({
         <section className="grid gap-3 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-4">
           <h3 className="m-0 text-[16px] text-[#efe2c8]">风险属性</h3>
           <div className="grid gap-2">
+            <DetailStat label="精力" value={`${employee.energy}`} tone={employee.energy >= 60 ? 'positive' : 'negative'} />
+            <DetailStat label="忠诚度" value={`${employee.loyalty}`} tone={employee.loyalty >= 60 ? 'positive' : 'negative'} />
+            <DetailStat label="压力" value={`${employee.pressure}`} tone={employee.pressure >= 65 ? 'negative' : undefined} />
+            <DetailStat label="自律" value={`${employee.discipline}`} tone={employee.discipline >= 60 ? 'positive' : 'negative'} />
+            <DetailStat label="进取心" value={`${employee.ambition}`} />
             <DetailStat label="仲裁倾向" value={`${employee.arbitrationTendency}`} tone={employee.arbitrationTendency >= 60 ? 'negative' : undefined} />
             <DetailStat label="摸鱼倾向" value={percent(employee.slackingTendency)} tone={employee.slackingTendency >= 0.45 ? 'negative' : undefined} />
             <DetailStat label="行为种子" value={`${employee.behaviorSeed}`} />

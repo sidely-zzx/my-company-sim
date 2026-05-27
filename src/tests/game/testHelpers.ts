@@ -24,7 +24,12 @@ export function createTestEmployee(overrides: Partial<Employee> = {}): Employee 
     arbitrationTendency: 50,
     slackingTendency: 0,
     behaviorSeed: 1,
-    workYears: 3,
+    energy: 80,
+    loyalty: 70,
+    pressure: 30,
+    discipline: 80,
+    ambition: 70,
+    workDays: 0,
     status: 'idle',
     ...overrides,
   }

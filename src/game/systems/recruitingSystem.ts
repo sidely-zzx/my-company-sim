@@ -3,6 +3,7 @@ import {
   RESUMES_PER_REFRESH,
   VIP_DAILY_RESUME_REFRESH_LIMIT,
 } from '../constants';
+import { createInitialEmployeeBehaviorProfile } from '../entities/EmployeeEntity';
 import { CANDIDATE_INTROS, FIRST_NAME, MIDDLE_NAME, LAST_NAME } from '../data/candidateTemplates';
 import { clamp, cloneState, nextRandom, randomChoice, randomInt, randomChoiceName } from '../seed';
 import type {
@@ -18,6 +19,14 @@ import { addEvent, createId } from './eventSystem';
 const schoolTypes: SchoolType[] = ['normal', '211', '985', 'qs100'];
 const roles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing'];
 const levels: ResumeSkillLevel[] = ['junior', 'mid', 'senior'];
+
+function averageAbility(abilities: Partial<Record<SkillRole, number>>): number {
+  const values = Object.values(abilities);
+  if (values.length === 0) {
+    return 0;
+  }
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
 
 function levelFromAbility(ability: number): ResumeSkillLevel {
   if (ability >= 75) {
@@ -177,8 +186,16 @@ export function sendOffer(
   }
 
   const employeeId = createId(draft, 'employee');
-  const behaviorSeed = nextRandom(draft.rngSeed);
-  draft.rngSeed = behaviorSeed.seed;
+  const behaviorProfile = createInitialEmployeeBehaviorProfile(draft.rngSeed, {
+    salaryFit,
+    socialInsuranceRatio,
+    satisfaction: resume.satisfaction,
+    arbitrationTendency: resume.arbitrationTendency,
+    slackingTendency: resume.slackingTendency,
+    averageAbility: averageAbility(resume.realSkillAbilities),
+    resumeWorkYears: resume.workYears,
+  });
+  draft.rngSeed = behaviorProfile.seed;
   draft.employees.push({
     id: employeeId,
     name: resume.name,
@@ -190,8 +207,13 @@ export function sendOffer(
     satisfaction: resume.satisfaction,
     arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
-    behaviorSeed: behaviorSeed.seed,
-    workYears: resume.workYears,
+    behaviorSeed: behaviorProfile.profile.behaviorSeed,
+    energy: behaviorProfile.profile.energy,
+    loyalty: behaviorProfile.profile.loyalty,
+    pressure: behaviorProfile.profile.pressure,
+    discipline: behaviorProfile.profile.discipline,
+    ambition: behaviorProfile.profile.ambition,
+    workDays: 0,
     status: 'idle',
   });
   draft.resumes = draft.resumes.filter((item) => item.id !== resume.id);

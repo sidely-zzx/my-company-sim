@@ -1,8 +1,7 @@
-import { nextRandom } from './seed'
-import type { Employee, GameState } from './types'
+import type { GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 1
+export const GAME_SAVE_VERSION = 2
 
 export interface GameSaveFile {
   /** 存档格式标识；用于避免把其他 JSON 文件误当成游戏存档读取。 */
@@ -27,6 +26,32 @@ function hasArrayField(record: Record<string, unknown>, key: string): boolean {
   return Array.isArray(record[key])
 }
 
+function hasEmployeeShape(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    hasArrayField(value, 'resumeSkills') &&
+    isRecord(value.realSkillAbilities) &&
+    hasNumberField(value, 'salaryPerDay') &&
+    hasNumberField(value, 'socialInsuranceRatio') &&
+    hasNumberField(value, 'satisfaction') &&
+    hasNumberField(value, 'arbitrationTendency') &&
+    hasNumberField(value, 'slackingTendency') &&
+    hasNumberField(value, 'behaviorSeed') &&
+    hasNumberField(value, 'energy') &&
+    hasNumberField(value, 'loyalty') &&
+    hasNumberField(value, 'pressure') &&
+    hasNumberField(value, 'discipline') &&
+    hasNumberField(value, 'ambition') &&
+    hasNumberField(value, 'workDays') &&
+    typeof value.status === 'string'
+  )
+}
+
 function hasGameStateShape(value: unknown): value is GameState {
   if (!isRecord(value) || !isRecord(value.settings) || !isRecord(value.time) || !isRecord(value.market)) {
     return false
@@ -42,6 +67,7 @@ function hasGameStateShape(value: unknown): value is GameState {
     typeof value.time.paused === 'boolean' &&
     hasNumberField(value, 'money') &&
     hasArrayField(value, 'employees') &&
+    (value.employees as unknown[]).every(hasEmployeeShape) &&
     hasArrayField(value, 'resumes') &&
     hasArrayField(value, 'laborContracts') &&
     hasArrayField(value, 'projectContracts') &&
@@ -61,16 +87,6 @@ function hasGameStateShape(value: unknown): value is GameState {
 }
 
 function normalizeGameState(state: GameState): GameState {
-  for (const employee of state.employees as Array<Employee & { behaviorSeed?: number }>) {
-    if (Number.isFinite(employee.behaviorSeed)) {
-      continue
-    }
-
-    const behaviorSeed = nextRandom(state.rngSeed)
-    state.rngSeed = behaviorSeed.seed
-    employee.behaviorSeed = behaviorSeed.seed
-  }
-
   return state
 }
 

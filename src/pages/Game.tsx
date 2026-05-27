@@ -57,7 +57,9 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const setSpeed = useGameStore((state) => state.setSpeed)
 
   const activeEmployees = employees.filter((employee) => employee.status !== 'fired')
-  const workingEmployees = activeEmployees.filter((employee) => employee.status === 'working').length
+  const workingEmployees = activeEmployees.filter((employee) =>
+    employee.status === 'focused_work' || employee.status === 'working',
+  ).length
   const idleEmployees = activeEmployees.filter((employee) => employee.status === 'idle').length
   const satisfaction = Math.round(
     average(activeEmployees.map((employee) => employee.satisfaction), activeEmployees.length > 0 ? 0 : 72),

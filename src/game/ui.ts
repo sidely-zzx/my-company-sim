@@ -1,6 +1,8 @@
 import type {
   AssignmentMode,
   Employee,
+  EmployeeDisciplineAction,
+  EmployeeStatus,
   LaborContract,
   ProjectContract,
   ProjectPhase,
@@ -16,6 +18,7 @@ export const skillRoles: SkillRole[] = ['product', 'design', 'frontend', 'backen
 export const projectTracks: ProjectWorkTrack[] = ['product', 'design', 'frontend', 'backend', 'testing']
 
 export const assignmentModes: AssignmentMode[] = ['immediate', 'after_current']
+export const employeeDisciplineActions: EmployeeDisciplineAction[] = ['ignore', 'verbal_warn', 'formal_warn', 'fine']
 
 export const assignmentModeLabels: Record<AssignmentMode, string> = {
   immediate: '立即投入',
@@ -53,11 +56,24 @@ export const schoolLabels = {
   qs100: 'QS100',
 }
 
-export const employeeStatusLabels = {
+export const employeeStatusLabels: Record<EmployeeStatus, string> = {
   idle: '空闲',
+  focused_work: '全力工作',
   working: '工作中',
   slacking: '摸鱼',
+  drinking_water: '喝水',
+  smoking: '抽烟',
+  toilet: '上厕所',
+  job_browsing: '刷招聘软件',
+  gaming: '玩游戏',
   fired: '已离职',
+}
+
+export const employeeDisciplineActionLabels: Record<EmployeeDisciplineAction, string> = {
+  ignore: '忽略',
+  verbal_warn: '口头提醒',
+  formal_warn: '正式警告',
+  fine: '罚款',
 }
 
 export const laborStatusLabels = {

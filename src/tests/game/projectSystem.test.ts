@@ -9,7 +9,14 @@ import { createTestEmployee, createTestProject, createTestState } from './testHe
 describe('projectSystem', () => {
   it('uses skill ability divided by 100 as project efficiency', () => {
     const state = createTestState()
-    state.employees = [createTestEmployee({ id: 'employee-1', realSkillAbilities: { product: 80 } })]
+    state.employees = [
+      createTestEmployee({
+        id: 'employee-1',
+        realSkillAbilities: { product: 80 },
+        assignedTo: { type: 'project', id: 'project-test', role: 'product' },
+        status: 'working',
+      }),
+    ]
     state.projectContracts = [
       createTestProject({
         assignedEmployees: { product: ['employee-1'] },
@@ -23,7 +30,14 @@ describe('projectSystem', () => {
 
   it('adds one event when a product track first reaches 100%', () => {
     const state = createTestState()
-    state.employees = [createTestEmployee({ id: 'employee-1', realSkillAbilities: { product: 100 } })]
+    state.employees = [
+      createTestEmployee({
+        id: 'employee-1',
+        realSkillAbilities: { product: 100 },
+        assignedTo: { type: 'project', id: 'project-test', role: 'product' },
+        status: 'working',
+      }),
+    ]
     state.projectContracts = [
       createTestProject({
         phaseProgress: {
@@ -48,8 +62,18 @@ describe('projectSystem', () => {
   it('adds separate events for frontend and backend development tracks', () => {
     const state = createTestState()
     state.employees = [
-      createTestEmployee({ id: 'frontend-employee', realSkillAbilities: { frontend: 100 } }),
-      createTestEmployee({ id: 'backend-employee', realSkillAbilities: { backend: 100 } }),
+      createTestEmployee({
+        id: 'frontend-employee',
+        realSkillAbilities: { frontend: 100 },
+        assignedTo: { type: 'project', id: 'project-test', role: 'frontend' },
+        status: 'working',
+      }),
+      createTestEmployee({
+        id: 'backend-employee',
+        realSkillAbilities: { backend: 100 },
+        assignedTo: { type: 'project', id: 'project-test', role: 'backend' },
+        status: 'working',
+      }),
     ]
     state.projectContracts = [
       createTestProject({
@@ -104,7 +128,14 @@ describe('projectSystem', () => {
 
   it('pays the full amount and stops penalties when completed', () => {
     const state = createTestState()
-    state.employees = [createTestEmployee({ id: 'employee-1', realSkillAbilities: { testing: 100 } })]
+    state.employees = [
+      createTestEmployee({
+        id: 'employee-1',
+        realSkillAbilities: { testing: 100 },
+        assignedTo: { type: 'project', id: 'project-test', role: 'testing' },
+        status: 'working',
+      }),
+    ]
     state.projectContracts = [
       createTestProject({
         status: 'overdue',
