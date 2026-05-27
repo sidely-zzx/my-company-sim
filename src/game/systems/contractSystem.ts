@@ -1,4 +1,3 @@
-import { CLIENT_COMPANIES } from '../data/clientCompanies'
 import { cloneState, randomChoice, randomInt } from '../seed'
 import type { AssignmentMode, GameState, LaborContract, SkillRole } from '../types'
 import {
@@ -6,15 +5,19 @@ import {
   cancelPendingAssignmentsForLaborContract,
   releaseLaborContractAssignment,
 } from './assignmentSystem'
+import { dynamicContractRefreshCount, randomClientByTrust } from './clientCompanySystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
 
 const laborRoles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing']
 
-function createLaborContract(state: GameState): LaborContract {
-  const client = randomChoice(state.rngSeed, CLIENT_COMPANIES)
-  state.rngSeed = client.seed
+function createLaborContract(state: GameState): LaborContract | undefined {
+  const client = randomClientByTrust(state)
+  if (!client) {
+    return undefined
+  }
+
   const role = randomChoice(state.rngSeed, laborRoles)
   state.rngSeed = role.seed
   const urgentRoll = randomInt(state.rngSeed, 0, 100)
@@ -25,8 +28,8 @@ function createLaborContract(state: GameState): LaborContract {
   const dailyBudget = Math.round(260 + ability.value * 4 + (urgency === 'urgent' ? 180 : 0))
   return {
     id: createId(state, 'labor'),
-    clientName: client.value.name,
-    title: `${client.value.name}${urgency === 'urgent' ? '急召' : '驻场'}${role.value}`,
+    clientName: client.name,
+    title: `${client.name}${urgency === 'urgent' ? '急召' : '驻场'}${role.value}`,
     requiredRole: role.value,
     requiredAbility: ability.value,
     dailyBudget,
@@ -40,7 +43,9 @@ function createLaborContract(state: GameState): LaborContract {
 export function generateLaborContracts(state: GameState): GameState {
   const draft = cloneState(state)
   const activeContracts = draft.laborContracts.filter((contract) => contract.status !== 'available')
-  const availableContracts = Array.from({ length: 3 }, () => createLaborContract(draft))
+  const availableContracts = Array.from({ length: dynamicContractRefreshCount(draft) }, () => createLaborContract(draft)).filter(
+    (contract): contract is LaborContract => Boolean(contract),
+  )
   draft.laborContracts = [...activeContracts, ...availableContracts]
   return draft
 }

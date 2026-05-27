@@ -1,7 +1,6 @@
 import { PROJECT_BREACH_PENALTY_RATE, PROJECT_WORK_TRACKS } from '../constants'
-import { CLIENT_COMPANIES } from '../data/clientCompanies'
 import { PROJECT_TEMPLATES } from '../data/projectTemplates'
-import { clamp, cloneState, nextRandom, randomChoice } from '../seed'
+import { clamp, cloneState, randomChoice } from '../seed'
 import type {
   AssignmentMode,
   ClientCompanyProfile,
@@ -18,12 +17,12 @@ import {
   releaseCompletedProjectRoleAssignments,
   releaseProjectAssignments,
 } from './assignmentSystem'
+import { dynamicContractRefreshCount, randomClientByTrust, updateClientTrust } from './clientCompanySystem'
 import { calculateEmployeeOutput } from './employeeSystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
 
-const CLIENT_BLACKLIST_TRUST_THRESHOLD = 20
 const CLIENT_PROJECT_COMPLETED_TRUST_DELTA = 8
 const CLIENT_PROJECT_OVERDUE_TRUST_DELTA = -5
 const CLIENT_PROJECT_BREACHED_TRUST_DELTA = -25
@@ -109,60 +108,6 @@ function clientProgressMultiplier(project: ProjectContract): number {
   )
 }
 
-function clientTrust(state: GameState, client: ClientCompanyProfile): number {
-  return state.clientRelations.find((relation) => relation.clientCompanyId === client.id)?.trust ?? client.trust
-}
-
-function clientWithCurrentTrust(state: GameState, client: ClientCompanyProfile): ClientCompanyProfile {
-  return {
-    ...client,
-    trust: clientTrust(state, client),
-  }
-}
-
-function randomClientByTrust(state: GameState): ClientCompanyProfile | undefined {
-  const candidates = CLIENT_COMPANIES.map((client) => clientWithCurrentTrust(state, client)).filter(
-    (client) => client.trust >= CLIENT_BLACKLIST_TRUST_THRESHOLD,
-  )
-  const totalWeight = candidates.reduce((total, client) => total + client.trust * client.trust, 0)
-  if (candidates.length === 0 || totalWeight <= 0) {
-    return undefined
-  }
-
-  const roll = nextRandom(state.rngSeed)
-  state.rngSeed = roll.seed
-  let cursor = roll.value * totalWeight
-  for (const client of candidates) {
-    cursor -= client.trust * client.trust
-    if (cursor <= 0) {
-      return client
-    }
-  }
-
-  return candidates[candidates.length - 1]
-}
-
-function updateClientTrust(state: GameState, project: ProjectContract, delta: number): void {
-  if (project.clientCompanyId === undefined) {
-    return
-  }
-
-  const baseClient = CLIENT_COMPANIES.find((client) => client.id === project.clientCompanyId)
-  const relation = state.clientRelations.find((item) => item.clientCompanyId === project.clientCompanyId)
-  const nextTrust = clamp((relation?.trust ?? project.clientProfile?.trust ?? baseClient?.trust ?? 50) + delta, 0, 100)
-
-  // trust 是动态客情属性：合作结果会影响后续甲方项目刷新概率，过低会让甲方进入黑名单不再出现。
-  if (relation) {
-    relation.trust = nextTrust
-    return
-  }
-
-  state.clientRelations.push({
-    clientCompanyId: project.clientCompanyId,
-    trust: nextTrust,
-  })
-}
-
 function createProjectContract(state: GameState): ProjectContract | undefined {
   const client = randomClientByTrust(state)
   if (!client) {
@@ -203,7 +148,7 @@ function createProjectContract(state: GameState): ProjectContract | undefined {
 export function generateProjectContracts(state: GameState): GameState {
   const draft = cloneState(state)
   const activeContracts = draft.projectContracts.filter((contract) => contract.status !== 'available')
-  const availableContracts = Array.from({ length: 3 }, () => createProjectContract(draft)).filter(
+  const availableContracts = Array.from({ length: dynamicContractRefreshCount(draft) }, () => createProjectContract(draft)).filter(
     (project): project is ProjectContract => Boolean(project),
   )
   draft.projectContracts = [...activeContracts, ...availableContracts]
@@ -280,7 +225,7 @@ export function breachProjectContract(state: GameState, projectId: string): Game
   const penalty = Math.round(project.amount * PROJECT_BREACH_PENALTY_RATE)
   project.status = 'breached'
   project.breachedDay = draft.time.day
-  updateClientTrust(draft, project, CLIENT_PROJECT_BREACHED_TRUST_DELTA)
+  updateClientTrust(draft, project.clientCompanyId, project.clientProfile?.trust, CLIENT_PROJECT_BREACHED_TRUST_DELTA)
   cancelPendingAssignmentsForProject(draft, project)
   releaseProjectAssignments(draft, project)
   const recordId = addFinanceRecord(draft, {
@@ -357,7 +302,7 @@ function completeProject(state: GameState, project: ProjectContract): void {
   }
   project.status = 'completed'
   project.completedDay = state.time.day
-  updateClientTrust(state, project, CLIENT_PROJECT_COMPLETED_TRUST_DELTA)
+  updateClientTrust(state, project.clientCompanyId, project.clientProfile?.trust, CLIENT_PROJECT_COMPLETED_TRUST_DELTA)
   cancelPendingAssignmentsForProject(state, project)
   releaseProjectAssignments(state, project)
   const recordId = addFinanceRecord(state, {
@@ -433,7 +378,7 @@ export function settleProjectsEndOfDay(state: GameState, endedDay: number): Game
     if (endedDay > project.deadlineDay) {
       project.status = 'overdue'
       project.overdueDays += 1
-      updateClientTrust(draft, project, CLIENT_PROJECT_OVERDUE_TRUST_DELTA)
+      updateClientTrust(draft, project.clientCompanyId, project.clientProfile?.trust, CLIENT_PROJECT_OVERDUE_TRUST_DELTA)
       const recordId = addFinanceRecord(draft, {
         type: 'project_penalty',
         amount: -project.dailyPenalty,
