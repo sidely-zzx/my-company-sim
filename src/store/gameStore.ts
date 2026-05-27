@@ -74,6 +74,7 @@ function toGameState(state: GameStore): GameState {
     resumes: state.resumes,
     laborContracts: state.laborContracts,
     projectContracts: state.projectContracts,
+    clientRelations: state.clientRelations,
     events: state.events,
     financeRecords: state.financeRecords,
     financeReports: state.financeReports,

@@ -45,6 +45,7 @@ function hasGameStateShape(value: unknown): value is GameState {
     hasArrayField(value, 'resumes') &&
     hasArrayField(value, 'laborContracts') &&
     hasArrayField(value, 'projectContracts') &&
+    hasArrayField(value, 'clientRelations') &&
     hasArrayField(value, 'events') &&
     hasArrayField(value, 'financeRecords') &&
     hasArrayField(value, 'financeReports') &&

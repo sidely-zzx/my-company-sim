@@ -6,6 +6,7 @@ import {
   STARTING_MONEY,
   WORK_START_MINUTE,
 } from './constants'
+import { CLIENT_COMPANIES } from './data/clientCompanies'
 import { generateLaborContracts } from './systems/contractSystem'
 import { generateProjectContracts } from './systems/projectSystem'
 import { refreshResumes } from './systems/recruitingSystem'
@@ -29,6 +30,10 @@ export function createInitialGameState(seed = DEFAULT_SEED): GameState {
     resumes: [],
     laborContracts: [],
     projectContracts: [],
+    clientRelations: CLIENT_COMPANIES.map((client) => ({
+      clientCompanyId: client.id,
+      trust: client.trust,
+    })),
     events: [],
     financeRecords: [],
     financeReports: [],

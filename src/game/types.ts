@@ -245,11 +245,39 @@ export interface ProjectRequirement {
   headcount: number
 }
 
+export interface ClientCompanyProfile {
+  /** 甲方唯一 ID；影响项目合同关联和后续关系沉淀。 */
+  id: number
+  /** 甲方公司名称，用于项目标题、邮件和事件展示。 */
+  name: string
+  /** 客情关系；越高越愿意给宽松周期和小幅溢价，也会降低合作沟通损耗。 */
+  relationship: number
+  /** 预算等级；主要影响项目金额，高预算甲方更容易给大单。 */
+  budgetLevel: number
+  /** 需求混乱度；越高越会抬高岗位门槛、增加人力需求，并拖慢项目推进。 */
+  requirementChaos: number
+  /** 甲方脾气；越高延期罚金越重、周期越紧，也会增加合作推进压力。 */
+  temper: number
+  /** 信任度；影响甲方项目出现的概率。 */
+  trust: number
+}
+
+export interface ClientRelation {
+  /** 甲方公司 ID；关联 CLIENT_COMPANIES 基础配置。 */
+  clientCompanyId: number
+  /** 动态信任度；受完成、延期和毁约影响，并决定项目刷新概率与黑名单状态。 */
+  trust: number
+}
+
 export interface ProjectContract {
   /** 项目合同唯一 ID。 */
   id: string
+  /** 甲方公司 ID；由项目生成时写入，用于后续根据同一甲方沉淀关系。 */
+  clientCompanyId?: number
   /** 甲方公司名称。 */
   clientName: string
+  /** 签约机会生成时的甲方属性快照；trust 会使用当时的动态信任度，影响后续项目刷新概率展示。 */
+  clientProfile?: ClientCompanyProfile
   /** 项目标题，用于列表、邮件和事件展示。 */
   title: string
   /** 项目完成后一次性支付的全款。 */
@@ -405,6 +433,8 @@ export interface GameState {
   laborContracts: LaborContract[]
   /** 项目外包合同列表，包含市场机会和已签项目。 */
   projectContracts: ProjectContract[]
+  /** 甲方动态关系；trust 会随项目合作结果变化，并影响后续可刷新到哪些甲方项目。 */
+  clientRelations: ClientRelation[]
   /** 最近发生的游戏事件，用于事件流和提示。 */
   events: GameEvent[]
   /** 所有财务流水，是财务报表的唯一数据来源。 */

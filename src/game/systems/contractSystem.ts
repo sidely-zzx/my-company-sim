@@ -25,8 +25,8 @@ function createLaborContract(state: GameState): LaborContract {
   const dailyBudget = Math.round(260 + ability.value * 4 + (urgency === 'urgent' ? 180 : 0))
   return {
     id: createId(state, 'labor'),
-    clientName: client.value,
-    title: `${client.value}${urgency === 'urgent' ? '急召' : '驻场'}${role.value}`,
+    clientName: client.value.name,
+    title: `${client.value.name}${urgency === 'urgent' ? '急召' : '驻场'}${role.value}`,
     requiredRole: role.value,
     requiredAbility: ability.value,
     dailyBudget,

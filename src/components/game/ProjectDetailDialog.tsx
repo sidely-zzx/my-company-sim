@@ -138,6 +138,16 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const breachPenalty = Math.round(project.amount * PROJECT_BREACH_PENALTY_RATE)
   const breachPenaltyPercent = Math.round(PROJECT_BREACH_PENALTY_RATE * 100)
   const breachAvailable = canBreachProject(project)
+  const clientProfile = project.clientProfile
+  const clientStats = clientProfile
+    ? [
+        { label: '客情', value: clientProfile.relationship },
+        { label: '预算', value: clientProfile.budgetLevel },
+        { label: '需求', value: clientProfile.requirementChaos },
+        { label: '脾气', value: clientProfile.temper },
+        { label: '信任', value: clientProfile.trust },
+      ]
+    : []
 
   const filteredEmployees = useMemo(() => {
     // 员工筛选受离职状态、空闲状态和岗位能力影响；它只决定右侧列表展示，不直接改变员工、项目或合同数据。
@@ -216,6 +226,23 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{project.overdueDays} 天</dd>
                 </div>
               </dl>
+
+              {clientProfile && (
+                <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <strong className="text-sm text-[#efe2c8]">甲方属性</strong>
+                    <span className="text-xs text-[#9aa29a]">影响金额、周期、罚金、需求和推进效率</span>
+                  </div>
+                  <dl className="m-0 grid grid-cols-5 gap-2 text-center text-xs max-[560px]:grid-cols-3">
+                    {clientStats.map((stat) => (
+                      <div key={stat.label} className="rounded border border-[#303834] bg-[#101413] px-2 py-1.5">
+                        <dt className="text-[#9aa29a]">{stat.label}</dt>
+                        <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{stat.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
 
               {project.status === 'available' && (
                 <div className="rounded-md border border-[#4b514d] bg-[#171c1b] p-3 text-sm text-[#d8cfbb]">

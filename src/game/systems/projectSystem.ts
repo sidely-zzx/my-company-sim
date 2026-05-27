@@ -1,8 +1,17 @@
 import { PROJECT_BREACH_PENALTY_RATE, PROJECT_WORK_TRACKS } from '../constants'
 import { CLIENT_COMPANIES } from '../data/clientCompanies'
 import { PROJECT_TEMPLATES } from '../data/projectTemplates'
-import { cloneState, randomChoice } from '../seed'
-import type { AssignmentMode, GameState, ProjectContract, ProjectPhase, ProjectWorkTrack, SkillRole } from '../types'
+import { clamp, cloneState, nextRandom, randomChoice } from '../seed'
+import type {
+  AssignmentMode,
+  ClientCompanyProfile,
+  GameState,
+  ProjectContract,
+  ProjectPhase,
+  ProjectRequirement,
+  ProjectWorkTrack,
+  SkillRole,
+} from '../types'
 import {
   assignEmployeeToTarget,
   cancelPendingAssignmentsForProject,
@@ -14,6 +23,10 @@ import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
 
+const CLIENT_BLACKLIST_TRUST_THRESHOLD = 20
+const CLIENT_PROJECT_COMPLETED_TRUST_DELTA = 8
+const CLIENT_PROJECT_OVERDUE_TRUST_DELTA = -5
+const CLIENT_PROJECT_BREACHED_TRUST_DELTA = -25
 const breachableProjectStatuses = ['accepted', 'active', 'overdue'] as const
 const completedTrackEventTitles: Record<ProjectWorkTrack, string> = {
   product: '产品阶段已完成',
@@ -23,22 +36,158 @@ const completedTrackEventTitles: Record<ProjectWorkTrack, string> = {
   testing: '测试阶段已完成',
 }
 
-function createProjectContract(state: GameState): ProjectContract {
-  const client = randomChoice(state.rngSeed, CLIENT_COMPANIES)
-  state.rngSeed = client.seed
+function roundTo(value: number, unit: number): number {
+  return Math.max(unit, Math.round(value / unit) * unit)
+}
+
+function clientAmountMultiplier(client: ClientCompanyProfile): number {
+  // 预算等级决定甲方能给多少钱；客情只做小幅溢价，需求混乱则补偿额外返工成本。
+  return clamp(
+    0.72 + client.budgetLevel * 0.007 + (client.relationship - 50) * 0.0015 + (client.requirementChaos - 50) * 0.0018,
+    0.75,
+    1.55,
+  )
+}
+
+function clientDurationOffset(client: ClientCompanyProfile): number {
+  // 周期受客情正向影响；需求混乱和坏脾气会压缩交付窗口，直接影响延期风险。
+  return Math.round(
+    (client.relationship - 50) / 22 -
+      (client.requirementChaos - 50) / 20 -
+      (client.temper - 50) / 24,
+  )
+}
+
+function clientPenaltyMultiplier(client: ClientCompanyProfile): number {
+  // 脾气越大越爱扣款，混乱需求也会放大验收争议；关系好能压低每日违约金。
+  return clamp(
+    0.85 + client.temper * 0.006 + (client.requirementChaos - 50) * 0.002 - (client.relationship - 50) * 0.0015,
+    0.7,
+    1.65,
+  )
+}
+
+function clientRequirementOffset(client: ClientCompanyProfile): number {
+  // 岗位门槛代表甲方验收标准；混乱和暴躁会提高能力要求，并影响玩家需要安排的员工能力。
+  return Math.round((client.requirementChaos - 50) * 0.18 + (client.temper - 50) * 0.08)
+}
+
+function adjustProjectRequirements(
+  requirements: ProjectRequirement[],
+  client: ClientCompanyProfile,
+): ProjectRequirement[] {
+  const abilityOffset = clientRequirementOffset(client)
+
+  return requirements.map((requirement) => {
+    const needsExtraDeveloper =
+      client.requirementChaos >= 80 &&
+      ['frontend', 'backend', 'testing'].includes(requirement.role) &&
+      requirement.headcount < 2
+
+    return {
+      ...requirement,
+      minAbility: clamp(requirement.minAbility + abilityOffset, 20, 95),
+      headcount: requirement.headcount + (needsExtraDeveloper ? 1 : 0),
+    }
+  })
+}
+
+function clientProgressMultiplier(project: ProjectContract): number {
+  if (!project.clientProfile) {
+    return 1
+  }
+
+  const client = project.clientProfile
+  // 推进效率表示合作摩擦：好关系减少等待和返工，高需求混乱/坏脾气会拖慢同样能力员工的产出。
+  return clamp(
+    1 +
+      (client.relationship - 50) * 0.002 -
+      (client.requirementChaos - 50) * 0.004 -
+      (client.temper - 50) * 0.002,
+    0.72,
+    1.18,
+  )
+}
+
+function clientTrust(state: GameState, client: ClientCompanyProfile): number {
+  return state.clientRelations.find((relation) => relation.clientCompanyId === client.id)?.trust ?? client.trust
+}
+
+function clientWithCurrentTrust(state: GameState, client: ClientCompanyProfile): ClientCompanyProfile {
+  return {
+    ...client,
+    trust: clientTrust(state, client),
+  }
+}
+
+function randomClientByTrust(state: GameState): ClientCompanyProfile | undefined {
+  const candidates = CLIENT_COMPANIES.map((client) => clientWithCurrentTrust(state, client)).filter(
+    (client) => client.trust >= CLIENT_BLACKLIST_TRUST_THRESHOLD,
+  )
+  const totalWeight = candidates.reduce((total, client) => total + client.trust * client.trust, 0)
+  if (candidates.length === 0 || totalWeight <= 0) {
+    return undefined
+  }
+
+  const roll = nextRandom(state.rngSeed)
+  state.rngSeed = roll.seed
+  let cursor = roll.value * totalWeight
+  for (const client of candidates) {
+    cursor -= client.trust * client.trust
+    if (cursor <= 0) {
+      return client
+    }
+  }
+
+  return candidates[candidates.length - 1]
+}
+
+function updateClientTrust(state: GameState, project: ProjectContract, delta: number): void {
+  if (project.clientCompanyId === undefined) {
+    return
+  }
+
+  const baseClient = CLIENT_COMPANIES.find((client) => client.id === project.clientCompanyId)
+  const relation = state.clientRelations.find((item) => item.clientCompanyId === project.clientCompanyId)
+  const nextTrust = clamp((relation?.trust ?? project.clientProfile?.trust ?? baseClient?.trust ?? 50) + delta, 0, 100)
+
+  // trust 是动态客情属性：合作结果会影响后续甲方项目刷新概率，过低会让甲方进入黑名单不再出现。
+  if (relation) {
+    relation.trust = nextTrust
+    return
+  }
+
+  state.clientRelations.push({
+    clientCompanyId: project.clientCompanyId,
+    trust: nextTrust,
+  })
+}
+
+function createProjectContract(state: GameState): ProjectContract | undefined {
+  const client = randomClientByTrust(state)
+  if (!client) {
+    return undefined
+  }
+
   const template = randomChoice(state.rngSeed, PROJECT_TEMPLATES)
   state.rngSeed = template.seed
+  const amount = roundTo(template.value.amount * clientAmountMultiplier(client), 500)
+  const durationDays = Math.max(2, template.value.durationDays + clientDurationOffset(client))
+  const dailyPenalty = roundTo(template.value.dailyPenalty * clientPenaltyMultiplier(client), 100)
+
   return {
     id: createId(state, 'project'),
-    clientName: client.value,
-    title: `${client.value}${template.value.title}`,
-    amount: template.value.amount,
-    deadlineDay: state.time.day + template.value.durationDays,
-    dailyPenalty: template.value.dailyPenalty,
+    clientCompanyId: client.id,
+    clientName: client.name,
+    clientProfile: client,
+    title: `${client.name}${template.value.title}`,
+    amount,
+    deadlineDay: state.time.day + durationDays,
+    dailyPenalty,
     overdueDays: 0,
     status: 'available',
     currentPhase: 'product',
-    requirements: template.value.requirements,
+    requirements: adjustProjectRequirements(template.value.requirements, client),
     phaseProgress: {
       product: 0,
       design: 0,
@@ -54,7 +203,9 @@ function createProjectContract(state: GameState): ProjectContract {
 export function generateProjectContracts(state: GameState): GameState {
   const draft = cloneState(state)
   const activeContracts = draft.projectContracts.filter((contract) => contract.status !== 'available')
-  const availableContracts = Array.from({ length: 3 }, () => createProjectContract(draft))
+  const availableContracts = Array.from({ length: 3 }, () => createProjectContract(draft)).filter(
+    (project): project is ProjectContract => Boolean(project),
+  )
   draft.projectContracts = [...activeContracts, ...availableContracts]
   return draft
 }
@@ -129,6 +280,7 @@ export function breachProjectContract(state: GameState, projectId: string): Game
   const penalty = Math.round(project.amount * PROJECT_BREACH_PENALTY_RATE)
   project.status = 'breached'
   project.breachedDay = draft.time.day
+  updateClientTrust(draft, project, CLIENT_PROJECT_BREACHED_TRUST_DELTA)
   cancelPendingAssignmentsForProject(draft, project)
   releaseProjectAssignments(draft, project)
   const recordId = addFinanceRecord(draft, {
@@ -205,6 +357,7 @@ function completeProject(state: GameState, project: ProjectContract): void {
   }
   project.status = 'completed'
   project.completedDay = state.time.day
+  updateClientTrust(state, project, CLIENT_PROJECT_COMPLETED_TRUST_DELTA)
   cancelPendingAssignmentsForProject(state, project)
   releaseProjectAssignments(state, project)
   const recordId = addFinanceRecord(state, {
@@ -250,7 +403,7 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
           const previousProgress = project.phaseProgress[track]
           project.phaseProgress[track] = Math.min(
             100,
-            project.phaseProgress[track] + calculateEmployeeOutput(draft, employee, role),
+            project.phaseProgress[track] + calculateEmployeeOutput(draft, employee, role) * clientProgressMultiplier(project),
           )
           if (previousProgress < 100 && project.phaseProgress[track] >= 100) {
             notifyCompletedTrack(draft, project, track)
@@ -280,6 +433,7 @@ export function settleProjectsEndOfDay(state: GameState, endedDay: number): Game
     if (endedDay > project.deadlineDay) {
       project.status = 'overdue'
       project.overdueDays += 1
+      updateClientTrust(draft, project, CLIENT_PROJECT_OVERDUE_TRUST_DELTA)
       const recordId = addFinanceRecord(draft, {
         type: 'project_penalty',
         amount: -project.dailyPenalty,
