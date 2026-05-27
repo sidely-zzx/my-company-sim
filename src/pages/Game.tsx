@@ -16,9 +16,9 @@ import { ProjectPanel } from '../components/game/ProjectPanel'
 import { RecruitingPanel } from '../components/game/RecruitingPanel'
 import { RunningProjectList } from '../components/game/RunningProjectList'
 import { StatusBar } from '../components/game/StatusBar'
+import { EventLogItem } from '../components/game/EventLogItem'
 import {
   average,
-  eventIcon,
   formatTime,
   percent,
   signedMoney,
@@ -30,7 +30,6 @@ import {
   button,
   cn,
   emptyState,
-  eventTokenToneClass,
   srOnly,
   surface,
 } from '../styles/tw'
@@ -217,14 +216,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
             ) : (
               <ol className="m-0 grid list-none gap-2.5 p-0">
                 {recentEvents.map((event) => (
-                  <li key={event.id} className="grid grid-cols-[28px_minmax(0,1fr)] gap-2.5 border-b border-[#303834] py-[9px]">
-                    <span className={cn('grid h-6 w-6 place-items-center rounded-md text-xs font-black text-[#111514]', eventTokenToneClass[event.severity])}>{eventIcon(event.type)}</span>
-                    <div>
-                      <time className="text-xs text-[#9aa29a]">{formatTime(event.minute)}</time>
-                      <strong className="mt-0.5 block text-[13px] text-[#eadfc7]">{event.title}</strong>
-                      <p className="mt-[3px] text-xs text-[#aeb5ac]">{event.message}</p>
-                    </div>
-                  </li>
+                  <EventLogItem key={event.id} event={event} projectContracts={projectContracts} compact />
                 ))}
               </ol>
             )}

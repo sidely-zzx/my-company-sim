@@ -21,6 +21,62 @@ describe('projectSystem', () => {
     expect(result.projectContracts[0]?.phaseProgress.product).toBe(0.8)
   })
 
+  it('adds one event when a product track first reaches 100%', () => {
+    const state = createTestState()
+    state.employees = [createTestEmployee({ id: 'employee-1', realSkillAbilities: { product: 100 } })]
+    state.projectContracts = [
+      createTestProject({
+        phaseProgress: {
+          product: 99,
+          design: 0,
+          frontend: 0,
+          backend: 0,
+          testing: 0,
+        },
+        assignedEmployees: { product: ['employee-1'] },
+      }),
+    ]
+
+    const completed = advanceProjectProgress(state, 1)
+    const afterRepeatTick = advanceProjectProgress(completed, 1)
+
+    expect(completed.events.filter((event) => event.title === '产品阶段已完成')).toHaveLength(1)
+    expect(afterRepeatTick.events.filter((event) => event.title === '产品阶段已完成')).toHaveLength(1)
+    expect(afterRepeatTick.projectContracts[0]?.notifiedCompletedTracks).toContain('product')
+  })
+
+  it('adds separate events for frontend and backend development tracks', () => {
+    const state = createTestState()
+    state.employees = [
+      createTestEmployee({ id: 'frontend-employee', realSkillAbilities: { frontend: 100 } }),
+      createTestEmployee({ id: 'backend-employee', realSkillAbilities: { backend: 100 } }),
+    ]
+    state.projectContracts = [
+      createTestProject({
+        currentPhase: 'development',
+        phaseProgress: {
+          product: 100,
+          design: 100,
+          frontend: 99,
+          backend: 99,
+          testing: 0,
+        },
+        assignedEmployees: {
+          frontend: ['frontend-employee'],
+          backend: ['backend-employee'],
+        },
+      }),
+    ]
+
+    const result = advanceProjectProgress(state, 1)
+
+    expect(result.events.some((event) => event.title === '前端开发已完成')).toBe(true)
+    expect(result.events.some((event) => event.title === '后端开发已完成')).toBe(true)
+    expect(result.projectContracts[0]?.notifiedCompletedTracks).toEqual(
+      expect.arrayContaining(['frontend', 'backend']),
+    )
+  })
+
   it('moves unfinished projects into overdue instead of failing them', () => {
     const state = createTestState()
     state.projectContracts = [createTestProject({ deadlineDay: 1, dailyPenalty: 1000 })]

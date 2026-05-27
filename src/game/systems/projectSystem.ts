@@ -15,6 +15,13 @@ import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
 
 const breachableProjectStatuses = ['accepted', 'active', 'overdue'] as const
+const completedTrackEventTitles: Record<ProjectWorkTrack, string> = {
+  product: '产品阶段已完成',
+  design: '设计阶段已完成',
+  frontend: '前端开发已完成',
+  backend: '后端开发已完成',
+  testing: '测试阶段已完成',
+}
 
 function createProjectContract(state: GameState): ProjectContract {
   const client = randomChoice(state.rngSeed, CLIENT_COMPANIES)
@@ -39,6 +46,7 @@ function createProjectContract(state: GameState): ProjectContract {
       backend: 0,
       testing: 0,
     },
+    notifiedCompletedTracks: [],
     assignedEmployees: {},
   }
 }
@@ -175,6 +183,22 @@ function isProjectComplete(project: ProjectContract): boolean {
   return PROJECT_WORK_TRACKS.every((track) => project.phaseProgress[track] >= 100)
 }
 
+function notifyCompletedTrack(state: GameState, project: ProjectContract, track: ProjectWorkTrack): void {
+  // 阶段完成提示由轨道进度首次达到 100% 触发；记录已提示轨道，避免高频 tick 重复刷事件日志。
+  project.notifiedCompletedTracks ??= []
+  if (project.notifiedCompletedTracks.includes(track)) {
+    return
+  }
+  project.notifiedCompletedTracks.push(track)
+  addEvent(state, {
+    type: 'project',
+    title: completedTrackEventTitles[track],
+    message: `${project.title} 的${completedTrackEventTitles[track].replace('已完成', '')}推进到 100%。`,
+    severity: 'success',
+    relatedEntityId: project.id,
+  })
+}
+
 function completeProject(state: GameState, project: ProjectContract): void {
   if (project.status === 'completed' || project.status === 'breached') {
     return
@@ -223,10 +247,14 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
           if (!employee || employee.status === 'fired') {
             continue
           }
+          const previousProgress = project.phaseProgress[track]
           project.phaseProgress[track] = Math.min(
             100,
             project.phaseProgress[track] + calculateEmployeeOutput(draft, employee, role),
           )
+          if (previousProgress < 100 && project.phaseProgress[track] >= 100) {
+            notifyCompletedTrack(draft, project, track)
+          }
         }
         releaseCompletedProjectRoleAssignments(draft, project, role)
       }

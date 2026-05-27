@@ -268,6 +268,11 @@ export interface ProjectContract {
   requirements: ProjectRequirement[]
   /** 各工作轨道完成百分比；全部达到 100 才算项目完成。 */
   phaseProgress: Record<ProjectWorkTrack, number>
+  /**
+   * 已经发过“阶段完成”事件的工作轨道；它受 phaseProgress 推进到 100% 影响，
+   * 用于避免同一阶段每分钟重复写事件，并影响事件日志里可点击的项目阶段提示。
+   */
+  notifiedCompletedTracks: ProjectWorkTrack[]
   /** 已分配员工，按岗位保存员工 ID 列表。 */
   assignedEmployees: Partial<Record<SkillRole, string[]>>
   /** 玩家接受项目的游戏日。 */

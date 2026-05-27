@@ -55,6 +55,7 @@ export function createTestProject(overrides: Partial<ProjectContract> = {}): Pro
       backend: 0,
       testing: 0,
     },
+    notifiedCompletedTracks: [],
     assignedEmployees: {},
     ...overrides,
   }
