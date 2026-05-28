@@ -10,7 +10,9 @@ import {
 import { SelectField, type SelectFieldOption } from '../ui/select-field'
 import { PROJECT_BREACH_PENALTY_RATE } from '../../game/constants'
 import {
+  isCurrentTutorialNode,
   isStarterProjectContract,
+  isStarterProjectClientEvent,
   isStarterProjectEmployee,
 } from '../../game/systems/tutorialSystem'
 import type { AssignmentMode, Employee, ProjectContract, SkillRole } from '../../game/types'
@@ -187,7 +189,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const starterProject = isStarterProjectContract({ tutorial }, project.id) && !tutorial.completed
   const selectedRoleNeedsAssignment = Boolean(
     starterProject &&
-      tutorial.currentStep === 'assign_project_team' &&
+      isCurrentTutorialNode(tutorial, 'assign_project_team') &&
       canAssignSelectedRole &&
       (project.assignedEmployees[selectedRole] ?? []).length === 0 &&
       (project.requirements.find((item) => item.role === selectedRole)?.headcount ?? 0) > 0,
@@ -315,14 +317,16 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   <p className={cn(emptyState, 'm-0 p-3 text-xs')}>暂无项目事件。</p>
                 ) : (
                   <div className="grid gap-2.5">
-                    {projectPendingClientEvents.map((event) => (
+                    {projectPendingClientEvents.map((event) => {
+                      const tutorialEvent = isStarterProjectClientEvent(tutorial, event.id)
+                      return (
                       <div
                         key={event.id}
-                        data-tutorial-anchor={event.id === tutorial.projectClientEventId ? 'starter-event-card' : undefined}
+                        data-tutorial-anchor={tutorialEvent ? 'starter-event-card' : undefined}
                         className={cn(
                           'rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-3 py-3',
                           eventBorderToneClass[event.severity],
-                          event.id === tutorial.projectClientEventId && 'shadow-[0_0_0_2px_rgba(181,157,101,0.22)]',
+                          tutorialEvent && 'shadow-[0_0_0_2px_rgba(181,157,101,0.22)]',
                         )}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -331,7 +335,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                             <h3 className="m-0 mt-1 text-sm text-[#efe2c8]">{event.title}</h3>
                           </div>
                           <span className="rounded border border-[#4b514d] bg-[#202625] px-2 py-1 text-xs font-extrabold text-[#aeb5ac]">
-                            {event.id === tutorial.projectClientEventId ? '教学事件' : '甲方事件'}
+                            {tutorialEvent ? '教学事件' : '甲方事件'}
                           </span>
                         </div>
                         <p className="mb-3 mt-2 text-xs leading-5 text-[#c9c1ad]">{event.description}</p>
@@ -340,11 +344,11 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                             <button
                               key={option.id}
                               type="button"
-                              data-tutorial-anchor={event.id === tutorial.projectClientEventId && option.id === 'compress_deadline' ? 'starter-event-recommended-option' : undefined}
+                              data-tutorial-anchor={tutorialEvent && option.id === 'compress_deadline' ? 'starter-event-recommended-option' : undefined}
                               className={cn(
                                 button,
                                 'min-h-11 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]',
-                                event.id === tutorial.projectClientEventId &&
+                                tutorialEvent &&
                                   option.id === 'compress_deadline' &&
                                   cn('animate-pulse', tutorialTarget),
                               )}
@@ -361,7 +365,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                           ))}
                         </div>
                       </div>
-                    ))}
+                    )})}
 
                     {recentProjectEvents.length > 0 && (
                       <ol className="m-0 grid list-none gap-2 p-0">
@@ -466,7 +470,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   const progress = Math.round(project.phaseProgress[track])
                   const tutorialMissingRole =
                     starterProject &&
-                    tutorial.currentStep === 'assign_project_team' &&
+                    isCurrentTutorialNode(tutorial, 'assign_project_team') &&
                     assignedCount === 0 &&
                     pendingCount === 0 &&
                     (requirement?.headcount ?? 0) > 0

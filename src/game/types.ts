@@ -91,8 +91,8 @@ export type ArbitrationReason =
   | 'low_satisfaction'
 /** 仲裁状态；pending 表示还没出结果。 */
 export type ArbitrationStatus = 'pending' | 'won_by_employee' | 'rejected'
-/** 新手教学步骤；它驱动左侧待办和推荐标记，但不会锁定玩家操作。 */
-export type TutorialStep =
+/** 新手教学节点 ID；节点按 nextId 串成单向链表，驱动左侧待办、推荐标记和遮罩指引。 */
+export type TutorialNodeId =
   | 'read_welcome_mail'
   | 'review_labor_contract'
   | 'send_offer'
@@ -108,6 +108,66 @@ export type TutorialStep =
   | 'resolve_deadline_cut_event'
   | 'finish_starter_project'
   | 'completed'
+
+/** 新手教学节点的指向目标；它影响底部 Dock 高亮、遮罩定位和玩家当前应关注的系统入口。 */
+export type TutorialNodeTarget = 'mail' | 'labor' | 'recruiting' | 'project' | 'event' | 'employee' | 'speed' | 'done'
+
+/** 教学 DOM 锚点 ID；组件只暴露锚点，是否使用由教学系统统一判断。 */
+export type TutorialAnchorId =
+  | 'dock-employee'
+  | 'dock-mail'
+  | 'dock-labor'
+  | 'dock-recruiting'
+  | 'dock-project'
+  | 'dock-event'
+  | 'speed-normal'
+  | 'speed-fast'
+  | 'dialog-close-button'
+  | 'welcome-mail-row'
+  | 'welcome-mail-action'
+  | 'project-mail-row'
+  | 'project-mail-action'
+  | 'starter-labor-row'
+  | 'starter-labor-sign-button'
+  | 'starter-labor-detail-button'
+  | 'starter-labor-employee'
+  | 'starter-employee-hotspot'
+  | 'starter-employee-row'
+  | 'starter-employee-discipline-button'
+  | 'starter-employee-discipline-verbal-button'
+  | 'starter-resume-offer-button'
+  | 'starter-resume-confirm-offer-button'
+  | 'starter-project-row'
+  | 'starter-project-sign-button'
+  | 'starter-project-detail-button'
+  | 'starter-project-role-missing'
+  | 'starter-project-employee'
+  | 'starter-project-resume-offer-button'
+  | 'starter-project-resume-confirm-offer-button'
+  | 'starter-event-card'
+  | 'starter-event-recommended-option'
+
+export interface TutorialCoachContent {
+  title: string
+  description: string
+  actionText: string
+  reasonText: string
+  anchorIds: TutorialAnchorId[]
+  target: TutorialNodeTarget
+}
+
+export interface TutorialGuideNode {
+  /** 节点唯一 ID；它也是链表推进和 UI 查询的稳定 key。 */
+  id: TutorialNodeId
+  /** 下一个教学节点；为空表示链表已经到终点。 */
+  nextId?: TutorialNodeId
+  /** 该节点是否完成；完成后 syncTutorialProgress 会沿 nextId 推进到下一个未完成节点。 */
+  completed: boolean
+  /** 左侧待办展示文案；动态状态文本由 tutorialSystem 按当前局面计算。 */
+  todoText: string
+  /** 当前节点遮罩引导内容；它影响高亮目标、遮罩锚点和引导说明。 */
+  coach: TutorialCoachContent
+}
 
 export interface GameTime {
   /** 当前游戏日，从第 1 天开始。 */
@@ -281,8 +341,10 @@ export interface TutorialState {
   enabled: boolean
   /** 是否已完成新手教学；它受第一单人力外包和第二天项目外包完成情况影响，完成后左侧待办恢复通用经营目标。 */
   completed: boolean
-  /** 当前教学步骤；它由邮件、合同、招聘、分配和日结结果共同推进。 */
-  currentStep: TutorialStep
+  /** 当前教学节点；它由链表节点完成状态推进，影响当前遮罩、待办和推荐高亮。 */
+  currentNodeId: TutorialNodeId
+  /** 教学节点链表；每个节点独立记录是否完成，避免步骤判断散落在 UI 和业务系统里。 */
+  nodes: Record<TutorialNodeId, TutorialGuideNode>
   /** 引导推荐的人力外包合同 ID；用于 UI 标记推荐第一单和判定教学闭环。 */
   starterLaborContractId?: string
   /** 引导保底候选人简历 ID；用于招聘列表推荐标记和员工来源识别。 */

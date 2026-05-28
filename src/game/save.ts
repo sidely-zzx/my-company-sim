@@ -1,7 +1,24 @@
 import type { GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 6
+export const GAME_SAVE_VERSION = 7
+const TUTORIAL_SAVE_NODE_IDS = [
+  'read_welcome_mail',
+  'review_labor_contract',
+  'send_offer',
+  'assign_employee',
+  'start_first_day_time',
+  'catch_slacking_employee',
+  'settle_first_day',
+  'read_project_mail',
+  'review_project_contract',
+  'hire_project_team',
+  'assign_project_team',
+  'wait_project_deadline_cut_event',
+  'resolve_deadline_cut_event',
+  'finish_starter_project',
+  'completed',
+]
 
 export interface GameSaveFile {
   /** 存档格式标识；用于避免把其他 JSON 文件误当成游戏存档读取。 */
@@ -24,6 +41,26 @@ function hasNumberField(record: Record<string, unknown>, key: string): boolean {
 
 function hasArrayField(record: Record<string, unknown>, key: string): boolean {
   return Array.isArray(record[key])
+}
+
+function hasTutorialNodeShape(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    (value.nextId === undefined || typeof value.nextId === 'string') &&
+    typeof value.completed === 'boolean' &&
+    typeof value.todoText === 'string' &&
+    isRecord(value.coach) &&
+    typeof value.coach.title === 'string' &&
+    typeof value.coach.description === 'string' &&
+    typeof value.coach.actionText === 'string' &&
+    typeof value.coach.reasonText === 'string' &&
+    hasArrayField(value.coach, 'anchorIds') &&
+    typeof value.coach.target === 'string'
+  )
 }
 
 function hasEmployeeShape(value: unknown): boolean {
@@ -90,7 +127,9 @@ function hasGameStateShape(value: unknown): value is GameState {
     hasArrayField(value.market, 'recruitingPosts') &&
     typeof value.tutorial.enabled === 'boolean' &&
     typeof value.tutorial.completed === 'boolean' &&
-    typeof value.tutorial.currentStep === 'string' &&
+    typeof value.tutorial.currentNodeId === 'string' &&
+    isRecord(value.tutorial.nodes) &&
+    TUTORIAL_SAVE_NODE_IDS.every((nodeId) => hasTutorialNodeShape((value.tutorial.nodes as Record<string, unknown>)[nodeId])) &&
     hasArrayField(value.tutorial, 'starterResumeIds') &&
     hasArrayField(value.tutorial, 'starterProjectResumeIds') &&
     hasNumberField(value, 'rngSeed') &&

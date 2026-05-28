@@ -8,7 +8,7 @@ import {
   skillRoles,
 } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
-import { isStarterProjectContract } from '../../game/systems/tutorialSystem'
+import { isCurrentTutorialNode, isStarterProjectContract } from '../../game/systems/tutorialSystem'
 import {
   button,
   cn,
@@ -38,11 +38,11 @@ export function ProjectPanel() {
   const employees = useGameStore((state) => state.employees)
   const tutorial = useGameStore((state) => state.tutorial)
   const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
-  const showProjectGuide = tutorial.enabled && !tutorial.completed && [
+  const showProjectGuide = isCurrentTutorialNode(tutorial,
     'review_project_contract',
     'assign_project_team',
     'finish_starter_project',
-  ].includes(tutorial.currentStep)
+  )
 
   return (
     <section className={`${panel} ${dialogPanel}`}>

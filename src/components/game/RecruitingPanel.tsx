@@ -13,6 +13,8 @@ import { roleLabels, schoolLabels, skillClaimsText } from '../../game/ui'
 import {
   TUTORIAL_OFFER_LIMITS,
   getStarterLaborContract,
+  isCurrentTutorialNode,
+  isStarterLaborResume,
   isStarterProjectResume,
   isStarterResume,
   type TutorialAnchorId,
@@ -211,7 +213,7 @@ export function RecruitingPanel() {
             <button type="button" className={button} onClick={refreshResumes}>刷新简历</button>
           </div>
         </div>
-        {tutorial.enabled && !tutorial.completed && tutorial.currentStep === 'send_offer' ? (
+        {isCurrentTutorialNode(tutorial, 'send_offer') ? (
           <div className="mb-3 rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
             <strong className="block text-[#ffe0a3]">当前指引：给推荐候选人发 Offer</strong>
             <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
@@ -219,7 +221,7 @@ export function RecruitingPanel() {
             </span>
           </div>
         ) : null}
-        {tutorial.enabled && !tutorial.completed && tutorial.currentStep === 'hire_project_team' ? (
+        {isCurrentTutorialNode(tutorial, 'hire_project_team') ? (
           <div className="mb-3 rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
             <strong className="block text-[#ffe0a3]">当前指引：招齐项目小队</strong>
             <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
@@ -244,7 +246,7 @@ export function RecruitingPanel() {
                 const form = getForm(resume)
                 const starterResume = isStarterResume({ tutorial }, resume.id) && !tutorial.completed
                 const starterProjectResume = isStarterProjectResume({ tutorial }, resume.id) && !tutorial.completed
-                const starterLaborResume = tutorial.starterResumeIds.includes(resume.id) && !tutorial.completed
+                const starterLaborResume = isStarterLaborResume(tutorial, resume.id) && !tutorial.completed
                 const offerAnchor = starterProjectResume
                   ? 'starter-project-resume-offer-button'
                   : starterLaborResume

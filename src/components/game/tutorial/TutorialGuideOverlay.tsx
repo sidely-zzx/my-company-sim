@@ -209,11 +209,6 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
   const anchorKey = useMemo(() => coach?.anchorIds.join('|') ?? '', [coach?.anchorIds]);
   const anchorIds = coach?.anchorIds ?? [];
   const [layout, setLayout] = useState<GuideLayout|undefined>();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (anchorIds.length === 0) {
@@ -274,7 +269,7 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
     };
   }, [anchorKey]);
 
-  if (!mounted || !coach || !layout || typeof document === 'undefined') {
+  if (!coach || !layout || typeof document === 'undefined') {
     return null;
   }
 

@@ -3,7 +3,7 @@ import {
   roleLabels,
   urgencyLabels,
 } from '../../game/ui'
-import { isStarterLaborContract } from '../../game/systems/tutorialSystem'
+import { isCurrentTutorialNode, isStarterLaborContract } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import { LaborDetailDialog } from './LaborDetailDialog'
 import {
@@ -37,10 +37,10 @@ export function LaborPanel() {
           <h2 className={panelTitle}>驻场合同</h2>
         </div>
       </div>
-      {tutorial.enabled && !tutorial.completed && ['review_labor_contract', 'assign_employee'].includes(tutorial.currentStep) ? (
+      {isCurrentTutorialNode(tutorial, 'review_labor_contract', 'assign_employee') ? (
         <div className="mb-3 rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
           <strong className="block text-[#ffe0a3]">
-            {tutorial.currentStep === 'review_labor_contract' ? '当前指引：签下推荐第一单' : '当前指引：进入推荐合同详情安排员工'}
+            {isCurrentTutorialNode(tutorial, 'review_labor_contract') ? '当前指引：签下推荐第一单' : '当前指引：进入推荐合同详情安排员工'}
           </strong>
           <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
             选择带有「推荐第一单」标记的合同。签约后在详情页右侧员工列表中安排驻场人员。

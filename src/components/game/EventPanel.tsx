@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { isStarterProjectClientEvent } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import {
   button,
@@ -40,7 +41,7 @@ export function EventPanel() {
           <ol className="m-0 grid list-none gap-2.5 p-0">
             {pendingProjectClientEvents.map((event) => {
               const project = projectContracts.find((item) => item.id === event.projectId)
-              const tutorialEvent = tutorial.enabled && !tutorial.completed && event.id === tutorial.projectClientEventId
+              const tutorialEvent = isStarterProjectClientEvent(tutorial, event.id)
 
               return (
                 <li

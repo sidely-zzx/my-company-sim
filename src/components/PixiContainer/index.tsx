@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { employeeStatusLabels } from '../../game/ui'
+import { getStarterStatusEmployeeId } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import { EmployeeDisciplineDialog } from '../game/EmployeeDisciplineDialog'
 import { EmployeeDetailDialog } from '../game/EmployeeDetailDialog'
@@ -38,9 +39,7 @@ const MyComponent = () => {
   const selectedEmployee = selectedEmployeeId
     ? employees.find((employee) => employee.id === selectedEmployeeId)
     : undefined
-  const tutorialEmployeeId = tutorial.currentStep === 'catch_slacking_employee'
-    ? tutorial.starterStatusEmployeeId
-    : undefined
+  const tutorialEmployeeId = getStarterStatusEmployeeId(tutorial)
   const tutorialEmployeeIndex = tutorialEmployeeId
     ? employeeViews.findIndex((employee) => employee.id === tutorialEmployeeId)
     : -1

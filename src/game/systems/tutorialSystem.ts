@@ -14,12 +14,18 @@ import type {
   ProjectContract,
   Resume,
   SkillRole,
+  TutorialAnchorId,
+  TutorialCoachContent,
+  TutorialGuideNode,
+  TutorialNodeId,
+  TutorialNodeTarget,
   TutorialState,
-  TutorialStep,
 } from '../types'
 import { roleLabels } from '../ui'
 import { addEvent, createId } from './eventSystem'
 import { sendMail } from './mailSystem'
+
+export type { TutorialAnchorId } from '../types'
 
 export interface TutorialTodoItem {
   text: string
@@ -28,48 +34,7 @@ export interface TutorialTodoItem {
   current?: boolean
 }
 
-export type TutorialAnchorId =
-  | 'dock-employee'
-  | 'dock-mail'
-  | 'dock-labor'
-  | 'dock-recruiting'
-  | 'dock-project'
-  | 'dock-event'
-  | 'speed-normal'
-  | 'speed-fast'
-  | 'dialog-close-button'
-  | 'welcome-mail-row'
-  | 'welcome-mail-action'
-  | 'project-mail-row'
-  | 'project-mail-action'
-  | 'starter-labor-row'
-  | 'starter-labor-sign-button'
-  | 'starter-labor-detail-button'
-  | 'starter-labor-employee'
-  | 'starter-employee-hotspot'
-  | 'starter-employee-row'
-  | 'starter-employee-discipline-button'
-  | 'starter-employee-discipline-verbal-button'
-  | 'starter-resume-offer-button'
-  | 'starter-resume-confirm-offer-button'
-  | 'starter-project-row'
-  | 'starter-project-sign-button'
-  | 'starter-project-detail-button'
-  | 'starter-project-role-missing'
-  | 'starter-project-employee'
-  | 'starter-project-resume-offer-button'
-  | 'starter-project-resume-confirm-offer-button'
-  | 'starter-event-card'
-  | 'starter-event-recommended-option'
-
-export interface TutorialCoach {
-  title: string
-  description: string
-  actionText: string
-  reasonText: string
-  anchorIds: TutorialAnchorId[]
-  target: 'mail' | 'labor' | 'recruiting' | 'project' | 'event' | 'employee' | 'speed' | 'done'
-}
+export type TutorialCoach = TutorialCoachContent
 
 export interface TutorialOfferLimits {
   salaryMinPercent: number
@@ -89,7 +54,7 @@ export const TUTORIAL_OFFER_LIMITS: TutorialOfferLimits = {
   socialMinPercent: 80,
   socialMaxPercent: 100,
 }
-const tutorialStepOrder: TutorialStep[] = [
+const tutorialNodeOrder: TutorialNodeId[] = [
   'read_welcome_mail',
   'review_labor_contract',
   'send_offer',
@@ -111,11 +76,49 @@ function guideAnchors(...anchorIds: TutorialAnchorId[]): TutorialAnchorId[] {
   return [...anchorIds, 'dialog-close-button']
 }
 
+interface TutorialNodeDefinition {
+  id: TutorialNodeId
+  nextId?: TutorialNodeId
+  todoText: string
+  coach: TutorialCoach
+  target: TutorialNodeTarget
+  getMeta: (state: TutorialRuntimeState) => string
+  isCompleted: (state: TutorialRuntimeState) => boolean
+}
+
+type TutorialRuntimeState = Pick<GameState, 'employees' | 'financeRecords' | 'laborContracts' | 'mailbox' | 'pendingProjectClientEvents' | 'projectContracts' | 'tutorial'>
+
+function createGuideNode(definition: TutorialNodeDefinition): TutorialGuideNode {
+  return {
+    id: definition.id,
+    nextId: definition.nextId,
+    completed: false,
+    todoText: definition.todoText,
+    coach: definition.coach,
+  }
+}
+
+function createTutorialNodes(): Record<TutorialNodeId, TutorialGuideNode> {
+  return Object.fromEntries(
+    tutorialNodeDefinitions.map((definition) => [definition.id, createGuideNode(definition)]),
+  ) as Record<TutorialNodeId, TutorialGuideNode>
+}
+
+function getTutorialNodeDefinition(nodeId: TutorialNodeId): TutorialNodeDefinition {
+  const definition = tutorialNodeDefinitionsById[nodeId]
+  if (!definition) {
+    throw new Error(`未知教学节点：${nodeId}`)
+  }
+  return definition
+}
+
+/** 默认教学状态创建；节点链表是教学进度的唯一来源，UI 只能通过 helper 读取当前节点。 */
 export function createInitialTutorialState(): TutorialState {
   return {
     enabled: true,
     completed: false,
-    currentStep: 'read_welcome_mail',
+    currentNodeId: 'read_welcome_mail',
+    nodes: createTutorialNodes(),
     starterResumeIds: [],
     starterStatusTriggered: false,
     starterStatusHandled: false,
@@ -236,6 +239,271 @@ function createStarterProjectResumes(state: GameState): Resume[] {
   ]
 }
 
+const tutorialNodeDefinitions: TutorialNodeDefinition[] = [
+  {
+    id: 'read_welcome_mail',
+    nextId: 'review_labor_contract',
+    todoText: '查看创业第一天邮件',
+    getMeta: (state) => (isWelcomeMailRead(state) ? '已读' : '未读'),
+    isCompleted: isWelcomeMailRead,
+    target: 'mail',
+    coach: {
+      title: '读邮件',
+      description: '打开底部「邮件」，阅读创业第一天邮件，确认第一单目标。',
+      actionText: '点击「邮件」，把创业第一天邮件标记已读。',
+      reasonText: '读完后会指向推荐驻场合同，开始第一笔稳定现金流。',
+      anchorIds: guideAnchors('welcome-mail-action', 'welcome-mail-row', 'dock-mail'),
+      target: 'mail',
+    },
+  },
+  {
+    id: 'review_labor_contract',
+    nextId: 'send_offer',
+    todoText: '签下推荐驻场合同',
+    getMeta: (state) => {
+      const starterContract = getStarterLaborContract(state)
+      return starterContract ? `${roleLabels[starterContract.requiredRole]} · ${starterContract.dailyBudget}/天` : '未生成'
+    },
+    isCompleted: (state) => Boolean(getStarterLaborContract(state)?.status !== 'available'),
+    target: 'labor',
+    coach: {
+      title: '签推荐合同',
+      description: '打开「合同」，选择带有推荐标记的星河科技驻场前端。',
+      actionText: '签下带「推荐第一单」标记的驻场合同。',
+      reasonText: '签约后就能招聘并安排员工，跑通第一天日结。',
+      anchorIds: guideAnchors('starter-labor-sign-button', 'starter-labor-row', 'dock-labor'),
+      target: 'labor',
+    },
+  },
+  {
+    id: 'send_offer',
+    nextId: 'assign_employee',
+    todoText: '给匹配候选人发 Offer',
+    getMeta: (state) => (hasActiveEmployee(state) ? '已入职' : '待招聘'),
+    isCompleted: hasActiveEmployee,
+    target: 'recruiting',
+    coach: {
+      title: '发 Offer',
+      description: '打开「招聘」，给推荐候选人发 Offer。教学期只能小幅调整工资和社保，推荐候选人会接受。',
+      actionText: '给推荐候选人发送 Offer。',
+      reasonText: '教学期 Offer 会 100% 成功，入职后可安排到推荐合同。',
+      anchorIds: guideAnchors('starter-resume-confirm-offer-button', 'starter-resume-offer-button', 'dock-recruiting'),
+      target: 'recruiting',
+    },
+  },
+  {
+    id: 'assign_employee',
+    nextId: 'start_first_day_time',
+    todoText: '将员工安排到推荐合同',
+    getMeta: (state) => (getStarterLaborContract(state)?.assignedEmployeeId ? '已驻场' : '待分配'),
+    isCompleted: (state) => Boolean(getStarterLaborContract(state)?.assignedEmployeeId),
+    target: 'labor',
+    coach: {
+      title: '安排员工',
+      description: '回到「合同」详情，在员工列表里选择教学推荐员工并立即投入。',
+      actionText: '进入推荐合同详情，点击教学推荐员工。',
+      reasonText: '员工驻场后，先加速观察员工状态，再推进到下班看日结。',
+      anchorIds: guideAnchors('starter-labor-employee', 'starter-labor-detail-button', 'starter-labor-row', 'dock-labor'),
+      target: 'labor',
+    },
+  },
+  {
+    id: 'start_first_day_time',
+    nextId: 'catch_slacking_employee',
+    todoText: '加速观察员工状态',
+    getMeta: (state) => (hasStarterStatusLessonStarted(state) ? '已发现' : '待推进'),
+    isCompleted: hasStarterStatusLessonStarted,
+    target: 'speed',
+    coach: {
+      title: '观察状态',
+      description: '点击顶部速度按钮，让员工先工作一会儿，观察办公室里的员工状态变化。',
+      actionText: '点击顶部速度按钮，推进几分钟观察员工状态。',
+      reasonText: '员工状态会影响实际产出；摸鱼和离岗时产出为 0。',
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
+      target: 'speed',
+    },
+  },
+  {
+    id: 'catch_slacking_employee',
+    nextId: 'settle_first_day',
+    todoText: '处理摸鱼员工',
+    getMeta: (state) => hasStarterStatusLessonHandled(state) ? '已处理' : hasStarterStatusLessonStarted(state) ? '待处理' : '待触发',
+    isCompleted: hasStarterStatusLessonHandled,
+    target: 'employee',
+    coach: {
+      title: '抓摸鱼',
+      description: '点击办公室里的摸鱼员工，或打开「员工」找到高亮员工，处理当前状态。',
+      actionText: '点击摸鱼员工，推荐使用「口头提醒」。',
+      reasonText: '提醒或处罚会让员工回到工作；经常严厉处罚会伤害忠诚、士气和公司声誉。',
+      anchorIds: guideAnchors(
+        'starter-employee-discipline-verbal-button',
+        'starter-employee-discipline-button',
+        'starter-employee-hotspot',
+        'starter-employee-row',
+        'dock-employee',
+      ),
+      target: 'employee',
+    },
+  },
+  {
+    id: 'settle_first_day',
+    nextId: 'read_project_mail',
+    todoText: '推进到下班查看日结',
+    getMeta: (state) => (hasStarterLaborOutcome(state) ? '已反馈' : '待日结'),
+    isCompleted: (state) => Boolean(getStarterProjectContract(state)),
+    target: 'speed',
+    coach: {
+      title: '推进时间',
+      description: '点击顶部速度按钮加速到 18:00，查看第一笔驻场收入和人工成本。',
+      actionText: '点击顶部速度按钮，把时间推进到下班。',
+      reasonText: '日结会展示第一笔驻场收入、工资社保支出和净现金变化。',
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
+      target: 'speed',
+    },
+  },
+  {
+    id: 'read_project_mail',
+    nextId: 'review_project_contract',
+    todoText: '阅读项目教学邮件',
+    getMeta: (state) => (isProjectMailRead(state) ? '已读' : '未读'),
+    isCompleted: isProjectMailRead,
+    target: 'mail',
+    coach: {
+      title: '读项目邮件',
+      description: '打开「邮件」，阅读项目外包教学邮件，确认今天的小项目目标。',
+      actionText: '打开「邮件」，阅读第二天项目外包备忘录。',
+      reasonText: '读完后会指向推荐项目，开始学习项目外包闭环。',
+      anchorIds: guideAnchors('project-mail-action', 'project-mail-row', 'dock-mail'),
+      target: 'mail',
+    },
+  },
+  {
+    id: 'review_project_contract',
+    nextId: 'hire_project_team',
+    todoText: '签下推荐项目',
+    getMeta: (state) => getStarterProjectContract(state)?.status !== 'available' ? '已签约' : '待签约',
+    isCompleted: (state) => Boolean(getStarterProjectContract(state)?.status !== 'available'),
+    target: 'project',
+    coach: {
+      title: '签项目',
+      description: '打开「项目」，选择带有项目教学标记的启明星官网改版。',
+      actionText: '签下「启明星官网改版」推荐项目。',
+      reasonText: '签约后需要招齐 5 个岗位，项目完成后一次性收款。',
+      anchorIds: guideAnchors('starter-project-sign-button', 'starter-project-row', 'dock-project'),
+      target: 'project',
+    },
+  },
+  {
+    id: 'hire_project_team',
+    nextId: 'assign_project_team',
+    todoText: '招齐项目小队',
+    getMeta: (state) => `${state.tutorial.starterProjectResumeIds.filter((resumeId) =>
+      state.employees.some((employee) => employee.sourceResumeId === resumeId && employee.status !== 'fired'),
+    ).length}/5 人`,
+    isCompleted: hasStarterProjectTeamHired,
+    target: 'recruiting',
+    coach: {
+      title: '招项目小队',
+      description: '打开「招聘」，给 5 个项目推荐候选人发 Offer。教学期 Offer 必定成功。',
+      actionText: '给项目推荐候选人发送 Offer，招齐 5 个岗位。',
+      reasonText: '产品、设计、前端、后端、测试齐了之后，才能推进完整项目。',
+      anchorIds: guideAnchors('starter-project-resume-confirm-offer-button', 'starter-project-resume-offer-button', 'dock-recruiting'),
+      target: 'recruiting',
+    },
+  },
+  {
+    id: 'assign_project_team',
+    nextId: 'wait_project_deadline_cut_event',
+    todoText: '分配 5 个项目岗位',
+    getMeta: (state) => (hasStarterProjectTeamAssigned(state) || Boolean(state.tutorial.projectClientEventId) || hasStarterProjectIncome(state) ? '已分配' : '待分配'),
+    isCompleted: hasStarterProjectTeamAssigned,
+    target: 'project',
+    coach: {
+      title: '分配岗位',
+      description: '打开「项目」详情，把产品、设计、前端、后端和测试员工分别投入推荐项目。',
+      actionText: '在推荐项目详情里，为缺少的岗位分配教学推荐员工。',
+      reasonText: '5 个岗位分配齐后，会触发一次受控甲方提前交付事件。',
+      anchorIds: guideAnchors('starter-project-employee', 'starter-project-role-missing', 'starter-project-detail-button', 'starter-project-row', 'dock-project'),
+      target: 'project',
+    },
+  },
+  {
+    id: 'wait_project_deadline_cut_event',
+    nextId: 'resolve_deadline_cut_event',
+    todoText: '处理甲方提前交付事件',
+    getMeta: (state) => {
+      if (isStarterProjectClientEventResolved(state)) {
+        return '已处理'
+      }
+      if (isStarterProjectClientEventPending(state)) {
+        return '待处理'
+      }
+      return isCurrentTutorialNode(state.tutorial, 'wait_project_deadline_cut_event') ? '推进到明早' : '待触发'
+    },
+    isCompleted: (state) => Boolean(state.tutorial.projectClientEventId),
+    target: 'speed',
+    coach: {
+      title: '等待甲方事件',
+      description: '推荐项目岗位已经分配齐。推进到下个工作日上午，教学甲方事件会自动触发。',
+      actionText: '点击顶部速度按钮，把时间推进到下个工作日上午。',
+      reasonText: '下午分配齐项目小队时会延后触发事件，避免项目没有完整工作日可完成。',
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
+      target: 'speed',
+    },
+  },
+  {
+    id: 'resolve_deadline_cut_event',
+    nextId: 'finish_starter_project',
+    todoText: '处理甲方提前交付事件',
+    getMeta: (state) => isStarterProjectClientEventResolved(state) ? '已处理' : isStarterProjectClientEventPending(state) ? '待处理' : '待触发',
+    isCompleted: isStarterProjectClientEventResolved,
+    target: 'event',
+    coach: {
+      title: '处理甲方事件',
+      description: '打开「事件」，处理教学甲方事件。推荐选择「压缩工期」，也可以选择无视甲方要求。',
+      actionText: '处理「甲方要求提前交付」，选择「压缩工期」或「无视甲方要求」。',
+      reasonText: '处理后项目截止日会变成今天，观察项目风险和交付压力。',
+      anchorIds: guideAnchors('starter-event-recommended-option', 'starter-event-card', 'dock-event'),
+      target: 'event',
+    },
+  },
+  {
+    id: 'finish_starter_project',
+    nextId: 'completed',
+    todoText: '推进到项目完成收款',
+    getMeta: (state) => (hasStarterProjectIncome(state) ? '已收款' : '待交付'),
+    isCompleted: hasStarterProjectIncome,
+    target: 'speed',
+    coach: {
+      title: '完成项目',
+      description: '继续推进时间，观察项目阶段完成、验收邮件和项目完成款入账。',
+      actionText: '继续推进时间，等待推荐项目完成验收。',
+      reasonText: '完成后会产生项目外包收入，新手教学结束。',
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
+      target: 'speed',
+    },
+  },
+  {
+    id: 'completed',
+    todoText: '新手教学已完成',
+    getMeta: () => '已完成',
+    isCompleted: () => true,
+    target: 'done',
+    coach: {
+      title: '新手教学已完成',
+      description: '你已经跑通驻场日结、项目交付和甲方事件处理。',
+      actionText: '继续自由经营公司。',
+      reasonText: '后续待办会恢复为通用经营目标。',
+      anchorIds: [],
+      target: 'done',
+    },
+  },
+]
+
+const tutorialNodeDefinitionsById = Object.fromEntries(
+  tutorialNodeDefinitions.map((definition) => [definition.id, definition]),
+) as Record<TutorialNodeId, TutorialNodeDefinition>
+
 export function estimatedEmployeeDailyCost(salaryPerDay: number, socialInsuranceRatio: number): number {
   return salaryPerDay + Math.round(salaryPerDay * socialInsuranceRatio * SOCIAL_INSURANCE_COMPANY_RATE)
 }
@@ -292,11 +560,44 @@ export function isStarterProjectEmployee(state: Pick<GameState, 'tutorial'>, emp
   return Boolean(employee.sourceResumeId && isStarterProjectResume(state, employee.sourceResumeId))
 }
 
+export function getCurrentTutorialNode(tutorial: TutorialState): TutorialGuideNode {
+  return tutorial.nodes[tutorial.currentNodeId]
+}
+
+export function isCurrentTutorialNode(tutorial: TutorialState, ...nodeIds: TutorialNodeId[]): boolean {
+  return tutorial.enabled && !tutorial.completed && nodeIds.includes(tutorial.currentNodeId)
+}
+
+export function getTutorialMailKind(tutorial: TutorialState, mailId: string): 'welcome' | 'project' | undefined {
+  if (!tutorial.enabled || tutorial.completed) {
+    return undefined
+  }
+  if (mailId === tutorial.welcomeMailId) {
+    return 'welcome'
+  }
+  if (mailId === tutorial.projectMailId) {
+    return 'project'
+  }
+  return undefined
+}
+
+export function isStarterProjectClientEvent(tutorial: TutorialState, eventId: string): boolean {
+  return tutorial.enabled && !tutorial.completed && tutorial.projectClientEventId === eventId
+}
+
+export function getStarterStatusEmployeeId(tutorial: TutorialState): string | undefined {
+  return isCurrentTutorialNode(tutorial, 'catch_slacking_employee') ? tutorial.starterStatusEmployeeId : undefined
+}
+
+export function isStarterLaborResume(tutorial: TutorialState, resumeId: string): boolean {
+  return tutorial.enabled && tutorial.starterResumeIds.includes(resumeId)
+}
+
 export function isStarterStatusEmployee(state: Pick<GameState, 'tutorial'>, employee: Pick<Employee, 'id'>): boolean {
   return Boolean(
     state.tutorial.enabled &&
       !state.tutorial.completed &&
-      state.tutorial.currentStep === 'catch_slacking_employee' &&
+      isCurrentTutorialNode(state.tutorial, 'catch_slacking_employee') &&
       state.tutorial.starterStatusEmployeeId === employee.id,
   )
 }
@@ -581,68 +882,6 @@ function triggerStarterEmployeeStatusLessonInPlace(state: GameState): void {
   state.time.paused = true
 }
 
-function computeTutorialStep(state: GameState): TutorialStep {
-  if (!state.tutorial.enabled || state.tutorial.completed) {
-    return state.tutorial.currentStep
-  }
-
-  const starterContract = getStarterLaborContract(state)
-  if (!starterContract) {
-    return state.tutorial.currentStep
-  }
-
-  if (!isWelcomeMailRead(state)) {
-    return 'read_welcome_mail'
-  }
-  if (starterContract.status === 'available') {
-    return 'review_labor_contract'
-  }
-  if (!hasActiveEmployee(state)) {
-    return 'send_offer'
-  }
-  if (!starterContract.assignedEmployeeId) {
-    return 'assign_employee'
-  }
-  if (!hasStarterStatusLessonStarted(state)) {
-    return 'start_first_day_time'
-  }
-  if (!hasStarterStatusLessonHandled(state)) {
-    return 'catch_slacking_employee'
-  }
-  if (!hasStarterLaborOutcome(state)) {
-    return 'settle_first_day'
-  }
-
-  const starterProject = getStarterProjectContract(state)
-  if (!starterProject) {
-    return 'settle_first_day'
-  }
-  if (!isProjectMailRead(state)) {
-    return 'read_project_mail'
-  }
-  if (starterProject.status === 'available') {
-    return 'review_project_contract'
-  }
-  if (!hasStarterProjectTeamHired(state)) {
-    return 'hire_project_team'
-  }
-  const starterProjectTeamAssigned = hasStarterProjectTeamAssigned(state)
-  if (!starterProjectTeamAssigned && !state.tutorial.projectClientEventId) {
-    return 'assign_project_team'
-  }
-  if (isStarterProjectClientEventPending(state)) {
-    return 'resolve_deadline_cut_event'
-  }
-  if (!isStarterProjectClientEventResolved(state)) {
-    // 项目小队已分配但超过上午触发窗口时，教学事件会等到下个工作日上午生成；此时不再继续提示玩家分配岗位。
-    return starterProjectTeamAssigned ? 'wait_project_deadline_cut_event' : 'assign_project_team'
-  }
-  if (!hasStarterProjectIncome(state)) {
-    return 'finish_starter_project'
-  }
-  return 'completed'
-}
-
 function addTutorialEventOnce(
   state: GameState,
   title: string,
@@ -682,19 +921,19 @@ function starterSettlementMessage(state: GameState): string {
   return '推荐驻场合同已经完成第一次日结反馈。'
 }
 
-function recordTutorialStepEvents(
+function recordTutorialNodeEvents(
   state: GameState,
-  previousStep: TutorialStep,
-  nextStep: TutorialStep,
+  previousStep: TutorialNodeId,
+  nextStep: TutorialNodeId,
 ): void {
-  const previousIndex = tutorialStepOrder.indexOf(previousStep)
-  const nextIndex = tutorialStepOrder.indexOf(nextStep)
+  const previousIndex = tutorialNodeOrder.indexOf(previousStep)
+  const nextIndex = tutorialNodeOrder.indexOf(nextStep)
   if (previousIndex < 0 || nextIndex <= previousIndex) {
     return
   }
 
   const starterLaborContractId = state.tutorial.starterLaborContractId
-  for (const completedStep of tutorialStepOrder.slice(previousIndex, nextIndex)) {
+  for (const completedStep of tutorialNodeOrder.slice(previousIndex, nextIndex)) {
     if (completedStep === 'read_welcome_mail') {
       addTutorialEventOnce(state, '已阅读创业邮件', '玩家已查看第一天经营建议。', starterLaborContractId)
     }
@@ -735,19 +974,49 @@ function recordTutorialStepEvents(
 }
 
 function syncTutorialProgressInPlace(state: GameState, recordEvents: boolean): void {
+  if (!state.tutorial.enabled) {
+    return
+  }
+
   applyStarterProjectMarketInPlace(state)
   createStarterDeadlineCutEventInPlace(state)
   normalizeResolvedStarterProjectEvent(state)
   triggerStarterEmployeeStatusLessonInPlace(state)
-  const previousStep = state.tutorial.currentStep
-  const nextStep = computeTutorialStep(state)
 
-  if (recordEvents) {
-    recordTutorialStepEvents(state, previousStep, nextStep)
+  const previousStep = state.tutorial.currentNodeId
+  let currentNodeId = state.tutorial.currentNodeId
+
+  // 节点推进统一在这里完成：先刷新当前节点完成状态，再沿 nextId 跳过所有已满足条件的节点。
+  // 这样 UI 不需要知道“项目事件已生成时要跳过等待节点”等流程细节。
+  while (true) {
+    const definition = getTutorialNodeDefinition(currentNodeId)
+    const node = state.tutorial.nodes[currentNodeId] ?? createGuideNode(definition)
+    const completed = definition.isCompleted(state)
+    state.tutorial.nodes[currentNodeId] = {
+      ...node,
+      completed,
+    }
+
+    if (!completed || !definition.nextId) {
+      break
+    }
+
+    currentNodeId = definition.nextId
   }
 
-  state.tutorial.currentStep = nextStep
-  state.tutorial.completed = nextStep === 'completed'
+  if (currentNodeId === 'completed') {
+    state.tutorial.nodes.completed = {
+      ...state.tutorial.nodes.completed,
+      completed: true,
+    }
+  }
+
+  if (recordEvents) {
+    recordTutorialNodeEvents(state, previousStep, currentNodeId)
+  }
+
+  state.tutorial.currentNodeId = currentNodeId
+  state.tutorial.completed = currentNodeId === 'completed'
 }
 
 export function syncTutorialProgress(state: GameState, recordEvents = true): GameState {
@@ -807,277 +1076,27 @@ export function applyTutorialStarterMarket(state: GameState): GameState {
 }
 
 export function getTutorialTodos(
-  state: Pick<GameState, 'employees' | 'financeRecords' | 'laborContracts' | 'mailbox' | 'pendingProjectClientEvents' | 'projectContracts' | 'tutorial'>,
+  state: TutorialRuntimeState,
 ): TutorialTodoItem[] {
-  const starterContract = getStarterLaborContract(state)
   const starterProject = getStarterProjectContract(state)
-  const welcomeRead = isWelcomeMailRead(state)
-  const contractSigned = Boolean(starterContract && starterContract.status !== 'available')
-  const hasEmployee = hasActiveEmployee(state)
-  const assignedEmployee = Boolean(starterContract?.assignedEmployeeId)
-  const statusLessonStarted = hasStarterStatusLessonStarted(state)
-  const statusLessonHandled = hasStarterStatusLessonHandled(state)
-  const settled = hasStarterLaborOutcome(state)
-  const projectMailRead = isProjectMailRead(state)
-  const projectSigned = Boolean(starterProject && starterProject.status !== 'available')
-  const projectTeamHired = hasStarterProjectTeamHired(state)
-  const currentStep = state.tutorial.currentStep
-  const projectEventPending = isStarterProjectClientEventPending(state)
-  const projectEventWaiting = currentStep === 'wait_project_deadline_cut_event'
-  const projectEventResolved = isStarterProjectClientEventResolved(state)
-  const projectIncome = hasStarterProjectIncome(state)
-  const projectTeamAssigned = hasStarterProjectTeamAssigned(state) || Boolean(state.tutorial.projectClientEventId) || projectIncome
-
-  const laborTodos: TutorialTodoItem[] = [
-    {
-      text: '查看创业第一天邮件',
-      meta: welcomeRead ? '已读' : '未读',
-      done: welcomeRead,
-      current: currentStep === 'read_welcome_mail',
-    },
-    {
-      text: '签下推荐驻场合同',
-      meta: starterContract ? `${roleLabels[starterContract.requiredRole]} · ${starterContract.dailyBudget}/天` : '未生成',
-      done: contractSigned,
-      current: currentStep === 'review_labor_contract',
-    },
-    {
-      text: '给匹配候选人发 Offer',
-      meta: hasEmployee ? '已入职' : '待招聘',
-      done: hasEmployee,
-      current: currentStep === 'send_offer',
-    },
-    {
-      text: '将员工安排到推荐合同',
-      meta: assignedEmployee ? '已驻场' : '待分配',
-      done: assignedEmployee,
-      current: currentStep === 'assign_employee',
-    },
-    {
-      text: '加速观察员工状态',
-      meta: statusLessonStarted ? '已发现' : '待推进',
-      done: statusLessonStarted,
-      current: currentStep === 'start_first_day_time',
-    },
-    {
-      text: '处理摸鱼员工',
-      meta: statusLessonHandled ? '已处理' : statusLessonStarted ? '待处理' : '待触发',
-      done: statusLessonHandled,
-      current: currentStep === 'catch_slacking_employee',
-    },
-    {
-      text: '推进到下班查看日结',
-      meta: settled ? '已反馈' : '待日结',
-      done: settled,
-      current: currentStep === 'settle_first_day',
-    },
-  ]
-
-  if (!starterProject) {
-    return laborTodos
-  }
-
-  return [
-    ...laborTodos,
-    {
-      text: '阅读项目教学邮件',
-      meta: projectMailRead ? '已读' : '未读',
-      done: projectMailRead,
-      current: currentStep === 'read_project_mail',
-    },
-    {
-      text: '签下推荐项目',
-      meta: projectSigned ? '已签约' : '待签约',
-      done: projectSigned,
-      current: currentStep === 'review_project_contract',
-    },
-    {
-      text: '招齐项目小队',
-      meta: `${state.tutorial.starterProjectResumeIds.filter((resumeId) =>
-        state.employees.some((employee) => employee.sourceResumeId === resumeId && employee.status !== 'fired'),
-      ).length}/5 人`,
-      done: projectTeamHired,
-      current: currentStep === 'hire_project_team',
-    },
-    {
-      text: '分配 5 个项目岗位',
-      meta: projectTeamAssigned ? '已分配' : '待分配',
-      done: projectTeamAssigned,
-      current: currentStep === 'assign_project_team',
-    },
-    {
-      text: '处理甲方提前交付事件',
-      meta: projectEventResolved ? '已处理' : projectEventPending ? '待处理' : projectEventWaiting ? '推进到明早' : '待触发',
-      done: projectEventResolved,
-      current: currentStep === 'resolve_deadline_cut_event' || projectEventWaiting,
-    },
-    {
-      text: '推进到项目完成收款',
-      meta: projectIncome ? '已收款' : '待交付',
-      done: projectIncome,
-      current: currentStep === 'finish_starter_project',
-    },
-  ]
+  return tutorialNodeDefinitions
+    .filter((definition) => definition.id !== 'completed')
+    .filter((definition) => starterProject || tutorialNodeOrder.indexOf(definition.id) <= tutorialNodeOrder.indexOf('settle_first_day'))
+    .map((definition) => {
+      const node = state.tutorial.nodes[definition.id]
+      const done = node?.completed || definition.isCompleted(state)
+      return {
+        text: definition.todoText,
+        meta: definition.getMeta(state),
+        done,
+        current: state.tutorial.currentNodeId === definition.id,
+      }
+    })
 }
 
 export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCoach | undefined {
   if (!state.tutorial.enabled || state.tutorial.completed) {
     return undefined
   }
-
-  if (state.tutorial.currentStep === 'read_welcome_mail') {
-    return {
-      title: '读邮件',
-      description: '打开底部「邮件」，阅读创业第一天邮件，确认第一单目标。',
-      actionText: '点击「邮件」，把创业第一天邮件标记已读。',
-      reasonText: '读完后会指向推荐驻场合同，开始第一笔稳定现金流。',
-      anchorIds: guideAnchors('welcome-mail-action', 'welcome-mail-row', 'dock-mail'),
-      target: 'mail',
-    }
-  }
-  if (state.tutorial.currentStep === 'review_labor_contract') {
-    return {
-      title: '签推荐合同',
-      description: '打开「合同」，选择带有推荐标记的星河科技驻场前端。',
-      actionText: '签下带「推荐第一单」标记的驻场合同。',
-      reasonText: '签约后就能招聘并安排员工，跑通第一天日结。',
-      anchorIds: guideAnchors('starter-labor-sign-button', 'starter-labor-row', 'dock-labor'),
-      target: 'labor',
-    }
-  }
-  if (state.tutorial.currentStep === 'send_offer') {
-    return {
-      title: '发 Offer',
-      description: '打开「招聘」，给推荐候选人发 Offer。教学期只能小幅调整工资和社保，推荐候选人会接受。',
-      actionText: '给推荐候选人发送 Offer。',
-      reasonText: '教学期 Offer 会 100% 成功，入职后可安排到推荐合同。',
-      anchorIds: guideAnchors('starter-resume-confirm-offer-button', 'starter-resume-offer-button', 'dock-recruiting'),
-      target: 'recruiting',
-    }
-  }
-  if (state.tutorial.currentStep === 'assign_employee') {
-    return {
-      title: '安排员工',
-      description: '回到「合同」详情，在员工列表里选择教学推荐员工并立即投入。',
-      actionText: '进入推荐合同详情，点击教学推荐员工。',
-      reasonText: '员工驻场后，先加速观察员工状态，再推进到下班看日结。',
-      anchorIds: guideAnchors('starter-labor-employee', 'starter-labor-detail-button', 'starter-labor-row', 'dock-labor'),
-      target: 'labor',
-    }
-  }
-  if (state.tutorial.currentStep === 'start_first_day_time') {
-    return {
-      title: '观察状态',
-      description: '点击顶部速度按钮，让员工先工作一会儿，观察办公室里的员工状态变化。',
-      actionText: '点击顶部速度按钮，推进几分钟观察员工状态。',
-      reasonText: '员工状态会影响实际产出；摸鱼和离岗时产出为 0。',
-      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
-      target: 'speed',
-    }
-  }
-  if (state.tutorial.currentStep === 'catch_slacking_employee') {
-    return {
-      title: '抓摸鱼',
-      description: '点击办公室里的摸鱼员工，或打开「员工」找到高亮员工，处理当前状态。',
-      actionText: '点击摸鱼员工，推荐使用「口头提醒」。',
-      reasonText: '提醒或处罚会让员工回到工作；经常严厉处罚会伤害忠诚、士气和公司声誉。',
-      anchorIds: guideAnchors(
-        'starter-employee-discipline-verbal-button',
-        'starter-employee-discipline-button',
-        'starter-employee-hotspot',
-        'starter-employee-row',
-        'dock-employee',
-      ),
-      target: 'employee',
-    }
-  }
-  if (state.tutorial.currentStep === 'settle_first_day') {
-    return {
-      title: '推进时间',
-      description: '点击顶部速度按钮加速到 18:00，查看第一笔驻场收入和人工成本。',
-      actionText: '点击顶部速度按钮，把时间推进到下班。',
-      reasonText: '日结会展示第一笔驻场收入、工资社保支出和净现金变化。',
-      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
-      target: 'speed',
-    }
-  }
-  if (state.tutorial.currentStep === 'read_project_mail') {
-    return {
-      title: '读项目邮件',
-      description: '打开「邮件」，阅读项目外包教学邮件，确认今天的小项目目标。',
-      actionText: '打开「邮件」，阅读第二天项目外包备忘录。',
-      reasonText: '读完后会指向推荐项目，开始学习项目外包闭环。',
-      anchorIds: guideAnchors('project-mail-action', 'project-mail-row', 'dock-mail'),
-      target: 'mail',
-    }
-  }
-  if (state.tutorial.currentStep === 'review_project_contract') {
-    return {
-      title: '签项目',
-      description: '打开「项目」，选择带有项目教学标记的启明星官网改版。',
-      actionText: '签下「启明星官网改版」推荐项目。',
-      reasonText: '签约后需要招齐 5 个岗位，项目完成后一次性收款。',
-      anchorIds: guideAnchors('starter-project-sign-button', 'starter-project-row', 'dock-project'),
-      target: 'project',
-    }
-  }
-  if (state.tutorial.currentStep === 'hire_project_team') {
-    return {
-      title: '招项目小队',
-      description: '打开「招聘」，给 5 个项目推荐候选人发 Offer。教学期 Offer 必定成功。',
-      actionText: '给项目推荐候选人发送 Offer，招齐 5 个岗位。',
-      reasonText: '产品、设计、前端、后端、测试齐了之后，才能推进完整项目。',
-      anchorIds: guideAnchors('starter-project-resume-confirm-offer-button', 'starter-project-resume-offer-button', 'dock-recruiting'),
-      target: 'recruiting',
-    }
-  }
-  if (state.tutorial.currentStep === 'assign_project_team') {
-    return {
-      title: '分配岗位',
-      description: '打开「项目」详情，把产品、设计、前端、后端和测试员工分别投入推荐项目。',
-      actionText: '在推荐项目详情里，为缺少的岗位分配教学推荐员工。',
-      reasonText: '5 个岗位分配齐后，会触发一次受控甲方提前交付事件。',
-      anchorIds: guideAnchors('starter-project-employee', 'starter-project-role-missing', 'starter-project-detail-button', 'starter-project-row', 'dock-project'),
-      target: 'project',
-    }
-  }
-  if (state.tutorial.currentStep === 'wait_project_deadline_cut_event') {
-    return {
-      title: '等待甲方事件',
-      description: '推荐项目岗位已经分配齐。推进到下个工作日上午，教学甲方事件会自动触发。',
-      actionText: '点击顶部速度按钮，把时间推进到下个工作日上午。',
-      reasonText: '下午分配齐项目小队时会延后触发事件，避免项目没有完整工作日可完成。',
-      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
-      target: 'speed',
-    }
-  }
-  if (state.tutorial.currentStep === 'resolve_deadline_cut_event') {
-    return {
-      title: '处理甲方事件',
-      description: '打开「事件」，处理教学甲方事件。推荐选择「压缩工期」，也可以选择无视甲方要求。',
-      actionText: '处理「甲方要求提前交付」，选择「压缩工期」或「无视甲方要求」。',
-      reasonText: '处理后项目截止日会变成今天，观察项目风险和交付压力。',
-      anchorIds: guideAnchors('starter-event-recommended-option', 'starter-event-card', 'dock-event'),
-      target: 'event',
-    }
-  }
-  if (state.tutorial.currentStep === 'finish_starter_project') {
-    return {
-      title: '完成项目',
-      description: '继续推进时间，观察项目阶段完成、验收邮件和项目完成款入账。',
-      actionText: '继续推进时间，等待推荐项目完成验收。',
-      reasonText: '完成后会产生项目外包收入，新手教学结束。',
-      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
-      target: 'speed',
-    }
-  }
-
-  return {
-    title: '新手教学已完成',
-    description: '你已经跑通驻场日结、项目交付和甲方事件处理。',
-    actionText: '继续自由经营公司。',
-    reasonText: '后续待办会恢复为通用经营目标。',
-    anchorIds: [],
-    target: 'done',
-  }
+  return getCurrentTutorialNode(state.tutorial).coach
 }

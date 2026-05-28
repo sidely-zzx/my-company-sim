@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { formatTime } from '../../game/ui'
+import { getTutorialMailKind } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import {
   button,
@@ -51,8 +52,9 @@ export function MailPanel() {
             </thead>
             <tbody>
               {recentMail.map((mail) => {
-                const welcomeMail = tutorial.enabled && !tutorial.completed && mail.id === tutorial.welcomeMailId
-                const projectMail = tutorial.enabled && !tutorial.completed && mail.id === tutorial.projectMailId
+                const tutorialMailKind = getTutorialMailKind(tutorial, mail.id)
+                const welcomeMail = tutorialMailKind === 'welcome'
+                const projectMail = tutorialMailKind === 'project'
                 const tutorialMail = welcomeMail || projectMail
                 return (
                 <tr

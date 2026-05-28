@@ -13,6 +13,7 @@ import {
   projectStatusLabels,
   roleLabels,
 } from '../../game/ui'
+import { isCurrentTutorialNode } from '../../game/systems/tutorialSystem'
 import type { Employee, EmployeeDisciplineAction, EmployeeStatus } from '../../game/types'
 import { useGameStore } from '../../store/gameStore'
 import { button, cn, tutorialTarget } from '../../styles/tw'
@@ -92,7 +93,7 @@ export function EmployeeDisciplineDialog({
     : undefined
   const tutorialEmployee = Boolean(
     employee &&
-      tutorial.currentStep === 'catch_slacking_employee' &&
+      isCurrentTutorialNode(tutorial, 'catch_slacking_employee') &&
       tutorial.starterStatusEmployeeId === employee.id,
   )
 
