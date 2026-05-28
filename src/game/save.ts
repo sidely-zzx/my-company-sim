@@ -1,7 +1,7 @@
 import type { GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 8
+export const GAME_SAVE_VERSION = 9
 const TUTORIAL_SAVE_NODE_IDS = [
   'read_welcome_mail',
   'review_labor_contract',
@@ -160,6 +160,9 @@ function hasGameStateShape(value: unknown): value is GameState {
     hasArrayField(value, 'pendingProjectClientEvents') &&
     hasArrayField(value, 'pendingLaborClientNotices') &&
     (value.pendingLaborClientNotices as unknown[]).every(hasLaborClientNoticeShape) &&
+    (value.activeDailyBriefingDay === undefined || hasNumberField(value, 'activeDailyBriefingDay')) &&
+    hasArrayField(value, 'dailyBriefingReadDays') &&
+    (value.dailyBriefingReadDays as unknown[]).every((day) => typeof day === 'number' && Number.isFinite(day)) &&
     hasArrayField(value, 'events') &&
     hasArrayField(value, 'financeRecords') &&
     hasArrayField(value, 'financeReports') &&

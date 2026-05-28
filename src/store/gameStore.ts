@@ -8,6 +8,7 @@ import {
   resolveLaborClientNotice,
 } from '../game/systems/contractSystem'
 import { applyEmployeeDiscipline, fireEmployee, renameEmployee, updateEmployeeCompensation } from '../game/systems/employeeSystem'
+import { dismissDailyBriefing, openDailyBriefing } from '../game/systems/dailyBriefingSystem'
 import { getFinanceReport, getYesterdayFinanceReport } from '../game/systems/financeReportSystem'
 import { markAllMailRead, markMailRead } from '../game/systems/mailSystem'
 import { resolveProjectClientEvent } from '../game/systems/projectClientEventSystem'
@@ -50,6 +51,10 @@ export interface GameStore extends GameState {
   resolveProjectClientEvent: (eventId: string, optionId: string) => void
   /** 处理人力外包产出不达标通知；可仅关闭，也可直接换人后恢复时间。 */
   resolveLaborClientNotice: (noticeId: string, replacementEmployeeId?: string, mode?: AssignmentMode) => void
+  /** 打开指定经营日报；不传日期时默认打开昨日报告。 */
+  openDailyBriefing: (day?: number) => void
+  /** 关闭当前经营日报；若强制处理项已清空，则恢复时间。 */
+  dismissDailyBriefing: () => void
   /** 修改员工花名，用于玩家自定义员工显示名。 */
   renameEmployee: (employeeId: string, nickname: string) => void
   /** 调整员工日薪和社保公积金比例；会立即影响成本、满意度和后续劳动风险。 */
@@ -86,6 +91,8 @@ function toGameState(state: GameStore): GameState {
     clientRelations: state.clientRelations,
     pendingProjectClientEvents: state.pendingProjectClientEvents,
     pendingLaborClientNotices: state.pendingLaborClientNotices,
+    activeDailyBriefingDay: state.activeDailyBriefingDay,
+    dailyBriefingReadDays: state.dailyBriefingReadDays,
     events: state.events,
     financeRecords: state.financeRecords,
     financeReports: state.financeReports,
@@ -124,6 +131,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => syncTutorialProgress(resolveProjectClientEvent(toGameState(state), eventId, optionId))),
   resolveLaborClientNotice: (noticeId, replacementEmployeeId, mode) =>
     set((state) => syncTutorialProgress(resolveLaborClientNotice(toGameState(state), noticeId, replacementEmployeeId, mode))),
+  openDailyBriefing: (day) => set((state) => openDailyBriefing(toGameState(state), day)),
+  dismissDailyBriefing: () => set((state) => syncTutorialProgress(dismissDailyBriefing(toGameState(state)))),
   renameEmployee: (employeeId, nickname) =>
     set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   updateEmployeeCompensation: (employeeId, salaryPerDay, socialInsuranceRatio) =>

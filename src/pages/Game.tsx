@@ -6,14 +6,13 @@ import {
   DialogTrigger,
 } from '../components/ui/dialog'
 import { DashboardSettingsPanel } from '../components/setting'
+import { DailyOperationsBriefingDialog } from '../components/game/DailyOperationsBriefingDialog'
 import { DockDialog } from '../components/game/DockDialog'
 import { EmployeePanel } from '../components/game/EmployeePanel'
 import { EventPanel } from '../components/game/EventPanel'
 import { FinanceReportPanel } from '../components/game/FinanceReportPanel'
-import { LaborClientNoticeDialog } from '../components/game/LaborClientNoticeDialog'
 import { LaborPanel } from '../components/game/LaborPanel'
 import { MailOverviewPanel } from '../components/game/MailOverviewPanel'
-import { ProjectClientEventDialog } from '../components/game/ProjectClientEventDialog'
 import { ProjectPanel } from '../components/game/ProjectPanel'
 import { RecruitingPanel } from '../components/game/RecruitingPanel'
 import { RunningProjectList } from '../components/game/RunningProjectList'
@@ -285,8 +284,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
           </section>
         </aside>
       </div>
-      <ProjectClientEventDialog />
-      <LaborClientNoticeDialog />
+      <DailyOperationsBriefingDialog />
 
       <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 z-30 mx-auto grid w-[850px] grid-cols-7 gap-px')} aria-label="模块导航">
         <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} highlighted={tutorialCoach?.target === 'employee'} hint="抓摸鱼" tutorialAnchor="dock-employee" title="员工列表" description="管理员工">

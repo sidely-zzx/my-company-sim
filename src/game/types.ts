@@ -734,6 +734,16 @@ export interface GameState {
   pendingProjectClientEvents: PendingProjectClientEvent[]
   /** 待玩家处理的人力外包甲方通知；主要用于昨日产出不达标后的暂停弹窗。 */
   pendingLaborClientNotices: PendingLaborClientNotice[]
+  /**
+   * 当前打开的经营日报日期。
+   * 有强制处理项时由日结系统自动设置并暂停时间；无强制项时只会在玩家从邮箱打开日报时设置。
+   */
+  activeDailyBriefingDay?: number
+  /**
+   * 已确认或查看过的经营日报日期列表。
+   * 它只影响邮箱和晨报 UI 的已读/重复打开体验，不参与财务、人力或项目结算。
+   */
+  dailyBriefingReadDays: number[]
   /** 最近发生的游戏事件，用于事件流和提示。 */
   events: GameEvent[]
   /** 所有财务流水，是财务报表的唯一数据来源。 */

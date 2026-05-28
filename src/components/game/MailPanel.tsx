@@ -23,6 +23,7 @@ export function MailPanel() {
   const tutorial = useGameStore((state) => state.tutorial)
   const markMailRead = useGameStore((state) => state.markMailRead)
   const markAllMailRead = useGameStore((state) => state.markAllMailRead)
+  const openDailyBriefing = useGameStore((state) => state.openDailyBriefing)
   const recentMail = useMemo(() => mailbox.slice(-12).reverse(), [mailbox])
 
   return (
@@ -73,15 +74,29 @@ export function MailPanel() {
                   <td>{mail.read ? '已读' : '未读'}</td>
                   <td>{mail.body}</td>
                   <td>
-                    <button
-                      type="button"
-                      data-tutorial-anchor={welcomeMail ? 'welcome-mail-action' : projectMail ? 'project-mail-action' : undefined}
-                      className={cn(button, tutorialMail && !mail.read && cn('animate-pulse', tutorialTarget))}
-                      disabled={mail.read}
-                      onClick={() => markMailRead(mail.id)}
-                    >
-                      已读
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      {mail.type === 'daily_finance_report' ? (
+                        <button
+                          type="button"
+                          className={button}
+                          onClick={() => {
+                            openDailyBriefing(mail.day)
+                            markMailRead(mail.id)
+                          }}
+                        >
+                          查看日报
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        data-tutorial-anchor={welcomeMail ? 'welcome-mail-action' : projectMail ? 'project-mail-action' : undefined}
+                        className={cn(button, tutorialMail && !mail.read && cn('animate-pulse', tutorialTarget))}
+                        disabled={mail.read}
+                        onClick={() => markMailRead(mail.id)}
+                      >
+                        已读
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )})}

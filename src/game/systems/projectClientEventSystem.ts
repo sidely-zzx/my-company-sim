@@ -270,7 +270,7 @@ export function resolveProjectClientEvent(state: GameState, eventId: string, opt
 
   applyProjectClientEventEffect(draft, project, option.effects)
   draft.pendingProjectClientEvents = draft.pendingProjectClientEvents.filter((item) => item.id !== eventId)
-  if (draft.pendingProjectClientEvents.length === 0) {
+  if (draft.pendingProjectClientEvents.length === 0 && draft.pendingLaborClientNotices.length === 0 && draft.activeDailyBriefingDay === undefined) {
     // 最后一个待选甲方事件处理完后恢复时间；speed 在触发时被保留，所以会回到玩家原本的播放/快进速度。
     draft.time.paused = false
   }

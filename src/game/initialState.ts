@@ -43,6 +43,8 @@ export function createInitialGameState(seed = DEFAULT_SEED, options: CreateIniti
     })),
     pendingProjectClientEvents: [],
     pendingLaborClientNotices: [],
+    activeDailyBriefingDay: undefined,
+    dailyBriefingReadDays: [],
     events: [],
     financeRecords: [],
     financeReports: [],

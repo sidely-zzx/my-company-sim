@@ -35,6 +35,10 @@ function settleEndOfDay(state: GameState): GameState {
   nextState = processArbitrationResults(nextState, endedDay)
   nextState = generateFinanceReport(nextState, endedDay)
   nextState = processDailyProjectClientEvents(nextState, endedDay)
+  if (nextState.pendingLaborClientNotices.length > 0 || nextState.pendingProjectClientEvents.length > 0) {
+    nextState.activeDailyBriefingDay = endedDay
+    nextState.time.paused = true
+  }
   nextState.time.day += 1
   nextState.time.minuteOfDay = WORK_START_MINUTE
   nextState = resetDailyRecruiting(nextState)

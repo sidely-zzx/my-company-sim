@@ -139,7 +139,11 @@ export function resolveLaborClientNotice(
   }
 
   draft.pendingLaborClientNotices = draft.pendingLaborClientNotices.filter((item) => item.id !== noticeId)
-  if (draft.pendingLaborClientNotices.length === 0 && draft.pendingProjectClientEvents.length === 0) {
+  if (
+    draft.pendingLaborClientNotices.length === 0 &&
+    draft.pendingProjectClientEvents.length === 0 &&
+    draft.activeDailyBriefingDay === undefined
+  ) {
     draft.time.paused = false
   }
   addEvent(draft, {

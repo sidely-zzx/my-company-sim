@@ -15,7 +15,7 @@ import {
   isStarterProjectClientEvent,
   isStarterProjectEmployee,
 } from '../../game/systems/tutorialSystem'
-import type { AssignmentMode, Employee, ProjectContract, SkillRole } from '../../game/types'
+import type { AssignmentMode, Employee, GameEvent, ProjectContract, SkillRole } from '../../game/types'
 import {
   assignmentModeLabels,
   assignmentModes,
@@ -153,6 +153,12 @@ function isCurrentPhaseRole(project: ProjectContract, role: SkillRole): boolean 
   return project.currentPhase === role
 }
 
+function isProjectClientRequirementEvent(event: GameEvent): boolean {
+  // 项目详情里的“项目事件”只展示甲方提出要求后的处理记录。
+  // 签约、成员加入、阶段完成、延期扣款等仍保留在全局事件日志中，但不在项目弹窗里干扰玩家查看甲方事项。
+  return event.title.startsWith('已处理：')
+}
+
 export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogProps) {
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
@@ -196,6 +202,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   )
   const recentProjectEvents = events
     .filter((event) => event.relatedEntityId === project.id)
+    .filter(isProjectClientRequirementEvent)
     .slice(-6)
     .reverse()
 
@@ -289,7 +296,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                 </div>
               </dl>
 
-              {clientProfile && (
+              {/* {clientProfile && (
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <strong className="text-sm text-[#efe2c8]">甲方属性</strong>
@@ -304,7 +311,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                     ))}
                   </dl>
                 </div>
-              )}
+              )} */}
 
               <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

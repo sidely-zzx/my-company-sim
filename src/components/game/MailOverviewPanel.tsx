@@ -16,6 +16,8 @@ export function MailOverviewPanel() {
   const mailbox = useGameStore((state) => state.mailbox)
   const tutorial = useGameStore((state) => state.tutorial)
   const markAllMailRead = useGameStore((state) => state.markAllMailRead)
+  const markMailRead = useGameStore((state) => state.markMailRead)
+  const openDailyBriefing = useGameStore((state) => state.openDailyBriefing)
   const recentMail = useMemo(() => mailbox.slice(-3).reverse(), [mailbox])
   const unreadCount = mailbox.filter((mail) => !mail.read).length
   const shouldHighlightMail = tutorial.enabled && !tutorial.completed && tutorial.currentNodeId?.includes('mail')
@@ -67,7 +69,7 @@ export function MailOverviewPanel() {
             <li
               key={mail.id}
               className={cn(
-                'rounded-md border border-[#303834] bg-[rgba(12,15,15,0.56)] p-2.5',
+                'rounded-md border border-[#303834] bg-[rgba(12,15,15,0.56)] p-2.5 w-[240px]',
                 !mail.read && 'border-[#b59d65] bg-[rgba(181,157,101,0.16)] shadow-[inset_3px_0_0_#b59d65]',
               )}
             >
@@ -80,6 +82,18 @@ export function MailOverviewPanel() {
               </div>
               <strong className="mt-1 block truncate text-sm text-[#efe2c8]">{mail.subject}</strong>
               <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#aeb5ac]">{mail.body}</p>
+              {mail.type === 'daily_finance_report' ? (
+                <button
+                  type="button"
+                  className={cn(button, 'mt-2 min-h-7 px-2 text-xs')}
+                  onClick={() => {
+                    openDailyBriefing(mail.day)
+                    markMailRead(mail.id)
+                  }}
+                >
+                  查看日报
+                </button>
+              ) : null}
               {!mail.read ? <span className="mt-1 block text-xs font-black text-[#ffe0a3]">未读</span> : null}
             </li>
           ))}
