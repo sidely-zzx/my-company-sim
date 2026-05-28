@@ -132,9 +132,9 @@ export function EmployeePanel() {
                 <th>员工</th>
                 <th>状态</th>
                 <th>薪资/社保</th>
-                <th>满意度</th>
+                {/* <th>满意度</th> */}
                 <th>简历技能</th>
-                <th>真实能力</th>
+                {/* <th>真实能力</th> */}
                 <th>当前分配</th>
                 <th>后续安排</th>
                 <th>操作</th>
@@ -154,10 +154,10 @@ export function EmployeePanel() {
                       <small>{employee.name} · {schoolLabels[employee.school]}</small>
                     </td>
                     <td>{employeeStatusLabels[employee.status]}</td>
-                    <td>{money(employee.salaryPerDay)} / {percent(employee.socialInsuranceRatio)}</td>
-                    <td>{employee.satisfaction}</td>
+                    <td>{money(employee.salaryPerDay)} / {money(Math.floor(employee.socialInsuranceRatio * employee.salaryPerDay * 0.38))}</td>
+                    {/* <td>{employee.satisfaction}</td> */}
                     <td>{skillClaimsText(employee.resumeSkills)}</td>
-                    <td>{abilitiesText(employee)}</td>
+                    {/* <td>{abilitiesText(employee)}</td> */}
                     <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
                     <td>{pendingAssignmentText(employee, laborContracts, projectContracts)}</td>
                     <td>

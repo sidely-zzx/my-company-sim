@@ -19,8 +19,8 @@ export function calculateEmployeeEffectiveAbility(employee: Employee, role: Skil
 export function calculateFireCompensation(employee: Employee, compensationRatio: number): number {
   const normalizedRatio = Number.isFinite(compensationRatio) ? Math.max(0, compensationRatio) : 1
   // 赔偿月份由本公司工作天数折算；workDays 只受入职后的日结影响，不再使用候选人过往工作经验。
-  const compensationMonths = Math.max(1, Math.ceil(employee.workDays / 30))
-  return Math.round(employee.salaryPerDay * compensationMonths * normalizedRatio)
+  const compensationWeeks = Math.max(1, Math.ceil(employee.workDays / 7))
+  return Math.round(employee.salaryPerDay * compensationWeeks * normalizedRatio)
 }
 
 export function calculateEmployeeOutput(

@@ -10,6 +10,7 @@ import type {
   ProjectWorkTrack,
   SkillRole,
   WorkHour,
+  ResumeSkillLevel
 } from './types'
 import { money } from '../utils'
 
@@ -23,6 +24,12 @@ export const employeeDisciplineActions: EmployeeDisciplineAction[] = ['ignore', 
 export const assignmentModeLabels: Record<AssignmentMode, string> = {
   immediate: '立即投入',
   after_current: '做完当前工作后投入',
+}
+
+export const levelLabels: Record<ResumeSkillLevel, string> = {
+  senior: '资深',
+  mid: '中级',
+  junior: '初级',
 }
 
 export const roleLabels: Record<SkillRole, string> = {
@@ -161,8 +168,8 @@ export function clampNumber(value: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-export function skillClaimsText(skills: { role: SkillRole; level: string }[]): string {
-  return skills.map((skill) => `${roleLabels[skill.role]} ${skill.level}`).join('、')
+export function skillClaimsText(skills: { role: SkillRole; level: ResumeSkillLevel }[]): string {
+  return skills.map((skill) => `${levelLabels[skill.level]}${roleLabels[skill.role]}`).join('、')
 }
 
 export function abilitiesText(employee: Employee): string {

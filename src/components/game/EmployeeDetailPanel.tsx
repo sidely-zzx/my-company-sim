@@ -7,6 +7,7 @@ import {
   percent,
   progressTone,
   roleLabels,
+  levelLabels,
   schoolLabels,
   skillClaimsText,
   skillRoles,
@@ -40,16 +41,16 @@ interface EmployeeDetailPanelProps {
   backLabel?: string
 }
 
-function DetailStat({ label, value, tone }: { label: string; value: string; tone?: 'positive' | 'negative' }) {
-  return (
-    <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
-      <span className="block text-xs font-extrabold text-[#aaa48f]">{label}</span>
-      <strong className={cn('mt-1 block text-[15px] text-[#efe2c8]', tone === 'positive' && amountPositive, tone === 'negative' && amountNegative)}>
-        {value}
-      </strong>
-    </div>
-  )
-}
+// function DetailStat({ label, value, tone }: { label: string; value: string; tone?: 'positive' | 'negative' }) {
+//   return (
+//     <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+//       <span className="block text-xs font-extrabold text-[#aaa48f]">{label}</span>
+//       <strong className={cn('mt-1 block text-[15px] text-[#efe2c8]', tone === 'positive' && amountPositive, tone === 'negative' && amountNegative)}>
+//         {value}
+//       </strong>
+//     </div>
+//   )
+// }
 
 export function EmployeeDetailPanel({
   employee,
@@ -115,7 +116,7 @@ export function EmployeeDetailPanel({
             )}
           </div>
           <p className="m-0 mt-1 text-[13px] text-[#9aa29a]">
-            {schoolLabels[employee.school]} · 入职 {employee.workDays} 天
+            {employee.resumeSkills.map(item => `${levelLabels[item.level]}${roleLabels[item.role]} `)} · 入职 {employee.workDays} 天
           </p>
         </div>
         <button type="button" className={button} onClick={onBack}>
@@ -123,12 +124,12 @@ export function EmployeeDetailPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
+      {/* <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
         <DetailStat label="状态" value={employeeStatusLabels[employee.status]} />
         <DetailStat label="满意度" value={`${employee.satisfaction}`} tone={employee.satisfaction >= 60 ? 'positive' : 'negative'} />
         <DetailStat label="日薪" value={money(employee.salaryPerDay)} />
         <DetailStat label="社保公积金" value={percent(employee.socialInsuranceRatio)} />
-      </div>
+      </div> */}
 
       {/* <div className="grid grid-cols-[1.2fr_0.8fr] gap-3 max-[900px]:grid-cols-1">
         <section className="grid gap-3 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-4">
