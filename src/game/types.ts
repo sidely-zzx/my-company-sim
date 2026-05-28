@@ -78,6 +78,7 @@ export type MailType =
   | 'contract_signed'
   | 'contract_warning'
   | 'contract_breach'
+  | 'contract_completed'
   | 'project_overdue'
   | 'project_completed'
   | 'daily_finance_report'
@@ -371,25 +372,61 @@ export interface TutorialState {
 export interface LaborContract {
   /** 人力外包合同唯一 ID。 */
   id: string
+  /** 甲方公司 ID；产出不达标会扣这家公司的动态 trust，并影响后续合同刷新概率。 */
+  clientCompanyId?: number
   /** 甲方公司名称，用于合同、邮件和事件展示。 */
   clientName: string
+  /** 签约机会生成时的甲方属性快照；trust 使用当时动态值，作为后续扣信任的兜底基准。 */
+  clientProfile?: ClientCompanyProfile
   /** 合同标题，概括甲方和岗位需求。 */
   title: string
   /** 甲方要求的驻场岗位。 */
   requiredRole: SkillRole
-  /** 甲方要求的最低真实能力值；员工低于该值会降低满意度。 */
+  /** 甲方要求的最低真实能力值；它会乘以工作分钟形成日产出要求，也影响候选人筛选提示。 */
   requiredAbility: number
-  /** 甲方每日预算；正常履约是收入，未按期安排则作为违约金扣除。 */
+  /** 甲方每日预算；只有当天累计产出达标才会结算为收入。 */
   dailyBudget: number
-  /** 合同紧急程度；决定安排员工的期限。 */
+  /** 合同紧急程度；影响预算文案和随机生成口味，不再限制必须哪天安排人。 */
   urgency: LaborUrgency
   /** 玩家接受合同的游戏日。 */
   acceptedDay?: number
-  /** 安排员工截止日；超过后未安排会每日扣违约金。 */
+  /** 合同服务天数；大部分为 5-15 天，少量为 16-30 天，到期会自动释放驻场员工。 */
+  durationDays: number
+  /** 合同到期日；当天完成最后一次产出判断后合同完成并发到期邮件。 */
+  endDay: number
+  /** 旧版安排期限字段已改作兼容展示别名，值与 endDay 保持一致，不再产生未安排违约金。 */
   deadlineDay: number
   /** 当前安排给甲方的员工 ID。 */
   assignedEmployeeId?: string
-  /** 甲方满意度；产出不足会下降，过低会预警或终止。 */
+  /**
+   * 当前驻场员工本轮上岗的游戏日。
+   * 它受玩家安排/换人影响，并决定当天产出要求是否按中途上岗折算。
+   */
+  assignmentStartedDay?: number
+  /**
+   * 当前驻场员工本轮上岗的当天分钟。
+   * 如果当天 17:00 前上岗，日产出要求按 17:00 - 上岗时间折算；17:00 后上岗当天要求为 0。
+   */
+  assignmentStartedMinute?: number
+  /**
+   * 今日已累计产出。
+   * 它每游戏分钟按“员工岗位能力 * 工作分钟 * 当前状态倍率”增加，并影响当天是否结算和是否弹出甲方通知。
+   */
+  todayOutput: number
+  /**
+   * 今日甲方要求产出。
+   * 全天为 requiredAbility * 7 * 60；中途上岗会按 17:00 前剩余时间 * 7/8 折算。
+   */
+  todayRequiredOutput: number
+  /** todayOutput/todayRequiredOutput 对应的游戏日；跨天时会重置每日统计。 */
+  todayOutputDay: number
+  /** 最近一次完成日产出判断的游戏日；用于避免同一天重复结算、重复发弹窗。 */
+  lastOutputCheckDay?: number
+  /** 最近一次日结时的实际产出快照，用于 UI 展示昨日表现和甲方通知。 */
+  lastOutputActual?: number
+  /** 最近一次日结时的要求产出快照，用于 UI 展示昨日差距和甲方通知。 */
+  lastOutputRequired?: number
+  /** 甲方满意度；产出达标会上升，不达标会下降，主要用于风险展示。 */
   satisfaction: number
   /** 甲方发出整改预警的游戏日。 */
   warningDay?: number
@@ -550,6 +587,29 @@ export interface PendingProjectClientEvent {
   options: ProjectClientEventOption[]
 }
 
+export interface PendingLaborClientNotice {
+  /** 待处理通知唯一 ID；用于弹窗关闭或换人后移除。 */
+  id: string
+  /** 关联的人力外包合同 ID；玩家换人时会重新安排到这份合同。 */
+  contractId: string
+  /** 合同标题快照；即使合同之后完成，通知仍能展示来源。 */
+  contractTitle: string
+  /** 甲方名称快照，用于弹窗和事件面板展示。 */
+  clientName: string
+  /** 原驻场员工 ID；用于提示是哪位员工昨日产出不达标。 */
+  employeeId?: string
+  /** 原驻场员工显示名快照；员工离职或被换走后仍能展示通知内容。 */
+  employeeName?: string
+  /** 通知触发的游戏日，通常是检查日的次日 09:00。 */
+  triggeredDay: number
+  /** 被检查的工作日；用于说明是哪一天没有达标。 */
+  checkedDay: number
+  /** 昨日实际产出；来自人力合同日累计产出快照。 */
+  actualOutput: number
+  /** 昨日要求产出；来自合同 requiredAbility 和上岗时间折算。 */
+  requiredOutput: number
+}
+
 export interface GameEvent {
   /** 事件唯一 ID。 */
   id: string
@@ -672,6 +732,8 @@ export interface GameState {
   clientRelations: ClientRelation[]
   /** 待玩家处理的甲方项目随机事件；选择后会立即影响项目、员工和甲方关系。 */
   pendingProjectClientEvents: PendingProjectClientEvent[]
+  /** 待玩家处理的人力外包甲方通知；主要用于昨日产出不达标后的暂停弹窗。 */
+  pendingLaborClientNotices: PendingLaborClientNotice[]
   /** 最近发生的游戏事件，用于事件流和提示。 */
   events: GameEvent[]
   /** 所有财务流水，是财务报表的唯一数据来源。 */

@@ -148,7 +148,7 @@ export function processDailyProjectClientEvents(state: GameState, endedDay: numb
   project.lastClientEventDay = endedDay
   project.clientEventCount = (project.clientEventCount ?? 0) + 1
   draft.pendingProjectClientEvents.push(pendingEvent)
-  draft.time.speed = 0
+  // 甲方事件需要玩家立刻做选择，所以只暂停时间推进；保留 speed 方便处理完后恢复触发前的播放/快进速度。
   draft.time.paused = true
   addEvent(draft, {
     type: 'project',
@@ -270,6 +270,10 @@ export function resolveProjectClientEvent(state: GameState, eventId: string, opt
 
   applyProjectClientEventEffect(draft, project, option.effects)
   draft.pendingProjectClientEvents = draft.pendingProjectClientEvents.filter((item) => item.id !== eventId)
+  if (draft.pendingProjectClientEvents.length === 0) {
+    // 最后一个待选甲方事件处理完后恢复时间；speed 在触发时被保留，所以会回到玩家原本的播放/快进速度。
+    draft.time.paused = false
+  }
   addEvent(draft, {
     type: 'project',
     title: `已处理：${event.title}`,

@@ -21,6 +21,7 @@ import { dynamicContractRefreshCount, randomClientByTrust, updateClientTrust } f
 import { advanceEmployeeBehavior, calculateEmployeeOutput } from './employeeSystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
+import { advanceLaborContractOutputForMinute } from './laborOutputSystem'
 import { sendMail } from './mailSystem'
 import { starterProjectProgressMultiplier } from './tutorialSystem'
 
@@ -318,6 +319,7 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
   for (let minute = 0; minute < minutes; minute += 1) {
     // 员工行为状态按游戏总分钟每 10 分钟刷新一次；项目推进只读取状态倍率，不再在产出函数里即时随机摸鱼。
     advanceEmployeeBehavior(draft, draft.time.totalMinutes + minute + 1)
+    advanceLaborContractOutputForMinute(draft)
     for (const project of draft.projectContracts) {
       if (!['active', 'overdue'].includes(project.status)) {
         continue

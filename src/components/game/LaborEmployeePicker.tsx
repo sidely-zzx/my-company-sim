@@ -172,10 +172,10 @@ export function LaborEmployeePicker({
         <div className="mb-3 grid gap-1 text-sm text-[#d8cfbb]">
           <strong className="text-[#efe2c8]">{contract.title}</strong>
           <span className="text-xs text-[#aeb5ac]">
-            {contract.clientName} · {laborStatusLabels[contract.status]} · {urgencyLabels[contract.urgency]} · 第 {contract.deadlineDay} 天
+            {contract.clientName} · {laborStatusLabels[contract.status]} · {urgencyLabels[contract.urgency]} · {contract.durationDays} 天 · 第 {contract.endDay} 天到期
           </span>
           <span className="text-xs font-extrabold text-[#d8cfbb]">
-            需求 {roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility} · {money(contract.dailyBudget)}/天
+            需求 {roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility} · 今日产出 {Math.round(contract.todayOutput)} / {Math.round(contract.todayRequiredOutput)} · {money(contract.dailyBudget)}/天
           </span>
         </div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -278,7 +278,7 @@ export function LaborEmployeePicker({
 
                 {showLaborPendingHint && (
                   <span className="text-xs font-extrabold text-[#e4b45b]">
-                    驻场合同通常不会自动完成，后续安排要等合同结束、被替换或立即调走后才会执行。
+                    驻场合同会在到期日自动完成；后续安排要等合同到期、被替换或立即调走后才会执行。
                   </span>
                 )}
               </button>

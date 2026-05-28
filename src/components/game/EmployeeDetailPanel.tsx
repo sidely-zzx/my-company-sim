@@ -130,7 +130,7 @@ export function EmployeeDetailPanel({
         <DetailStat label="社保公积金" value={percent(employee.socialInsuranceRatio)} />
       </div>
 
-      <div className="grid grid-cols-[1.2fr_0.8fr] gap-3 max-[900px]:grid-cols-1">
+      {/* <div className="grid grid-cols-[1.2fr_0.8fr] gap-3 max-[900px]:grid-cols-1">
         <section className="grid gap-3 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-4">
           <div>
             <h3 className="m-0 text-[16px] text-[#efe2c8]">能力与安排</h3>
@@ -173,7 +173,7 @@ export function EmployeeDetailPanel({
             <DetailStat label="行为种子" value={`${employee.behaviorSeed}`} />
           </div>
         </section>
-      </div>
+      </div> */}
 
       <EmployeeAssignmentControl
         employee={employee}

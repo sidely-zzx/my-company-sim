@@ -1,7 +1,7 @@
 import type { GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 7
+export const GAME_SAVE_VERSION = 8
 const TUTORIAL_SAVE_NODE_IDS = [
   'read_welcome_mail',
   'review_labor_contract',
@@ -89,6 +89,47 @@ function hasEmployeeShape(value: unknown): boolean {
   )
 }
 
+function hasLaborContractShape(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.clientName === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.requiredRole === 'string' &&
+    hasNumberField(value, 'requiredAbility') &&
+    hasNumberField(value, 'dailyBudget') &&
+    typeof value.urgency === 'string' &&
+    hasNumberField(value, 'durationDays') &&
+    hasNumberField(value, 'endDay') &&
+    hasNumberField(value, 'deadlineDay') &&
+    hasNumberField(value, 'todayOutput') &&
+    hasNumberField(value, 'todayRequiredOutput') &&
+    hasNumberField(value, 'todayOutputDay') &&
+    hasNumberField(value, 'satisfaction') &&
+    typeof value.status === 'string'
+  )
+}
+
+function hasLaborClientNoticeShape(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.contractId === 'string' &&
+    typeof value.contractTitle === 'string' &&
+    typeof value.clientName === 'string' &&
+    hasNumberField(value, 'triggeredDay') &&
+    hasNumberField(value, 'checkedDay') &&
+    hasNumberField(value, 'actualOutput') &&
+    hasNumberField(value, 'requiredOutput')
+  )
+}
+
 function hasGameStateShape(value: unknown): value is GameState {
   if (
     !isRecord(value) ||
@@ -113,9 +154,12 @@ function hasGameStateShape(value: unknown): value is GameState {
     (value.employees as unknown[]).every(hasEmployeeShape) &&
     hasArrayField(value, 'resumes') &&
     hasArrayField(value, 'laborContracts') &&
+    (value.laborContracts as unknown[]).every(hasLaborContractShape) &&
     hasArrayField(value, 'projectContracts') &&
     hasArrayField(value, 'clientRelations') &&
     hasArrayField(value, 'pendingProjectClientEvents') &&
+    hasArrayField(value, 'pendingLaborClientNotices') &&
+    (value.pendingLaborClientNotices as unknown[]).every(hasLaborClientNoticeShape) &&
     hasArrayField(value, 'events') &&
     hasArrayField(value, 'financeRecords') &&
     hasArrayField(value, 'financeReports') &&

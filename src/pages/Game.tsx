@@ -10,8 +10,10 @@ import { DockDialog } from '../components/game/DockDialog'
 import { EmployeePanel } from '../components/game/EmployeePanel'
 import { EventPanel } from '../components/game/EventPanel'
 import { FinanceReportPanel } from '../components/game/FinanceReportPanel'
+import { LaborClientNoticeDialog } from '../components/game/LaborClientNoticeDialog'
 import { LaborPanel } from '../components/game/LaborPanel'
-import { MailPanel } from '../components/game/MailPanel'
+import { MailOverviewPanel } from '../components/game/MailOverviewPanel'
+import { ProjectClientEventDialog } from '../components/game/ProjectClientEventDialog'
 import { ProjectPanel } from '../components/game/ProjectPanel'
 import { RecruitingPanel } from '../components/game/RecruitingPanel'
 import { RunningProjectList } from '../components/game/RunningProjectList'
@@ -56,6 +58,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
   const pendingProjectClientEvents = useGameStore((state) => state.pendingProjectClientEvents)
+  const pendingLaborClientNotices = useGameStore((state) => state.pendingLaborClientNotices)
   const events = useGameStore((state) => state.events)
   const financeRecords = useGameStore((state) => state.financeRecords)
   const mailbox = useGameStore((state) => state.mailbox)
@@ -115,12 +118,12 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const overtime = Math.max(10, Math.min(95, 25 + (settings.offWorkHour - 18) * 14))
   const stability = Math.round(employees.length > 0 ? (activeEmployees.length / employees.length) * 100 : 72)
   const recentEvents = events.slice(-5).reverse()
-  const hasPendingActions = pendingProjectClientEvents.length > 0
-  const alertText = `待处理甲方事件 ${pendingProjectClientEvents.length} 个`
+  const pendingActionCount = pendingProjectClientEvents.length + pendingLaborClientNotices.length
+  const hasPendingActions = pendingActionCount > 0
+  const alertText = `待处理甲方通知 ${pendingActionCount} 个`
   const activeProjectCount = projectContracts.filter((project) =>
     ['accepted', 'active', 'overdue'].includes(project.status),
   ).length
-  const unreadMailCount = mailbox.filter((mail) => !mail.read).length
 
   return (
     <main className="grid h-full w-full grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-2 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px),#151918] bg-[length:24px_24px] p-2">
@@ -249,25 +252,21 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
 
       <div className='fixed right-0 bottom-25 z-20'>
          <aside className="grid w-[260px] min-w-0 content-start gap-2">
+          <MailOverviewPanel />
           {hasPendingActions && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <button type="button" className={cn(
-                  button,
-                  'grid min-h-[58px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]',
-                  tutorialCoach?.target === 'event' && cn('animate-pulse', tutorialTarget),
-                )}>
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[#bb594b] font-black text-[#fff1df]">!</span>
-                  <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{alertText}</strong>
-                  <em className="not-italic text-[#d5c4a1]">查看</em>
-                </button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogTitle className={srOnly}>待处理事项</DialogTitle>
-                <DialogDescription className={srOnly}>查看需要玩家处理的事件</DialogDescription>
-                <EventPanel />
-              </DialogContent>
-            </Dialog>
+            <section
+              className={cn(
+                surface,
+                'grid min-h-[58px] grid-cols-[28px_minmax(0,1fr)] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]',
+                tutorialCoach?.target === 'event' && cn('animate-pulse', tutorialTarget),
+              )}
+            >
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#bb594b] font-black text-[#fff1df]">!</span>
+              <span className="min-w-0">
+                <strong className="block truncate">{alertText}</strong>
+                <em className="mt-1 block not-italic text-[#d5c4a1]">请在弹窗中选择处理方案</em>
+              </span>
+            </section>
           )}
           <section className={cn(surface, 'min-w-0 p-3.5')}>
             <div className="flex items-center justify-between">
@@ -278,7 +277,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
               <p className={emptyState}>暂无事件。</p>
             ) : (
               <ol className="m-0 grid list-none gap-2.5 p-0">
-                {recentEvents.map((event) => (
+                {recentEvents.slice(3).map((event) => (
                   <EventLogItem key={event.id} event={event} projectContracts={projectContracts} compact />
                 ))}
               </ol>
@@ -286,8 +285,10 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
           </section>
         </aside>
       </div>
+      <ProjectClientEventDialog />
+      <LaborClientNoticeDialog />
 
-      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 z-30 mx-auto grid w-[960px] grid-cols-8 gap-px')} aria-label="模块导航">
+      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 z-30 mx-auto grid w-[850px] grid-cols-7 gap-px')} aria-label="模块导航">
         <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} highlighted={tutorialCoach?.target === 'employee'} hint="抓摸鱼" tutorialAnchor="dock-employee" title="员工列表" description="管理员工">
           <EmployeePanel />
         </DockDialog>
@@ -300,10 +301,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         <DockDialog icon="FIN" label="财务" title="昨日财报" description="财务报表">
           <FinanceReportPanel />
         </DockDialog>
-        <DockDialog icon="MAIL" label="邮件" badge={unreadMailCount} highlighted={tutorialCoach?.target === 'mail'} hint="先看这里" tutorialAnchor="dock-mail" title="邮箱通知" description="查看邮件">
-          <MailPanel />
-        </DockDialog>
-        <DockDialog icon="EVT" label="事件" badge={pendingProjectClientEvents.length} highlighted={tutorialCoach?.target === 'event'} hint="处理事件" tutorialAnchor="dock-event" title="事件日志" description="查看事件">
+        <DockDialog icon="EVT" label="事件" badge={pendingActionCount} highlighted={tutorialCoach?.target === 'event'} hint="处理事件" tutorialAnchor="dock-event" title="事件日志" description="查看事件">
           <EventPanel />
         </DockDialog>
         <DockDialog icon="CTR" label="合同" badge={laborContracts.length} highlighted={tutorialCoach?.target === 'labor'} hint="下一步" tutorialAnchor="dock-labor" title="驻场合同" description="人力外包合同">

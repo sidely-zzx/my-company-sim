@@ -1,3 +1,4 @@
+import { LABOR_OUTPUT_MISS_TRUST_DELTA } from '../constants'
 import { cloneState, randomChoice, randomInt } from '../seed'
 import type { AssignmentMode, GameState, LaborContract, SkillRole } from '../types'
 import {
@@ -5,13 +6,21 @@ import {
   cancelPendingAssignmentsForLaborContract,
   releaseLaborContractAssignment,
 } from './assignmentSystem'
-import { dynamicContractRefreshCount, randomClientByTrust } from './clientCompanySystem'
+import { dynamicContractRefreshCount, randomClientByTrust, updateClientTrust } from './clientCompanySystem'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
+import { calculateLaborRequiredOutput, ensureLaborOutputDay, resetLaborDailyOutput } from './laborOutputSystem'
 import { sendMail } from './mailSystem'
-import { calculateEmployeeEffectiveAbility } from './employeeSystem'
 
 const laborRoles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing']
+
+function randomLaborDurationDays(state: GameState): number {
+  const shortRoll = randomInt(state.rngSeed, 1, 100)
+  state.rngSeed = shortRoll.seed
+  const range = shortRoll.value <= 80 ? randomInt(state.rngSeed, 5, 15) : randomInt(state.rngSeed, 16, 30)
+  state.rngSeed = range.seed
+  return range.value
+}
 
 function createLaborContract(state: GameState): LaborContract | undefined {
   const client = randomClientByTrust(state)
@@ -26,16 +35,25 @@ function createLaborContract(state: GameState): LaborContract | undefined {
   const ability = randomInt(state.rngSeed, 45, 85)
   state.rngSeed = ability.seed
   const urgency = urgentRoll.value > 55 ? 'urgent' : 'normal'
+  const durationDays = randomLaborDurationDays(state)
   const dailyBudget = Math.round(260 + ability.value * 4 + (urgency === 'urgent' ? 180 : 0))
+  const endDay = state.time.day + durationDays - 1
   return {
     id: createId(state, 'labor'),
+    clientCompanyId: client.id,
     clientName: client.name,
+    clientProfile: client,
     title: `${client.name}${urgency === 'urgent' ? '急召' : '驻场'}${role.value}`,
     requiredRole: role.value,
     requiredAbility: ability.value,
     dailyBudget,
     urgency,
-    deadlineDay: state.time.day + (urgency === 'urgent' ? 1 : 2),
+    durationDays,
+    endDay,
+    deadlineDay: endDay,
+    todayOutput: 0,
+    todayRequiredOutput: 0,
+    todayOutputDay: state.time.day,
     satisfaction: 100,
     status: 'available',
   }
@@ -65,11 +83,12 @@ export function acceptLaborContract(state: GameState, contractId: string): GameS
   }
   contract.status = 'accepted'
   contract.acceptedDay = draft.time.day
+  resetLaborDailyOutput(contract, draft.time.day)
   sendMail(draft, {
     type: 'contract_signed',
     from: contract.clientName,
     subject: `已签署人力外包：${contract.title}`,
-    body: `请在第 ${contract.deadlineDay} 天下班前安排 ${contract.requiredRole}，甲方日预算 ${contract.dailyBudget}。`,
+    body: `合同服务期 ${contract.durationDays} 天，到第 ${contract.endDay} 天结束。可随时安排驻场人员，只有当天产出达标才会结算日预算 ${contract.dailyBudget}。`,
     relatedEntityId: contract.id,
   })
   addEvent(draft, {
@@ -93,6 +112,48 @@ export function assignEmployeeToLabor(
   return draft
 }
 
+export function resolveLaborClientNotice(
+  state: GameState,
+  noticeId: string,
+  replacementEmployeeId?: string,
+  mode: AssignmentMode = 'immediate',
+): GameState {
+  const draft = cloneState(state)
+  const notice = draft.pendingLaborClientNotices.find((item) => item.id === noticeId)
+  if (!notice) {
+    addEvent(draft, {
+      type: 'contract',
+      title: '人力通知处理失败',
+      message: '没有找到待处理的人力外包甲方通知。',
+      severity: 'warning',
+    })
+    return draft
+  }
+
+  if (replacementEmployeeId) {
+    assignEmployeeToTarget(draft, replacementEmployeeId, { type: 'labor', id: notice.contractId }, mode)
+    const contract = draft.laborContracts.find((item) => item.id === notice.contractId)
+    if (contract?.assignedEmployeeId !== replacementEmployeeId && mode === 'immediate') {
+      return draft
+    }
+  }
+
+  draft.pendingLaborClientNotices = draft.pendingLaborClientNotices.filter((item) => item.id !== noticeId)
+  if (draft.pendingLaborClientNotices.length === 0 && draft.pendingProjectClientEvents.length === 0) {
+    draft.time.paused = false
+  }
+  addEvent(draft, {
+    type: 'contract',
+    title: '人力外包通知已处理',
+    message: replacementEmployeeId
+      ? `${notice.contractTitle} 已按甲方反馈换人。`
+      : `${notice.contractTitle} 的产出反馈已确认。`,
+    severity: replacementEmployeeId ? 'success' : 'info',
+    relatedEntityId: notice.contractId,
+  })
+  return draft
+}
+
 export function settleLaborContractsEndOfDay(state: GameState, endedDay: number): GameState {
   const draft = cloneState(state)
   for (const contract of draft.laborContracts) {
@@ -100,80 +161,73 @@ export function settleLaborContractsEndOfDay(state: GameState, endedDay: number)
       continue
     }
 
-    if (!contract.assignedEmployeeId && endedDay > contract.deadlineDay) {
-      const recordId = addFinanceRecord(draft, {
-        type: 'labor_penalty',
-        amount: -contract.dailyBudget,
-        reason: `${contract.title} 未按期安排人员违约金`,
-        relatedEntityId: contract.id,
-      })
-      sendMail(draft, {
-        type: 'contract_breach',
-        from: contract.clientName,
-        subject: `人力外包违约：${contract.title}`,
-        body: `未按期安排合适员工，今日扣除违约金 ${contract.dailyBudget}。`,
-        relatedEntityId: contract.id,
-        financeRecordId: recordId,
-      })
-      addEvent(draft, {
-        type: 'contract',
-        title: '人力外包违约',
-        message: `${contract.title} 扣除 ${contract.dailyBudget}。`,
-        severity: 'danger',
-        relatedEntityId: contract.id,
-      })
-      continue
-    }
+    ensureLaborOutputDay(contract, endedDay)
 
-    if (!contract.assignedEmployeeId) {
-      continue
-    }
+    if (contract.assignedEmployeeId) {
+      const employee = draft.employees.find((item) => item.id === contract.assignedEmployeeId)
+      const actualOutput = Math.round(contract.todayOutput)
+      const requiredOutput = Math.round(calculateLaborRequiredOutput(contract, endedDay))
+      contract.todayRequiredOutput = requiredOutput
+      contract.lastOutputCheckDay = endedDay
+      contract.lastOutputActual = actualOutput
+      contract.lastOutputRequired = requiredOutput
 
-    const employee = draft.employees.find((item) => item.id === contract.assignedEmployeeId)
-    const ability = employee ? calculateEmployeeEffectiveAbility(employee, contract.requiredRole) : 0
-    if (ability < contract.requiredAbility) {
-      contract.satisfaction = Math.max(0, contract.satisfaction - 25)
-    } else {
-      contract.satisfaction = Math.min(100, contract.satisfaction + 8)
-    }
-
-    if (contract.satisfaction < 50 && contract.status === 'active') {
-      contract.status = 'warning'
-      contract.warningDay = endedDay
-      sendMail(draft, {
-        type: 'contract_warning',
-        from: contract.clientName,
-        subject: `驻场满意度预警：${contract.title}`,
-        body: '甲方认为当前员工产出不足，请在 1 个工作日内调整。',
-        relatedEntityId: contract.id,
-      })
-    }
-
-    if (contract.status === 'warning' && contract.warningDay && endedDay > contract.warningDay) {
-      if (contract.satisfaction < 50) {
-        contract.status = 'terminated'
-        releaseLaborContractAssignment(draft, contract)
-        cancelPendingAssignmentsForLaborContract(draft, contract)
-        sendMail(draft, {
-          type: 'contract_breach',
-          from: contract.clientName,
-          subject: `人力外包终止：${contract.title}`,
-          body: '整改期后满意度仍不达标，甲方终止合作。',
+      if (requiredOutput > 0 && actualOutput >= requiredOutput) {
+        contract.satisfaction = Math.min(100, contract.satisfaction + 8)
+        addFinanceRecord(draft, {
+          type: 'labor_income',
+          amount: contract.dailyBudget,
+          reason: `${contract.title} 每日收入`,
           relatedEntityId: contract.id,
         })
-      } else {
-        contract.status = 'active'
-        contract.warningDay = undefined
+      }
+
+      if (requiredOutput > 0 && actualOutput < requiredOutput) {
+        contract.satisfaction = Math.max(0, contract.satisfaction - 20)
+        updateClientTrust(draft, contract.clientCompanyId, contract.clientProfile?.trust, LABOR_OUTPUT_MISS_TRUST_DELTA)
+        draft.pendingLaborClientNotices.push({
+          id: createId(draft, 'labor-notice'),
+          contractId: contract.id,
+          contractTitle: contract.title,
+          clientName: contract.clientName,
+          employeeId: employee?.id,
+          employeeName: employee ? employee.nickname ?? employee.name : undefined,
+          triggeredDay: endedDay + 1,
+          checkedDay: endedDay,
+          actualOutput,
+          requiredOutput,
+        })
+        draft.time.paused = true
+        addEvent(draft, {
+          type: 'contract',
+          title: '人力外包产出未达标',
+          message: `${contract.title} 昨日产出 ${actualOutput}/${requiredOutput}，当天不结算，${contract.clientName} trust ${LABOR_OUTPUT_MISS_TRUST_DELTA}。`,
+          severity: 'warning',
+          relatedEntityId: contract.id,
+        })
       }
     }
 
-    if (contract.status === 'active') {
-      addFinanceRecord(draft, {
-        type: 'labor_income',
-        amount: contract.dailyBudget,
-        reason: `${contract.title} 每日收入`,
+    if (endedDay >= contract.endDay) {
+      contract.status = 'completed'
+      releaseLaborContractAssignment(draft, contract)
+      cancelPendingAssignmentsForLaborContract(draft, contract)
+      sendMail(draft, {
+        type: 'contract_completed',
+        from: contract.clientName,
+        subject: `人力外包到期：${contract.title}`,
+        body: `这份 ${contract.durationDays} 天的人力外包合同已到期，驻场人员已自动释放。`,
         relatedEntityId: contract.id,
       })
+      addEvent(draft, {
+        type: 'contract',
+        title: '人力外包合同到期',
+        message: `${contract.title} 服务期结束，人员已释放。`,
+        severity: 'success',
+        relatedEntityId: contract.id,
+      })
+    } else {
+      resetLaborDailyOutput(contract, endedDay + 1)
     }
   }
   return draft

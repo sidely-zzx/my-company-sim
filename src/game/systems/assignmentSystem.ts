@@ -10,6 +10,7 @@ import type {
 import { isProjectRoleActive } from '../projectPhase'
 import { roleLabels } from '../ui'
 import { addEvent } from './eventSystem'
+import { clearLaborAssignmentStarted, markLaborAssignmentStarted } from './laborOutputSystem'
 
 const assignableProjectStatuses = ['accepted', 'active', 'overdue'] as const
 const assignableLaborStatuses = ['accepted', 'active', 'warning'] as const
@@ -74,6 +75,7 @@ function clearEmployeeFromAllTargets(state: GameState, employeeId: string): void
       continue
     }
     contract.assignedEmployeeId = undefined
+    clearLaborAssignmentStarted(contract)
     if (contract.status === 'active' || contract.status === 'warning') {
       contract.status = 'accepted'
     }
@@ -121,6 +123,7 @@ function applyLaborAssignment(state: GameState, employee: Employee, contract: La
 
   contract.assignedEmployeeId = employee.id
   contract.status = 'active'
+  markLaborAssignmentStarted(state, contract)
   employee.assignedTo = { type: 'labor', id: contract.id, role: contract.requiredRole }
   employee.status = 'working'
   addEvent(state, {
@@ -302,6 +305,7 @@ export function releaseProjectAssignments(state: GameState, project: ProjectCont
 export function releaseLaborContractAssignment(state: GameState, contract: LaborContract): void {
   const employeeId = contract.assignedEmployeeId
   contract.assignedEmployeeId = undefined
+  clearLaborAssignmentStarted(contract)
   if (contract.status === 'active' || contract.status === 'warning') {
     contract.status = 'accepted'
   }

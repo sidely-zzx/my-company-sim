@@ -129,13 +129,28 @@ export function createInitialTutorialState(): TutorialState {
 function createStarterLaborContract(state: GameState): LaborContract {
   return {
     id: createId(state, 'labor'),
+    clientCompanyId: 201,
     clientName: '星河科技',
+    clientProfile: {
+      id: 201,
+      name: '星河科技',
+      relationship: 65,
+      budgetLevel: 52,
+      requirementChaos: 35,
+      temper: 45,
+      trust: 60,
+    },
     title: '星河科技驻场前端',
     requiredRole: starterRole,
     requiredAbility: 50,
     dailyBudget: 560,
     urgency: 'normal',
-    deadlineDay: state.time.day + 2,
+    durationDays: 8,
+    endDay: state.time.day + 7,
+    deadlineDay: state.time.day + 7,
+    todayOutput: 0,
+    todayRequiredOutput: 0,
+    todayOutputDay: state.time.day,
     satisfaction: 100,
     status: 'available',
   }
@@ -829,7 +844,7 @@ function createStarterDeadlineCutEventInPlace(state: GameState): void {
   state.tutorial.projectClientEventId = pendingEvent.id
   project.lastClientEventDay = state.time.day
   project.clientEventCount = (project.clientEventCount ?? 0) + 1
-  state.time.speed = 0
+  // 教学甲方事件同样只暂停时间，不清空 speed；玩家选完方案后会恢复到触发前的播放/快进速度。
   state.time.paused = true
   addEvent(state, {
     type: 'project',

@@ -18,10 +18,13 @@ import { EventLogItem } from './EventLogItem'
 
 export function EventPanel() {
   const events = useGameStore((state) => state.events)
+  const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
   const pendingProjectClientEvents = useGameStore((state) => state.pendingProjectClientEvents)
+  const pendingLaborClientNotices = useGameStore((state) => state.pendingLaborClientNotices)
   const tutorial = useGameStore((state) => state.tutorial)
   const resolveProjectClientEvent = useGameStore((state) => state.resolveProjectClientEvent)
+  const resolveLaborClientNotice = useGameStore((state) => state.resolveLaborClientNotice)
   const recentEvents = useMemo(() => events.slice(-16).reverse(), [events])
 
   return (
@@ -97,6 +100,45 @@ export function EventPanel() {
                       </button>
                     ))}
                   </div>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      )}
+      {pendingLaborClientNotices.length > 0 && (
+        <div className="mb-4 grid gap-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <strong className="text-sm text-[#efe2c8]">待处理人力通知</strong>
+            <span className="text-xs font-extrabold text-[#d5c4a1]">{pendingLaborClientNotices.length} 个</span>
+          </div>
+          <ol className="m-0 grid list-none gap-2.5 p-0">
+            {pendingLaborClientNotices.map((notice) => {
+              const contract = laborContracts.find((item) => item.id === notice.contractId)
+
+              return (
+                <li
+                  key={notice.id}
+                  className={cn('rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-3 py-3', eventBorderToneClass.warning)}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="m-0 text-xs font-extrabold text-[#d5c4a1]">
+                        第 {notice.checkedDay} 天 · {notice.clientName}
+                      </p>
+                      <h3 className="m-0 mt-1 text-base text-[#efe2c8]">驻场产出未达标</h3>
+                    </div>
+                    <span className="rounded-md border border-[#4b514d] bg-[#202625] px-2 py-1 text-xs font-extrabold text-[#aeb5ac]">
+                      {contract?.title ?? notice.contractTitle}
+                    </span>
+                  </div>
+                  <p className="mb-3 mt-2 text-sm leading-6 text-[#c9c1ad]">
+                    {notice.employeeName ?? '驻场员工'} 产出 {Math.round(notice.actualOutput)} / {Math.round(notice.requiredOutput)}，
+                    当天未结算，甲方要求换人。
+                  </p>
+                  <button type="button" className={button} onClick={() => resolveLaborClientNotice(notice.id)}>
+                    关闭继续
+                  </button>
                 </li>
               )
             })}

@@ -36,7 +36,7 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
   const acceptLaborContract = useGameStore((state) => state.acceptLaborContract)
   const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
   const assigned = employees.find((employee) => employee.id === contract.assignedEmployeeId)
-  // 当前驻场员工的合同岗位能力会影响人力合同日结满意度；低于要求会让甲方满意度下降并可能触发预警或终止。
+  // 当前驻场员工的合同岗位能力会参与分钟产出累计；能力、工作分钟和工作状态倍率共同决定当天是否达标。
   const assignedAbility = assigned?.realSkillAbilities[contract.requiredRole] ?? 0
   const canAssign = canAssignLaborContract(contract)
   const starterContract = isStarterLaborContract({ tutorial }, contract.id) && !tutorial.completed
@@ -63,7 +63,7 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                 <div className="rounded-md border border-[#7f6840] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
                   <strong className="block text-[#ffe0a3]">推荐第一单</strong>
                   <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
-                    能力达标会稳定甲方满意度；签约后如果迟迟不安排员工，超过期限会产生违约金。
+                    能力和真实工作状态会决定每天产出；合同到期后会自动释放驻场员工。
                   </span>
                 </div>
               ) : null}
@@ -81,8 +81,12 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                   <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{money(contract.dailyBudget)}</dd>
                 </div>
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
-                  <dt className="text-[#9aa29a]">安排期限</dt>
-                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">第 {contract.deadlineDay} 天</dd>
+                  <dt className="text-[#9aa29a]">服务期</dt>
+                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{contract.durationDays} 天</dd>
+                </div>
+                <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
+                  <dt className="text-[#9aa29a]">到期日</dt>
+                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">第 {contract.endDay} 天</dd>
                 </div>
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">满意度</dt>
@@ -91,6 +95,20 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">状态</dt>
                   <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{laborStatusLabels[contract.status]}</dd>
+                </div>
+                <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
+                  <dt className="text-[#9aa29a]">今日产出</dt>
+                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">
+                    {Math.round(contract.todayOutput)} / {Math.round(contract.todayRequiredOutput)}
+                  </dd>
+                </div>
+                <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
+                  <dt className="text-[#9aa29a]">昨日检查</dt>
+                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">
+                    {contract.lastOutputCheckDay
+                      ? `${Math.round(contract.lastOutputActual ?? 0)} / ${Math.round(contract.lastOutputRequired ?? 0)}`
+                      : '暂无'}
+                  </dd>
                 </div>
               </dl>
 

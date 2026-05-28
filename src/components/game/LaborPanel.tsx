@@ -54,7 +54,7 @@ export function LaborPanel() {
               <th>合同</th>
               <th>需求</th>
               <th>预算</th>
-              <th>期限</th>
+              <th>服务期</th>
               <th>状态</th>
               <th>满意度</th>
               <th>分配员工</th>
@@ -80,9 +80,17 @@ export function LaborPanel() {
                   </td>
                   <td>{roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility}</td>
                   <td>{money(contract.dailyBudget)}/天</td>
-                  <td>{urgencyLabels[contract.urgency]} · 第 {contract.deadlineDay} 天</td>
+                  <td>
+                    {urgencyLabels[contract.urgency]} · {contract.durationDays} 天
+                    <small>第 {contract.endDay} 天到期</small>
+                  </td>
                   <td>{laborStatusLabels[contract.status]}</td>
-                  <td>{contract.satisfaction}</td>
+                  <td>
+                    {contract.satisfaction}
+                    <small>
+                      今日 {Math.round(contract.todayOutput)} / {Math.round(contract.todayRequiredOutput)}
+                    </small>
+                  </td>
                   <td>
                     {assigned ? (
                       <>

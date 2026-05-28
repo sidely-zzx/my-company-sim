@@ -5,6 +5,7 @@ import { createGameSaveFileName, createGameSaveJson, parseGameSaveJson } from '.
 import {
   acceptLaborContract,
   assignEmployeeToLabor,
+  resolveLaborClientNotice,
 } from '../game/systems/contractSystem'
 import { applyEmployeeDiscipline, fireEmployee, renameEmployee, updateEmployeeCompensation } from '../game/systems/employeeSystem'
 import { getFinanceReport, getYesterdayFinanceReport } from '../game/systems/financeReportSystem'
@@ -47,6 +48,8 @@ export interface GameStore extends GameState {
   breachProjectContract: (projectId: string) => void
   /** 处理一个待选择的甲方项目随机事件；会立即应用玩家选择的项目、员工和甲方关系效果。 */
   resolveProjectClientEvent: (eventId: string, optionId: string) => void
+  /** 处理人力外包产出不达标通知；可仅关闭，也可直接换人后恢复时间。 */
+  resolveLaborClientNotice: (noticeId: string, replacementEmployeeId?: string, mode?: AssignmentMode) => void
   /** 修改员工花名，用于玩家自定义员工显示名。 */
   renameEmployee: (employeeId: string, nickname: string) => void
   /** 调整员工日薪和社保公积金比例；会立即影响成本、满意度和后续劳动风险。 */
@@ -82,6 +85,7 @@ function toGameState(state: GameStore): GameState {
     projectContracts: state.projectContracts,
     clientRelations: state.clientRelations,
     pendingProjectClientEvents: state.pendingProjectClientEvents,
+    pendingLaborClientNotices: state.pendingLaborClientNotices,
     events: state.events,
     financeRecords: state.financeRecords,
     financeReports: state.financeReports,
@@ -116,6 +120,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => breachProjectContract(toGameState(state), projectId)),
   resolveProjectClientEvent: (eventId, optionId) =>
     set((state) => syncTutorialProgress(resolveProjectClientEvent(toGameState(state), eventId, optionId))),
+  resolveLaborClientNotice: (noticeId, replacementEmployeeId, mode) =>
+    set((state) => syncTutorialProgress(resolveLaborClientNotice(toGameState(state), noticeId, replacementEmployeeId, mode))),
   renameEmployee: (employeeId, nickname) =>
     set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   updateEmployeeCompensation: (employeeId, salaryPerDay, socialInsuranceRatio) =>

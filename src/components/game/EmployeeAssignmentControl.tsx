@@ -184,7 +184,7 @@ export function EmployeeAssignmentControl({
                 <span>
                   {laborStatusLabels[selectedLabor.status]} · {roleLabels[selectedLabor.requiredRole]} · 能力 {employeeAbility(employee, selectedLabor.requiredRole)} / 要求 {selectedLabor.requiredAbility}
                 </span>
-                <span>日预算 {money(selectedLabor.dailyBudget)} · 截止第 {selectedLabor.deadlineDay} 天</span>
+                <span>日预算 {money(selectedLabor.dailyBudget)} · 第 {selectedLabor.endDay} 天到期</span>
               </div>
             ) : null}
           </div>
