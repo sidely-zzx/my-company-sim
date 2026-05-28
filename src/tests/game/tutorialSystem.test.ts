@@ -7,7 +7,7 @@ import { applyEmployeeDiscipline } from '../../game/systems/employeeSystem'
 import { resolveProjectClientEvent } from '../../game/systems/projectClientEventSystem'
 import { acceptProjectContract, advanceProjectProgress, assignEmployeeToProject } from '../../game/systems/projectSystem'
 import { sendOffer } from '../../game/systems/recruitingSystem'
-import { markTutorialEmployeeStatusHandled, syncTutorialProgress, TUTORIAL_OFFER_LIMITS } from '../../game/systems/tutorialSystem'
+import { getTutorialMinimumOffer, markTutorialEmployeeStatusHandled, syncTutorialProgress } from '../../game/systems/tutorialSystem'
 import type { GameState, SkillRole } from '../../game/types'
 
 function completeStarterLaborTutorial(state: GameState): GameState {
@@ -47,7 +47,9 @@ describe('tutorialSystem', () => {
     expect(starterContract?.requiredRole).toBe('frontend')
     expect(starterContract?.requiredAbility).toBe(50)
     expect(starterContract?.dailyBudget).toBe(560)
-    expect(starterResumes).toHaveLength(2)
+    expect(state.tutorial.starterResumeIds).toHaveLength(1)
+    expect(starterResumes).toHaveLength(1)
+    expect(starterResumes[0]?.name).toBe('林子轩')
     expect(state.mailbox.some((mail) => mail.id === state.tutorial.welcomeMailId && !mail.read)).toBe(true)
   })
 
@@ -60,12 +62,12 @@ describe('tutorialSystem', () => {
 
     const result = sendOffer(state, starterResume.id, 0, 0)
     const employee = result.employees[0]
-    const salaryMin = Math.round(starterResume.expectedSalaryPerDay * TUTORIAL_OFFER_LIMITS.salaryMinPercent / 100)
+    const minimumOffer = getTutorialMinimumOffer(starterResume)
 
     expect(result.employees).toHaveLength(1)
     expect(employee?.sourceResumeId).toBe(starterResume.id)
-    expect(employee?.salaryPerDay).toBe(salaryMin)
-    expect(employee?.socialInsuranceRatio).toBe(TUTORIAL_OFFER_LIMITS.socialMinPercent / 100)
+    expect(employee?.salaryPerDay).toBe(minimumOffer.salaryPerDay)
+    expect(employee?.socialInsuranceRatio).toBe(minimumOffer.socialInsuranceRatio)
     expect(result.resumes.some((resume) => resume.id === starterResume.id)).toBe(false)
   })
 

@@ -155,21 +155,8 @@ function createStarterResumes(state: GameState): Resume[] {
     arbitrationTendency: 18,
     slackingTendency: 0.08,
   }
-  const budgetResume: Resume = {
-    id: createId(state, 'resume'),
-    name: '周一航',
-    school: 'normal',
-    workYears: 1,
-    resumeSkills: [{ role: starterRole, level: 'junior' }],
-    expectedSalaryPerDay: 240,
-    introduction: '价格比较灵活，做过活动页切图和简单接口联调，需要更明确的排期管理。',
-    realSkillAbilities: { [starterRole]: 49 },
-    satisfaction: 72,
-    arbitrationTendency: 34,
-    slackingTendency: 0.18,
-  }
 
-  return [steadyResume, budgetResume]
+  return [steadyResume]
 }
 
 function createStarterProjectContract(state: GameState): ProjectContract {
@@ -283,11 +270,11 @@ const tutorialNodeDefinitions: TutorialNodeDefinition[] = [
     isCompleted: hasActiveEmployee,
     target: 'recruiting',
     coach: {
-      title: '发 Offer',
-      description: '打开「招聘」，给推荐候选人发 Offer。教学期只能小幅调整工资和社保，推荐候选人会接受。',
-      actionText: '给推荐候选人发送 Offer。',
-      reasonText: '教学期 Offer 会 100% 成功，入职后可安排到推荐合同。',
-      anchorIds: guideAnchors('starter-resume-confirm-offer-button', 'starter-resume-offer-button', 'dock-recruiting'),
+      title: '调成本发 Offer',
+      description: '打开「招聘」，推荐候选人发送 Offer。',
+      actionText: '可以调整工资和社保，再发送 Offer。',
+      reasonText: '教学期 Offer 会 100% 成功，低工资和低社保能现金流，但可能会被拒绝并且影响满意度和劳动风险，入职后还能在员工详情页继续调整。',
+      anchorIds: guideAnchors('starter-resume-compensation-settings', 'starter-resume-confirm-offer-button', 'starter-resume-offer-button', 'dock-recruiting'),
       target: 'recruiting',
     },
   },
@@ -513,15 +500,23 @@ export function clampTutorialOffer(
   salaryPerDay: number,
   socialInsuranceRatio: number,
 ): { salaryPerDay: number; socialInsuranceRatio: number } {
-  const salaryMin = Math.round(resume.expectedSalaryPerDay * TUTORIAL_OFFER_LIMITS.salaryMinPercent / 100)
+  const minimumOffer = getTutorialMinimumOffer(resume)
   const salaryMax = Math.round(resume.expectedSalaryPerDay * TUTORIAL_OFFER_LIMITS.salaryMaxPercent / 100)
   // 教学期社保比例会影响每日成本、员工满意度和后续劳动风险；这里限制小范围调整，避免第一单被极端输入破坏。
-  const socialMin = TUTORIAL_OFFER_LIMITS.socialMinPercent / 100
   const socialMax = TUTORIAL_OFFER_LIMITS.socialMaxPercent / 100
 
   return {
-    salaryPerDay: Math.min(salaryMax, Math.max(salaryMin, Math.round(salaryPerDay))),
-    socialInsuranceRatio: Math.min(socialMax, Math.max(socialMin, socialInsuranceRatio)),
+    salaryPerDay: Math.min(salaryMax, Math.max(minimumOffer.salaryPerDay, Math.round(salaryPerDay))),
+    socialInsuranceRatio: Math.min(socialMax, Math.max(minimumOffer.socialInsuranceRatio, socialInsuranceRatio)),
+  }
+}
+
+export function getTutorialMinimumOffer(resume: Pick<Resume, 'expectedSalaryPerDay'>): { salaryPerDay: number; socialInsuranceRatio: number; socialPercent: number } {
+  // 教学最低成本配置会影响 Offer 现金支出、入职后满意度和劳动风险；UI 和业务校验共用它，避免两边计算不一致。
+  return {
+    salaryPerDay: Math.round(resume.expectedSalaryPerDay * TUTORIAL_OFFER_LIMITS.salaryMinPercent / 100),
+    socialInsuranceRatio: TUTORIAL_OFFER_LIMITS.socialMinPercent / 100,
+    socialPercent: TUTORIAL_OFFER_LIMITS.socialMinPercent,
   }
 }
 

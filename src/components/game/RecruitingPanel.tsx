@@ -13,6 +13,7 @@ import { roleLabels, schoolLabels, skillClaimsText } from '../../game/ui'
 import {
   TUTORIAL_OFFER_LIMITS,
   getStarterLaborContract,
+  getTutorialMinimumOffer,
   isCurrentTutorialNode,
   isStarterLaborResume,
   isStarterProjectResume,
@@ -55,6 +56,18 @@ interface OfferDialogProps {
 function OfferDialog({ resume, form, starterContract, starterResume, starterProjectResume, tutorialAnchor, confirmTutorialAnchor, onUpdateForm, onSendOffer }: OfferDialogProps) {
   const offerLimits = starterResume ? TUTORIAL_OFFER_LIMITS : undefined
   const compensationSummary = getCompensationSummary(form, resume.expectedSalaryPerDay, offerLimits)
+  const starterLaborResume = starterResume && !starterProjectResume
+  const minimumOffer = getTutorialMinimumOffer(resume)
+  const starterLaborMinimumSelected =
+    starterLaborResume &&
+    compensationSummary.salaryPerDay === minimumOffer.salaryPerDay &&
+    compensationSummary.socialPercent === minimumOffer.socialPercent
+  const compensationTutorialAnchor = starterLaborResume && !starterLaborMinimumSelected
+    ? 'starter-resume-compensation-settings'
+    : undefined
+  const activeConfirmTutorialAnchor = starterLaborResume && !starterLaborMinimumSelected
+    ? undefined
+    : confirmTutorialAnchor
   const estimatedDailyCost = compensationSummary.totalCost
   const starterSkill = starterContract
     ? resume.resumeSkills.find((skill) => skill.role === starterContract.requiredRole)
@@ -137,35 +150,44 @@ function OfferDialog({ resume, form, starterContract, starterResume, starterProj
           ) : null}
         </div>
 
-        <CompensationSettings
-          id={`offer-${resume.id}`}
-          personName={resume.name}
-          value={form}
-          salaryBase={resume.expectedSalaryPerDay}
-          salaryLabel="Offer 日薪"
-          costLabel="总支出（工资 + 社保支出）"
-          limits={offerLimits}
-          limitHint={starterResume ? '教学期只允许小幅调整推荐候选人的日薪和社保；确认发送后候选人会接受 Offer。' : undefined}
-          className="mt-5 border-t border-[#303834] pt-4"
-          onChange={(patch) => onUpdateForm(resume.id, patch)}
-          footer={(summary) => (
-            <div className="flex flex-wrap justify-end gap-2">
-              <DialogClose asChild>
-                <button type="button" className={button}>取消</button>
-              </DialogClose>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  data-tutorial-anchor={confirmTutorialAnchor}
-                  className={cn(button, confirmTutorialAnchor && tutorialTarget)}
-                  onClick={() => onSendOffer(resume.id, summary.salaryPerDay, summary.socialInsuranceRatio)}
-                >
-                  确认发送
-                </button>
-              </DialogClose>
-            </div>
-          )}
-        />
+        <div
+          data-tutorial-anchor={compensationTutorialAnchor}
+          className={cn(compensationTutorialAnchor && cn('rounded-md p-2', tutorialTarget))}
+        >
+          <CompensationSettings
+            id={`offer-${resume.id}`}
+            personName={resume.name}
+            value={form}
+            salaryBase={resume.expectedSalaryPerDay}
+            salaryLabel="Offer 日薪"
+            costLabel="总支出（工资 + 社保支出）"
+            limits={offerLimits}
+            limitHint={starterLaborResume
+              ? '先把 Offer 日薪和社保公积金都调到教学允许的最低值，观察第一单成本如何下降。低社保和低工资会影响满意度、劳动风险，入职后可在员工详情页继续修改。'
+              : starterResume
+                ? '教学期只允许小幅调整推荐候选人的日薪和社保；确认发送后候选人会接受 Offer。'
+                : undefined}
+            className="mt-5 border-t border-[#303834] pt-4"
+            onChange={(patch) => onUpdateForm(resume.id, patch)}
+            footer={(summary) => (
+              <div className="flex flex-wrap justify-end gap-2">
+                <DialogClose asChild>
+                  <button type="button" className={button}>取消</button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <button
+                    type="button"
+                    data-tutorial-anchor={activeConfirmTutorialAnchor}
+                    className={cn(button, activeConfirmTutorialAnchor && tutorialTarget)}
+                    onClick={() => onSendOffer(resume.id, summary.salaryPerDay, summary.socialInsuranceRatio)}
+                  >
+                    确认发送
+                  </button>
+                </DialogClose>
+              </div>
+            )}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -215,9 +237,9 @@ export function RecruitingPanel() {
         </div>
         {isCurrentTutorialNode(tutorial, 'send_offer') ? (
           <div className="mb-3 rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
-            <strong className="block text-[#ffe0a3]">当前指引：给推荐候选人发 Offer</strong>
+            <strong className="block text-[#ffe0a3]">当前指引：先调成本，再发 Offer</strong>
             <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
-              推荐候选人会 100% 接受教学 Offer；工资和社保只能小范围调整，用来观察成本和毛利变化。
+              先把推荐候选人的工资和社保调到教学最低值，观察节约成本后的毛利变化；调完后确认发送按钮会高亮。
             </span>
           </div>
         ) : null}

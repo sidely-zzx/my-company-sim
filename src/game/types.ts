@@ -135,6 +135,7 @@ export type TutorialAnchorId =
   | 'starter-employee-row'
   | 'starter-employee-discipline-button'
   | 'starter-employee-discipline-verbal-button'
+  | 'starter-resume-compensation-settings'
   | 'starter-resume-offer-button'
   | 'starter-resume-confirm-offer-button'
   | 'starter-project-row'
