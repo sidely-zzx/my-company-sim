@@ -10,6 +10,7 @@ import { CLIENT_COMPANIES } from './data/clientCompanies'
 import { generateLaborContracts } from './systems/contractSystem'
 import { generateProjectContracts } from './systems/projectSystem'
 import { refreshResumes } from './systems/recruitingSystem'
+import { applyTutorialStarterMarket, createInitialTutorialState } from './systems/tutorialSystem'
 import type { GameState } from './types'
 
 export function createInitialGameState(seed = DEFAULT_SEED): GameState {
@@ -46,8 +47,9 @@ export function createInitialGameState(seed = DEFAULT_SEED): GameState {
       vip: false,
       recruitingPosts: [],
     },
+    tutorial: createInitialTutorialState(),
     rngSeed: seed,
     nextId: 1,
   }
-  return refreshResumes(generateProjectContracts(generateLaborContracts(state)))
+  return applyTutorialStarterMarket(refreshResumes(generateProjectContracts(generateLaborContracts(state))))
 }

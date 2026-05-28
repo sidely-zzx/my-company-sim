@@ -30,6 +30,15 @@ export const tableWrap = 'overflow-x-auto'
 export const table =
   'w-full min-w-[920px] border-collapse [&_td]:border-b [&_td]:border-[#303834] [&_td]:px-2 [&_td]:py-2.5 [&_td]:text-left [&_td]:align-top [&_td]:text-[13px] [&_td]:text-[#d8cfbb] [&_td_small]:mt-1 [&_td_small]:block [&_td_small]:text-[#9aa29a] [&_td_strong]:block [&_th]:border-b [&_th]:border-[#303834] [&_th]:bg-[#171c1b] [&_th]:px-2 [&_th]:py-2.5 [&_th]:text-left [&_th]:align-top [&_th]:text-xs [&_th]:font-extrabold [&_th]:text-[#aaa48f]'
 
+export const tutorialTarget =
+  'border-[#ffd46a] bg-[#3a2b12] text-[#fff3cd] shadow-[0_0_0_2px_rgba(255,212,106,0.32),0_0_24px_rgba(255,212,106,0.34)]'
+
+export const tutorialRow =
+  'border-l-4 border-l-[#ffd46a] bg-[rgba(255,212,106,0.18)] shadow-[inset_4px_0_0_#ffd46a]'
+
+export const tutorialBadge =
+  'rounded-md border border-[#ffd46a] bg-[#3a2b12] px-2 py-1 text-xs font-black text-[#fff3cd]'
+
 export const formGrid = 'flex max-w-80 flex-wrap items-center gap-2'
 
 export const inlineActions = 'flex flex-wrap items-center gap-2'

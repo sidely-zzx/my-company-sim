@@ -1,7 +1,7 @@
 import type { GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 3
+export const GAME_SAVE_VERSION = 5
 
 export interface GameSaveFile {
   /** 存档格式标识；用于避免把其他 JSON 文件误当成游戏存档读取。 */
@@ -53,7 +53,13 @@ function hasEmployeeShape(value: unknown): boolean {
 }
 
 function hasGameStateShape(value: unknown): value is GameState {
-  if (!isRecord(value) || !isRecord(value.settings) || !isRecord(value.time) || !isRecord(value.market)) {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.settings) ||
+    !isRecord(value.time) ||
+    !isRecord(value.market) ||
+    !isRecord(value.tutorial)
+  ) {
     return false
   }
 
@@ -82,6 +88,11 @@ function hasGameStateShape(value: unknown): value is GameState {
     hasNumberField(value.market, 'resumeRefreshLimit') &&
     typeof value.market.vip === 'boolean' &&
     hasArrayField(value.market, 'recruitingPosts') &&
+    typeof value.tutorial.enabled === 'boolean' &&
+    typeof value.tutorial.completed === 'boolean' &&
+    typeof value.tutorial.currentStep === 'string' &&
+    hasArrayField(value.tutorial, 'starterResumeIds') &&
+    hasArrayField(value.tutorial, 'starterProjectResumeIds') &&
     hasNumberField(value, 'rngSeed') &&
     hasNumberField(value, 'nextId')
   )

@@ -9,6 +9,10 @@ import {
 } from '../ui/dialog'
 import { SelectField, type SelectFieldOption } from '../ui/select-field'
 import { PROJECT_BREACH_PENALTY_RATE } from '../../game/constants'
+import {
+  isStarterProjectContract,
+  isStarterProjectEmployee,
+} from '../../game/systems/tutorialSystem'
 import type { AssignmentMode, Employee, ProjectContract, SkillRole } from '../../game/types'
 import {
   assignmentModeLabels,
@@ -35,6 +39,7 @@ import {
   progressToneClass,
   progressTrack,
   riskToneClass,
+  tutorialTarget,
 } from '../../styles/tw'
 import { money } from '../../utils'
 
@@ -152,6 +157,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const projectContracts = useGameStore((state) => state.projectContracts)
   const events = useGameStore((state) => state.events)
   const pendingProjectClientEvents = useGameStore((state) => state.pendingProjectClientEvents)
+  const tutorial = useGameStore((state) => state.tutorial)
   const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
   const breachProjectContract = useGameStore((state) => state.breachProjectContract)
@@ -178,6 +184,14 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
       ]
     : []
   const projectPendingClientEvents = pendingProjectClientEvents.filter((event) => event.projectId === project.id)
+  const starterProject = isStarterProjectContract({ tutorial }, project.id) && !tutorial.completed
+  const selectedRoleNeedsAssignment = Boolean(
+    starterProject &&
+      tutorial.currentStep === 'assign_project_team' &&
+      canAssignSelectedRole &&
+      (project.assignedEmployees[selectedRole] ?? []).length === 0 &&
+      (project.requirements.find((item) => item.role === selectedRole)?.headcount ?? 0) > 0,
+  )
   const recentProjectEvents = events
     .filter((event) => event.relatedEntityId === project.id)
     .slice(-6)
@@ -242,6 +256,18 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
         <div className="grid min-h-[640px] grid-cols-[minmax(320px,0.85fr)_minmax(520px,1.15fr)] gap-4 max-[980px]:grid-cols-1">
           <section className="min-w-0 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-4">
             <div className="grid gap-3">
+              {starterProject ? (
+                <div className="rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-[#ffe0a3]">推荐项目教学</strong>
+                    <span className="text-xs font-extrabold text-[#e4b45b]">产品 / 设计 / 前端 / 后端 / 测试各 1 人</span>
+                  </div>
+                  <p className="m-0 mt-1 text-xs leading-5 text-[#d8cfbb]">
+                    分配齐 5 个岗位后会触发一次受控甲方事件，处理后项目截止日会压缩到今天。
+                  </p>
+                </div>
+              ) : null}
+
               <dl className="m-0 grid grid-cols-2 gap-2 text-[13px] text-[#d8cfbb]">
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">项目金额</dt>
@@ -292,7 +318,12 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                     {projectPendingClientEvents.map((event) => (
                       <div
                         key={event.id}
-                        className={cn('rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-3 py-3', eventBorderToneClass[event.severity])}
+                        data-tutorial-anchor={event.id === tutorial.projectClientEventId ? 'starter-event-card' : undefined}
+                        className={cn(
+                          'rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-3 py-3',
+                          eventBorderToneClass[event.severity],
+                          event.id === tutorial.projectClientEventId && 'shadow-[0_0_0_2px_rgba(181,157,101,0.22)]',
+                        )}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -300,7 +331,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                             <h3 className="m-0 mt-1 text-sm text-[#efe2c8]">{event.title}</h3>
                           </div>
                           <span className="rounded border border-[#4b514d] bg-[#202625] px-2 py-1 text-xs font-extrabold text-[#aeb5ac]">
-                            甲方事件
+                            {event.id === tutorial.projectClientEventId ? '教学事件' : '甲方事件'}
                           </span>
                         </div>
                         <p className="mb-3 mt-2 text-xs leading-5 text-[#c9c1ad]">{event.description}</p>
@@ -309,7 +340,14 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                             <button
                               key={option.id}
                               type="button"
-                              className={cn(button, 'min-h-11 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]')}
+                              data-tutorial-anchor={event.id === tutorial.projectClientEventId && option.id === 'partial_rush' ? 'starter-event-recommended-option' : undefined}
+                              className={cn(
+                                button,
+                                'min-h-11 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]',
+                                event.id === tutorial.projectClientEventId &&
+                                  option.id === 'partial_rush' &&
+                                  cn('animate-pulse', tutorialTarget),
+                              )}
                               onClick={() => {
                                 // 在项目详情内处理事件，会立即结算该选项对项目、甲方信任和项目成员状态的影响。
                                 resolveProjectClientEvent(event.id, option.id)
@@ -356,7 +394,12 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                         签约会把项目状态改为已签约，并允许在本详情页继续安排岗位人员。
                       </span>
                     </div>
-                    <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>
+                    <button
+                      type="button"
+                      data-tutorial-anchor={starterProject ? 'starter-project-sign-button' : undefined}
+                      className={cn(button, starterProject && cn('animate-pulse', tutorialTarget))}
+                      onClick={() => acceptProjectContract(project.id)}
+                    >
                       签约
                     </button>
                   </div>
@@ -421,15 +464,23 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                   ).length
                   const requirement = project.requirements.find((item) => item.role === track)
                   const progress = Math.round(project.phaseProgress[track])
+                  const tutorialMissingRole =
+                    starterProject &&
+                    tutorial.currentStep === 'assign_project_team' &&
+                    assignedCount === 0 &&
+                    pendingCount === 0 &&
+                    (requirement?.headcount ?? 0) > 0
 
                   return (
                     <button
                       key={track}
                       type="button"
+                      data-tutorial-anchor={tutorialMissingRole ? 'starter-project-role-missing' : undefined}
                       className={cn(
                         'grid gap-2 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-left text-[#d8cfbb]',
                         selectedRole === track && 'border-[#b59d65] bg-[#2d2a22]',
                         isCurrentPhaseRole(project, track) && 'shadow-[inset_4px_0_0_#b59d65]',
+                        tutorialMissingRole && cn('animate-pulse', tutorialTarget),
                       )}
                       onClick={() => setSelectedRole(track)}
                     >
@@ -497,14 +548,21 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                     const ability = roleAbility(employee, selectedRole)
                     const employeeIdle = isEmployeeIdle(employee)
                     const cannotAssign = !canAssignSelectedRole
+                    const starterEmployee = isStarterProjectEmployee({ tutorial }, employee)
+                    const tutorialEmployeeTarget =
+                      starterEmployee &&
+                      selectedRoleNeedsAssignment &&
+                      roleAbility(employee, selectedRole) > 0
 
                     return (
                       <button
                         key={employee.id}
                         type="button"
+                        data-tutorial-anchor={tutorialEmployeeTarget ? 'starter-project-employee' : undefined}
                         className={cn(
                           'grid gap-2 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-left text-[#d8cfbb]',
                           employeeIdle && 'border-[#56684d] bg-[#1d251d]',
+                          starterEmployee && starterProject && tutorialTarget,
                           cannotAssign
                             ? 'cursor-not-allowed opacity-60'
                             : 'cursor-pointer hover:border-[#b59d65] hover:bg-[#242a28] focus-visible:border-[#b59d65] focus-visible:outline-none',
@@ -514,8 +572,13 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                       >
                         <span className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                           <strong className="truncate text-[#efe2c8]">{employee.nickname || employee.name}</strong>
-                          <span className={cn('text-xs font-extrabold', employeeIdle ? 'text-[#92d16e]' : 'text-[#e4b45b]')}>
-                            {employeeIdle ? '空闲' : '忙碌'}
+                          <span className="flex flex-wrap justify-end gap-1.5">
+                            {starterEmployee && starterProject ? (
+                              <em className="not-italic text-xs font-extrabold text-[#e4b45b]">教学推荐</em>
+                            ) : null}
+                            <span className={cn('text-xs font-extrabold', employeeIdle ? 'text-[#92d16e]' : 'text-[#e4b45b]')}>
+                              {employeeIdle ? '空闲' : '忙碌'}
+                            </span>
                           </span>
                         </span>
                         <span className="grid gap-1 text-xs text-[#aeb5ac]">

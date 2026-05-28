@@ -8,6 +8,7 @@ import {
   skillRoles,
 } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import { isStarterProjectContract } from '../../game/systems/tutorialSystem'
 import {
   button,
   cn,
@@ -19,6 +20,9 @@ import {
   panelTitle,
   table,
   tableWrap,
+  tutorialBadge,
+  tutorialRow,
+  tutorialTarget,
 } from '../../styles/tw'
 import { money } from '../../utils'
 
@@ -32,7 +36,13 @@ function isCurrentPhaseRole(project: ProjectContract, role: SkillRole): boolean 
 export function ProjectPanel() {
   const projectContracts = useGameStore((state) => state.projectContracts)
   const employees = useGameStore((state) => state.employees)
+  const tutorial = useGameStore((state) => state.tutorial)
   const acceptProjectContract = useGameStore((state) => state.acceptProjectContract)
+  const showProjectGuide = tutorial.enabled && !tutorial.completed && [
+    'review_project_contract',
+    'assign_project_team',
+    'finish_starter_project',
+  ].includes(tutorial.currentStep)
 
   return (
     <section className={`${panel} ${dialogPanel}`}>
@@ -42,6 +52,14 @@ export function ProjectPanel() {
           <h2 className={panelTitle}>项目合同</h2>
         </div>
       </div>
+      {showProjectGuide ? (
+        <div className="mb-3 rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
+          <strong className="block text-[#ffe0a3]">当前指引：完成推荐项目教学</strong>
+          <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
+            推荐项目会带你跑通多岗位分配、甲方事件和完成收款；先处理带有「推荐项目教学」标记的合同。
+          </span>
+        </div>
+      ) : null}
       <div className={tableWrap}>
         <table className={table}>
           <thead>
@@ -58,11 +76,19 @@ export function ProjectPanel() {
           </thead>
           <tbody>
             {projectContracts.map((project) => {
+              const starterProject = isStarterProjectContract({ tutorial }, project.id) && !tutorial.completed
               return (
-                <tr key={project.id}>
+                <tr
+                  key={project.id}
+                  data-tutorial-anchor={starterProject ? 'starter-project-row' : undefined}
+                  className={starterProject ? tutorialRow : undefined}
+                >
                   <td>
                     <strong>{project.title}</strong>
                     <small>{project.clientName}</small>
+                    {starterProject ? (
+                      <small><span className={tutorialBadge}>推荐项目教学</span></small>
+                    ) : null}
                   </td>
                   <td>
                     {money(project.amount)}
@@ -104,9 +130,27 @@ export function ProjectPanel() {
                   </td>
                   <td>
                     <div className={formGrid}>
-                      <ProjectDetailDialog project={project} />
+                      <ProjectDetailDialog
+                        project={project}
+                        trigger={(
+                          <button
+                            type="button"
+                            data-tutorial-anchor={starterProject ? 'starter-project-detail-button' : undefined}
+                            className={button}
+                          >
+                            详情
+                          </button>
+                        )}
+                      />
                       {project.status === 'available' && (
-                        <button type="button" className={button} onClick={() => acceptProjectContract(project.id)}>签约</button>
+                        <button
+                          type="button"
+                          data-tutorial-anchor={starterProject ? 'starter-project-sign-button' : undefined}
+                          className={cn(button, starterProject && cn('animate-pulse', tutorialTarget))}
+                          onClick={() => acceptProjectContract(project.id)}
+                        >
+                          签约
+                        </button>
                       )}
                     </div>
                   </td>

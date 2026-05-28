@@ -22,6 +22,7 @@ import { advanceEmployeeBehavior, calculateEmployeeOutput } from './employeeSyst
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
+import { starterProjectProgressMultiplier } from './tutorialSystem'
 
 const CLIENT_PROJECT_COMPLETED_TRUST_DELTA = 8
 const CLIENT_PROJECT_OVERDUE_TRUST_DELTA = -5
@@ -331,9 +332,11 @@ export function advanceProjectProgress(state: GameState, minutes: number): GameS
             continue
           }
           const previousProgress = project.phaseProgress[track]
+          const progressMultiplier =
+            clientProgressMultiplier(project) * starterProjectProgressMultiplier(draft, project)
           project.phaseProgress[track] = Math.min(
             100,
-            project.phaseProgress[track] + calculateEmployeeOutput(draft, employee, role) * clientProgressMultiplier(project),
+            project.phaseProgress[track] + calculateEmployeeOutput(draft, employee, role) * progressMultiplier,
           )
           if (previousProgress < 100 && project.phaseProgress[track] >= 100) {
             notifyCompletedTrack(draft, project, track)

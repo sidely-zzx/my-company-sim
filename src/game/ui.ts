@@ -144,6 +144,7 @@ export function progressTone(value: number): 'danger' | 'warning' | 'success' {
 
 export function eventIcon(type: string): string {
   const icons: Record<string, string> = {
+    tutorial: 'T',
     finance: '$',
     recruiting: '+',
     contract: '#',

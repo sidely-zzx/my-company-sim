@@ -3,10 +3,12 @@ import {
   roleLabels,
   urgencyLabels,
 } from '../../game/ui'
+import { isStarterLaborContract } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import { LaborDetailDialog } from './LaborDetailDialog'
 import {
   button,
+  cn,
   dialogPanel,
   eyebrow,
   panel,
@@ -15,12 +17,16 @@ import {
   inlineActions,
   table,
   tableWrap,
+  tutorialBadge,
+  tutorialRow,
+  tutorialTarget,
 } from '../../styles/tw'
 import { money } from '../../utils'
 
 export function LaborPanel() {
   const laborContracts = useGameStore((state) => state.laborContracts)
   const employees = useGameStore((state) => state.employees)
+  const tutorial = useGameStore((state) => state.tutorial)
   const acceptLaborContract = useGameStore((state) => state.acceptLaborContract)
 
   return (
@@ -31,6 +37,16 @@ export function LaborPanel() {
           <h2 className={panelTitle}>驻场合同</h2>
         </div>
       </div>
+      {tutorial.enabled && !tutorial.completed && ['review_labor_contract', 'assign_employee'].includes(tutorial.currentStep) ? (
+        <div className="mb-3 rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
+          <strong className="block text-[#ffe0a3]">
+            {tutorial.currentStep === 'review_labor_contract' ? '当前指引：签下推荐第一单' : '当前指引：进入推荐合同详情安排员工'}
+          </strong>
+          <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
+            选择带有「推荐第一单」标记的合同。签约后在详情页右侧员工列表中安排驻场人员。
+          </span>
+        </div>
+      ) : null}
       <div className={tableWrap}>
         <table className={table}>
           <thead>
@@ -48,10 +64,18 @@ export function LaborPanel() {
           <tbody>
             {laborContracts.map((contract) => {
               const assigned = employees.find((employee) => employee.id === contract.assignedEmployeeId)
+              const starterContract = isStarterLaborContract({ tutorial }, contract.id) && !tutorial.completed
               return (
-                <tr key={contract.id}>
+                <tr
+                  key={contract.id}
+                  data-tutorial-anchor={starterContract ? 'starter-labor-row' : undefined}
+                  className={starterContract ? tutorialRow : undefined}
+                >
                   <td>
                     <strong>{contract.title}</strong>
+                    {starterContract ? (
+                      <small><span className={tutorialBadge}>推荐第一单</span></small>
+                    ) : null}
                     <small>{contract.clientName}</small>
                   </td>
                   <td>{roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility}</td>
@@ -73,9 +97,27 @@ export function LaborPanel() {
                   </td>
                   <td>
                     <div className={inlineActions}>
-                      <LaborDetailDialog contract={contract} />
+                      <LaborDetailDialog
+                        contract={contract}
+                        trigger={(
+                          <button
+                            type="button"
+                            data-tutorial-anchor={starterContract ? 'starter-labor-detail-button' : undefined}
+                            className={button}
+                          >
+                            详情
+                          </button>
+                        )}
+                      />
                       {contract.status === 'available' && (
-                        <button type="button" className={button} onClick={() => acceptLaborContract(contract.id)}>签约</button>
+                        <button
+                          type="button"
+                          data-tutorial-anchor={starterContract ? 'starter-labor-sign-button' : undefined}
+                          className={cn(button, starterContract && cn('animate-pulse', tutorialTarget))}
+                          onClick={() => acceptLaborContract(contract.id)}
+                        >
+                          签约
+                        </button>
                       )}
                     </div>
                   </td>

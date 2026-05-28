@@ -13,10 +13,13 @@ import {
   panelTitle,
   table,
   tableWrap,
+  tutorialRow,
+  tutorialTarget,
 } from '../../styles/tw'
 
 export function MailPanel() {
   const mailbox = useGameStore((state) => state.mailbox)
+  const tutorial = useGameStore((state) => state.tutorial)
   const markMailRead = useGameStore((state) => state.markMailRead)
   const markAllMailRead = useGameStore((state) => state.markAllMailRead)
   const recentMail = useMemo(() => mailbox.slice(-12).reverse(), [mailbox])
@@ -47,21 +50,39 @@ export function MailPanel() {
               </tr>
             </thead>
             <tbody>
-              {recentMail.map((mail) => (
-                <tr key={mail.id} className={mail.read ? undefined : 'bg-[rgba(180,81,70,0.12)]'}>
+              {recentMail.map((mail) => {
+                const welcomeMail = tutorial.enabled && !tutorial.completed && mail.id === tutorial.welcomeMailId
+                const projectMail = tutorial.enabled && !tutorial.completed && mail.id === tutorial.projectMailId
+                const tutorialMail = welcomeMail || projectMail
+                return (
+                <tr
+                  key={mail.id}
+                  data-tutorial-anchor={welcomeMail ? 'welcome-mail-row' : projectMail ? 'project-mail-row' : undefined}
+                  className={tutorialMail ? tutorialRow : mail.read ? undefined : 'bg-[rgba(180,81,70,0.12)]'}
+                >
                   <td>第 {mail.day} 天 {formatTime(mail.minute)}</td>
                   <td>{mail.from}</td>
-                  <td>{mail.subject}</td>
+                  <td>
+                    {mail.subject}
+                    {welcomeMail ? <small className="mt-1 block font-extrabold text-[#e4b45b]">教学第一步：阅读后待办会推进</small> : null}
+                    {projectMail ? <small className="mt-1 block font-extrabold text-[#e4b45b]">项目教学：阅读后解锁推荐项目目标</small> : null}
+                  </td>
                   <td>{mail.type}</td>
                   <td>{mail.read ? '已读' : '未读'}</td>
                   <td>{mail.body}</td>
                   <td>
-                    <button type="button" className={button} disabled={mail.read} onClick={() => markMailRead(mail.id)}>
+                    <button
+                      type="button"
+                      data-tutorial-anchor={welcomeMail ? 'welcome-mail-action' : projectMail ? 'project-mail-action' : undefined}
+                      className={cn(button, tutorialMail && !mail.read && cn('animate-pulse', tutorialTarget))}
+                      disabled={mail.read}
+                      onClick={() => markMailRead(mail.id)}
+                    >
                       已读
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

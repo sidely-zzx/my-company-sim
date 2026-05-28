@@ -17,6 +17,7 @@ import {
 } from '../game/systems/projectSystem'
 import { refreshResumes, sendOffer } from '../game/systems/recruitingSystem'
 import { advanceGameTime, setOffWorkHour, setSpeed } from '../game/systems/timeSystem'
+import { syncTutorialProgress } from '../game/systems/tutorialSystem'
 import type { AssignmentMode, EmployeeDisciplineAction, FinanceReport, GameSpeed, GameState, SkillRole, WorkHour } from '../game/types'
 
 export interface GameStore extends GameState {
@@ -87,6 +88,7 @@ function toGameState(state: GameStore): GameState {
     mailbox: state.mailbox,
     pendingArbitrations: state.pendingArbitrations,
     market: state.market,
+    tutorial: state.tutorial,
     rngSeed: state.rngSeed,
     nextId: state.nextId,
   }
@@ -97,23 +99,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
   startGame: () => set(() => createInitialGameState()),
   resetGame: () => set(() => createInitialGameState()),
   setSpeed: (speed) => set((state) => setSpeed(toGameState(state), speed)),
-  setOffWorkHour: (hour) => set((state) => setOffWorkHour(toGameState(state), hour)),
-  tick: (realDeltaMs) => set((state) => advanceGameTime(toGameState(state), realDeltaMs)),
+  setOffWorkHour: (hour) => set((state) => syncTutorialProgress(setOffWorkHour(toGameState(state), hour))),
+  tick: (realDeltaMs) => set((state) => syncTutorialProgress(advanceGameTime(toGameState(state), realDeltaMs))),
   refreshResumes: () => set((state) => refreshResumes(toGameState(state))),
   sendOffer: (resumeId, salaryPerDay, socialInsuranceRatio) =>
-    set((state) => sendOffer(toGameState(state), resumeId, salaryPerDay, socialInsuranceRatio)),
+    set((state) => syncTutorialProgress(sendOffer(toGameState(state), resumeId, salaryPerDay, socialInsuranceRatio))),
   acceptLaborContract: (contractId) =>
-    set((state) => acceptLaborContract(toGameState(state), contractId)),
+    set((state) => syncTutorialProgress(acceptLaborContract(toGameState(state), contractId))),
   assignEmployeeToLabor: (employeeId, contractId, mode) =>
-    set((state) => assignEmployeeToLabor(toGameState(state), employeeId, contractId, mode)),
+    set((state) => syncTutorialProgress(assignEmployeeToLabor(toGameState(state), employeeId, contractId, mode))),
   acceptProjectContract: (projectId) =>
-    set((state) => acceptProjectContract(toGameState(state), projectId)),
+    set((state) => syncTutorialProgress(acceptProjectContract(toGameState(state), projectId))),
   assignEmployeeToProject: (employeeId, projectId, role, mode) =>
-    set((state) => assignEmployeeToProject(toGameState(state), employeeId, projectId, role, mode)),
+    set((state) => syncTutorialProgress(assignEmployeeToProject(toGameState(state), employeeId, projectId, role, mode))),
   breachProjectContract: (projectId) =>
     set((state) => breachProjectContract(toGameState(state), projectId)),
   resolveProjectClientEvent: (eventId, optionId) =>
-    set((state) => resolveProjectClientEvent(toGameState(state), eventId, optionId)),
+    set((state) => syncTutorialProgress(resolveProjectClientEvent(toGameState(state), eventId, optionId))),
   renameEmployee: (employeeId, nickname) =>
     set((state) => renameEmployee(toGameState(state), employeeId, nickname)),
   updateEmployeeCompensation: (employeeId, salaryPerDay, socialInsuranceRatio) =>
@@ -124,11 +126,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => fireEmployee(toGameState(state), employeeId, compensationRatio)),
   applyEmployeeDiscipline: (employeeId, action, fineRatio) =>
     set((state) => applyEmployeeDiscipline(toGameState(state), employeeId, action, fineRatio)),
-  markMailRead: (mailId) => set((state) => markMailRead(toGameState(state), mailId)),
-  markAllMailRead: () => set((state) => markAllMailRead(toGameState(state))),
+  markMailRead: (mailId) => set((state) => syncTutorialProgress(markMailRead(toGameState(state), mailId))),
+  markAllMailRead: () => set((state) => syncTutorialProgress(markAllMailRead(toGameState(state)))),
   exportSaveJson: () => createGameSaveJson(toGameState(get())),
   getSaveFileName: () => createGameSaveFileName(toGameState(get())),
-  loadSaveJson: (json) => set(() => parseGameSaveJson(json)),
+  loadSaveJson: (json) => set(() => syncTutorialProgress(parseGameSaveJson(json), false)),
   getFinanceReport: (day) => getFinanceReport(toGameState(get()), day),
   getYesterdayFinanceReport: () => getYesterdayFinanceReport(toGameState(get())),
 }))

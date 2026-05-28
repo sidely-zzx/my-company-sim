@@ -15,6 +15,7 @@ import type {
   SkillRole,
 } from '../types';
 import { addEvent, createId } from './eventSystem';
+import { clampTutorialOffer, isStarterResume } from './tutorialSystem';
 
 const schoolTypes: SchoolType[] = ['normal', '211', '985', 'qs100'];
 const roles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing'];
@@ -131,6 +132,22 @@ export function refreshResumes(state: GameState, countUsage = true): GameState {
     draft.market.resumeRefreshesUsed += 1;
   }
   draft.resumes = Array.from({ length: RESUMES_PER_REFRESH }, () => generateResume(draft));
+  if (draft.tutorial.enabled && !draft.tutorial.completed) {
+    const hiredSourceResumeIds = new Set(
+      draft.employees
+        .filter((employee) => employee.status !== 'fired' && employee.sourceResumeId)
+        .map((employee) => employee.sourceResumeId as string),
+    );
+    const preservedResumeIds = new Set<string>([
+      ...(draft.employees.length === 0 ? draft.tutorial.starterResumeIds : []),
+      ...draft.tutorial.starterProjectResumeIds.filter((resumeId) => !hiredSourceResumeIds.has(resumeId)),
+    ]);
+    const starterResumes = state.resumes.filter((resume) => preservedResumeIds.has(resume.id));
+    draft.resumes = [
+      ...starterResumes,
+      ...draft.resumes.slice(0, Math.max(0, RESUMES_PER_REFRESH - starterResumes.length)),
+    ];
+  }
   addEvent(draft, {
     type: 'recruiting',
     title: '简历已刷新',
@@ -168,9 +185,15 @@ export function sendOffer(
     return draft;
   }
 
-  const salaryFit = salaryPerDay / resume.expectedSalaryPerDay;
-  const chance = clamp(0.2 + (salaryFit - 0.8) * 0.8 + socialInsuranceRatio * 0.25, 0.01, 0.95);
-  const roll = nextRandom(draft.rngSeed);
+  const starterResumeOffer = draft.tutorial.enabled && !draft.tutorial.completed && isStarterResume(draft, resume.id);
+  const offer = starterResumeOffer
+    ? clampTutorialOffer(resume, salaryPerDay, socialInsuranceRatio)
+    : { salaryPerDay, socialInsuranceRatio };
+  const salaryFit = offer.salaryPerDay / resume.expectedSalaryPerDay;
+  const chance = starterResumeOffer
+    ? 1
+    : clamp(0.2 + (salaryFit - 0.8) * 0.8 + offer.socialInsuranceRatio * 0.25, 0.01, 0.95);
+  const roll = starterResumeOffer ? { value: 0, seed: draft.rngSeed } : nextRandom(draft.rngSeed);
   draft.rngSeed = roll.seed;
   if (roll.value > chance) {
     // 候选人拒绝后保留在简历池展示结果，但标记为不可再次发送 offer。
@@ -178,7 +201,7 @@ export function sendOffer(
     addEvent(draft, {
       type: 'recruiting',
       title: 'Offer 被拒',
-      message: `${resume.name} 拒绝了日薪 ${salaryPerDay} 的 offer。`,
+      message: `${resume.name} 拒绝了日薪 ${offer.salaryPerDay} 的 offer。`,
       severity: 'warning',
       relatedEntityId: resume.id,
     });
@@ -201,9 +224,10 @@ export function sendOffer(
     name: resume.name,
     school: resume.school,
     resumeSkills: resume.resumeSkills,
+    sourceResumeId: resume.id,
     realSkillAbilities: resume.realSkillAbilities,
-    salaryPerDay,
-    socialInsuranceRatio: clamp(socialInsuranceRatio, 0, 1),
+    salaryPerDay: offer.salaryPerDay,
+    socialInsuranceRatio: clamp(offer.socialInsuranceRatio, 0, 1),
     satisfaction: resume.satisfaction,
     arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
@@ -220,7 +244,7 @@ export function sendOffer(
   addEvent(draft, {
     type: 'recruiting',
     title: '新员工入职',
-    message: `${resume.name} 接受 offer，日薪 ${salaryPerDay}。`,
+    message: `${resume.name} 接受 offer，日薪 ${offer.salaryPerDay}。`,
     severity: 'success',
     relatedEntityId: employeeId,
   });

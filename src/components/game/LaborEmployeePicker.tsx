@@ -13,7 +13,9 @@ import {
   skillRoles,
   urgencyLabels,
 } from '../../game/ui'
-import { cn, emptyState, riskToneClass } from '../../styles/tw'
+import { isStarterEmployee, isStarterLaborContract } from '../../game/systems/tutorialSystem'
+import { useGameStore } from '../../store/gameStore'
+import { cn, emptyState, riskToneClass, tutorialTarget } from '../../styles/tw'
 import { money } from '../../utils'
 
 type EmployeeAvailabilityFilter = 'all' | 'idle' | 'busy'
@@ -102,6 +104,7 @@ export function LaborEmployeePicker({
   canAssign,
   onAssignEmployee,
 }: LaborEmployeePickerProps) {
+  const tutorial = useGameStore((state) => state.tutorial)
   const [selectedMode, setSelectedMode] = useState<AssignmentMode>('immediate')
   const [availabilityFilter, setAvailabilityFilter] = useState<EmployeeAvailabilityFilter>('all')
   const [matchFilter, setMatchFilter] = useState<LaborMatchFilter>('all')
@@ -152,6 +155,7 @@ export function LaborEmployeePicker({
       </div>
     )
   }
+  const starterContract = isStarterLaborContract({ tutorial }, contract.id) && !tutorial.completed
 
   function assignEmployee(employeeId: string) {
     if (!canAssign) {
@@ -215,15 +219,18 @@ export function LaborEmployeePicker({
             const qualified = abilityGap >= 0
             const idle = isEmployeeIdle(employee)
             const matchesRole = employeeMatchesContractRole(employee, contract)
+            const starterEmployee = isStarterEmployee({ tutorial }, employee) && !tutorial.completed
             const showLaborPendingHint = employee.assignedTo?.type === 'labor' && selectedMode === 'after_current'
 
             return (
               <button
                 key={employee.id}
                 type="button"
+                data-tutorial-anchor={starterContract && starterEmployee ? 'starter-labor-employee' : undefined}
                 className={cn(
                   'grid gap-2 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-left text-[#d8cfbb]',
                   idle && 'border-[#56684d] bg-[#1d251d]',
+                  starterContract && starterEmployee && cn('animate-pulse', tutorialTarget),
                   qualified && matchesRole && 'shadow-[inset_4px_0_0_#6f9d51]',
                   !canAssign
                     ? 'cursor-not-allowed opacity-60'
@@ -235,7 +242,7 @@ export function LaborEmployeePicker({
                 <span className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <strong className="truncate text-[#efe2c8]">{employee.nickname || employee.name}</strong>
                   <span className={cn('text-xs font-extrabold', idle ? riskToneClass.success : riskToneClass.warning)}>
-                    {idle ? '空闲' : '忙碌'}
+                    {starterContract && starterEmployee ? '教学推荐' : idle ? '空闲' : '忙碌'}
                   </span>
                 </span>
 

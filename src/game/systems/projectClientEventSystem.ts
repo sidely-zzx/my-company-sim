@@ -12,6 +12,7 @@ import type {
 } from '../types'
 import { updateClientTrust } from './clientCompanySystem'
 import { addEvent, createId } from './eventSystem'
+import { shouldPauseOrdinaryProjectClientEvents, shouldSkipOrdinaryProjectClientEvent } from './tutorialSystem'
 
 const PROJECT_CLIENT_EVENT_COOLDOWN_DAYS = 2
 const MAX_PROJECT_CLIENT_EVENTS_PER_PROJECT = 3
@@ -81,6 +82,9 @@ function candidateProjects(state: GameState, endedDay: number): ProjectContract[
     if (project.lastClientEventDay !== undefined && endedDay - project.lastClientEventDay < PROJECT_CLIENT_EVENT_COOLDOWN_DAYS) {
       return false
     }
+    if (shouldSkipOrdinaryProjectClientEvent(state, project)) {
+      return false
+    }
     return true
   })
 }
@@ -112,6 +116,9 @@ function createPendingProjectClientEvent(
 export function processDailyProjectClientEvents(state: GameState, endedDay: number): GameState {
   const draft = cloneState(state)
   if (draft.pendingProjectClientEvents.length > 0) {
+    return draft
+  }
+  if (shouldPauseOrdinaryProjectClientEvents(draft)) {
     return draft
   }
 

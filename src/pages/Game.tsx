@@ -11,17 +11,20 @@ import { EmployeePanel } from '../components/game/EmployeePanel'
 import { EventPanel } from '../components/game/EventPanel'
 import { FinanceReportPanel } from '../components/game/FinanceReportPanel'
 import { LaborPanel } from '../components/game/LaborPanel'
+import { MailPanel } from '../components/game/MailPanel'
 import { ProjectPanel } from '../components/game/ProjectPanel'
 import { RecruitingPanel } from '../components/game/RecruitingPanel'
 import { RunningProjectList } from '../components/game/RunningProjectList'
 import { StatusBar } from '../components/game/StatusBar'
 import { EventLogItem } from '../components/game/EventLogItem'
+import { TutorialGuideOverlay } from '../components/game/tutorial/TutorialGuideOverlay'
 import {
   average,
   formatTime,
   percent,
   signedMoney,
 } from '../game/ui'
+import { getTutorialCoach, getTutorialTodos } from '../game/systems/tutorialSystem'
 import { useGameStore } from '../store/gameStore'
 import {
   amountNegative,
@@ -31,6 +34,8 @@ import {
   emptyState,
   srOnly,
   surface,
+  tutorialBadge,
+  tutorialTarget,
 } from '../styles/tw'
 import type { VisualSettings } from '../type'
 import { money } from '../utils'
@@ -54,7 +59,9 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const events = useGameStore((state) => state.events)
   const financeRecords = useGameStore((state) => state.financeRecords)
   const mailbox = useGameStore((state) => state.mailbox)
+  const tutorial = useGameStore((state) => state.tutorial)
   const setSpeed = useGameStore((state) => state.setSpeed)
+  const tutorialCoach = getTutorialCoach({ tutorial })
 
   const activeEmployees = employees.filter((employee) => employee.status !== 'fired')
   const workingEmployees = activeEmployees.filter((employee) =>
@@ -74,14 +81,27 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   )
   const netTotal = incomeTotal - expenseTotal
   const burnRate = Math.round(expenseTotal / Math.max(1, time.day))
-  const todos = [
-    { text: '处理未读邮件', meta: `${mailbox.filter((mail) => !mail.read).length} 封` },
-    { text: '筛选候选人简历', meta: `${resumes.length} 份` },
+  const todos = tutorial.enabled && !tutorial.completed ? getTutorialTodos({
+    tutorial,
+    mailbox,
+    laborContracts,
+    projectContracts,
+    pendingProjectClientEvents,
+    employees,
+    financeRecords,
+  }) : [
+    { text: '处理未读邮件', meta: `${mailbox.filter((mail) => !mail.read).length} 封`, done: false },
+    { text: '筛选候选人简历', meta: `${resumes.length} 份`, done: false },
     {
       text: '确认可签合同',
       meta: `${laborContracts.filter((contract) => contract.status === 'available').length} 人力`,
+      done: false,
     },
   ]
+  const tutorialTodoTotal = tutorial.enabled && !tutorial.completed ? todos.length : 0
+  const tutorialTodoDone = tutorial.enabled && !tutorial.completed ? todos.filter((todo) => todo.done).length : 0
+  const tutorialTodoCurrentIndex = tutorial.enabled && !tutorial.completed ? todos.findIndex((todo) => todo.current) : -1
+  const tutorialTodoProgress = tutorialTodoCurrentIndex >= 0 ? tutorialTodoCurrentIndex + 1 : tutorialTodoDone
   const morale = Math.max(0, Math.min(100, satisfaction))
   const efficiency = Math.round(
     activeEmployees.length > 0 ? ((workingEmployees + idleEmployees * 0.45) / activeEmployees.length) * 100 : 68,
@@ -109,10 +129,20 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
             <button type="button" onClick={() => setSpeed(0)} className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 0 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]')}>
               ||
             </button>
-            <button type="button" onClick={() => setSpeed(1)} className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 1 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]')}>
+            <button
+              type="button"
+              data-tutorial-anchor="speed-normal"
+              onClick={() => setSpeed(1)}
+              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 1 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
+            >
               &gt;
             </button>
-            <button type="button" onClick={() => setSpeed(2)} className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 2 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]')}>
+            <button
+              type="button"
+              data-tutorial-anchor="speed-fast"
+              onClick={() => setSpeed(2)}
+              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 2 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
+            >
               &gt;&gt;
             </button>
           </div>
@@ -157,14 +187,36 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
       </div>
       <div className="fixed left-0 top-25">
         <aside className="grid w-[230px] min-w-0 content-start gap-2">
+          {tutorialCoach ? (
+            <section className="rounded-lg border-2 border-[#ffd46a] bg-[#17120a] p-3.5 shadow-[0_0_0_2px_rgba(255,212,106,0.22),0_18px_44px_rgba(0,0,0,0.46)]">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="m-0 text-xs font-black text-[#ffcf5a]">当前指引</p>
+                {tutorialTodoTotal > 0 ? (
+                  <span className={tutorialBadge}>{tutorialTodoProgress}/{tutorialTodoTotal}</span>
+                ) : null}
+              </div>
+              <h2 className="mb-2 mt-1 text-xl font-black leading-6 text-[#fff8df]">{tutorialCoach.title}</h2>
+              <p className="m-0 text-sm font-black leading-5 text-[#fff3cd]">{tutorialCoach.actionText}</p>
+              <p className="mb-0 mt-2 text-xs font-extrabold leading-5 text-[#d8cfbb]">{tutorialCoach.reasonText}</p>
+            </section>
+          ) : null}
           <RunningProjectList />
           <section className={cn(surface, 'min-w-0 p-3.5')}>
             <h2 className="mb-3 mt-0 text-[17px] text-[#efe2c8]">待办事项</h2>
             <ul className="m-0 grid list-none gap-2.5 p-0">
               {todos.map((todo) => (
-                <li key={todo.text} className="flex justify-between gap-2.5 text-sm text-[#d4cbb6]">
-                  <span>{todo.text}</span>
-                  <em className="not-italic text-[#a9a18c]">{todo.meta}</em>
+                <li
+                  key={todo.text}
+                  className={cn(
+                    'flex justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-[#d4cbb6]',
+                    todo.current && 'border border-[#ffd46a] bg-[rgba(255,212,106,0.14)] text-[#fff3cd]',
+                  )}
+                >
+                  <span className={cn(todo.done && 'text-[#7f8a81] line-through')}>
+                    {todo.current ? '当前：' : todo.done ? '已完成：' : ''}
+                    {todo.text}
+                  </span>
+                  <em className={cn('not-italic text-[#a9a18c]', todo.current && 'font-black text-[#ffcf5a]', todo.done && 'text-[#6f796f]')}>{todo.meta}</em>
                 </li>
               ))}
             </ul>
@@ -194,7 +246,11 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
           {hasPendingActions && (
             <Dialog>
               <DialogTrigger asChild>
-                <button type="button" className={cn(button, 'grid min-h-[58px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]')}>
+                <button type="button" className={cn(
+                  button,
+                  'grid min-h-[58px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5 border-[#59423c] bg-[linear-gradient(180deg,#302521,#171b1a)] p-3 text-left text-[#f1dfc1]',
+                  tutorialCoach?.target === 'event' && cn('animate-pulse', tutorialTarget),
+                )}>
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-[#bb594b] font-black text-[#fff1df]">!</span>
                   <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{alertText}</strong>
                   <em className="not-italic text-[#d5c4a1]">查看</em>
@@ -225,23 +281,26 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         </aside>
       </div>
 
-      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[850px] grid-cols-7 gap-px')} aria-label="模块导航">
+      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[960px] grid-cols-8 gap-px')} aria-label="模块导航">
         <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} title="员工列表" description="管理员工">
           <EmployeePanel />
         </DockDialog>
-        <DockDialog icon="REC" label="招聘" badge={resumes.length} title="简历市场" description="招聘候选人">
+        <DockDialog icon="REC" label="招聘" badge={resumes.length} highlighted={tutorialCoach?.target === 'recruiting'} hint="下一步" tutorialAnchor="dock-recruiting" title="简历市场" description="招聘候选人">
           <RecruitingPanel />
         </DockDialog>
-        <DockDialog icon="PRJ" label="项目" badge={activeProjectCount} title="项目合同" description="项目外包">
+        <DockDialog icon="PRJ" label="项目" badge={activeProjectCount} highlighted={tutorialCoach?.target === 'project'} hint="下一步" tutorialAnchor="dock-project" title="项目合同" description="项目外包">
           <ProjectPanel />
         </DockDialog>
         <DockDialog icon="FIN" label="财务" title="昨日财报" description="财务报表">
           <FinanceReportPanel />
         </DockDialog>
-        <DockDialog icon="EVT" label="事件" badge={unreadMailCount} title="事件日志" description="查看事件">
+        <DockDialog icon="MAIL" label="邮件" badge={unreadMailCount} highlighted={tutorialCoach?.target === 'mail'} hint="先看这里" tutorialAnchor="dock-mail" title="邮箱通知" description="查看邮件">
+          <MailPanel />
+        </DockDialog>
+        <DockDialog icon="EVT" label="事件" badge={pendingProjectClientEvents.length} highlighted={tutorialCoach?.target === 'event'} hint="处理事件" tutorialAnchor="dock-event" title="事件日志" description="查看事件">
           <EventPanel />
         </DockDialog>
-        <DockDialog icon="CTR" label="合同" badge={laborContracts.length} title="驻场合同" description="人力外包合同">
+        <DockDialog icon="CTR" label="合同" badge={laborContracts.length} highlighted={tutorialCoach?.target === 'labor'} hint="下一步" tutorialAnchor="dock-labor" title="驻场合同" description="人力外包合同">
           <LaborPanel />
         </DockDialog>
         <DockDialog icon="SET" label="设置" title="设置" description="系统与视觉设置">
@@ -258,6 +317,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         <span>摸鱼中 {slackingEmployees}</span>
         <span>待分配 {idleEmployees}</span>
       </div> */}
+      <TutorialGuideOverlay coach={tutorialCoach} />
     </main>
   )
 }

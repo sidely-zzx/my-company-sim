@@ -53,6 +53,7 @@ export type LaborUrgency = 'urgent' | 'normal'
 export type EventSeverity = 'info' | 'warning' | 'danger' | 'success'
 /** 游戏事件分类，用于事件列表筛选和展示。 */
 export type GameEventType =
+  | 'tutorial'
   | 'finance'
   | 'recruiting'
   | 'contract'
@@ -73,6 +74,7 @@ export type FinanceRecordType =
   | 'discipline_fine'
 /** 邮件类型，用于邮箱筛选和模板匹配。 */
 export type MailType =
+  | 'tutorial'
   | 'contract_signed'
   | 'contract_warning'
   | 'contract_breach'
@@ -89,6 +91,20 @@ export type ArbitrationReason =
   | 'low_satisfaction'
 /** 仲裁状态；pending 表示还没出结果。 */
 export type ArbitrationStatus = 'pending' | 'won_by_employee' | 'rejected'
+/** 新手教学步骤；它驱动左侧待办和推荐标记，但不会锁定玩家操作。 */
+export type TutorialStep =
+  | 'read_welcome_mail'
+  | 'review_labor_contract'
+  | 'send_offer'
+  | 'assign_employee'
+  | 'settle_first_day'
+  | 'read_project_mail'
+  | 'review_project_contract'
+  | 'hire_project_team'
+  | 'assign_project_team'
+  | 'resolve_deadline_cut_event'
+  | 'finish_starter_project'
+  | 'completed'
 
 export interface GameTime {
   /** 当前游戏日，从第 1 天开始。 */
@@ -137,6 +153,8 @@ export interface Employee {
   school: SchoolType
   /** 简历上展示给玩家的技能信息，可能夸大或低估真实能力。 */
   resumeSkills: SkillClaim[]
+  /** 入职来源简历 ID；它用于教学阶段识别保底候选人，并可支持后续招聘转化分析。 */
+  sourceResumeId?: string
   /** 员工隐藏真实技能能力值；项目效率等于对应能力值 / 100。 */
   realSkillAbilities: Partial<Record<SkillRole, number>>
   /**
@@ -253,6 +271,29 @@ export interface MarketState {
   vip: boolean
   /** 玩家发布的招聘公告列表。 */
   recruitingPosts: RecruitingPost[]
+}
+
+export interface TutorialState {
+  /** 是否启用新手引导；关闭后不再影响待办、推荐标记和教学完成判定。 */
+  enabled: boolean
+  /** 是否已完成新手教学；它受第一单人力外包和第二天项目外包完成情况影响，完成后左侧待办恢复通用经营目标。 */
+  completed: boolean
+  /** 当前教学步骤；它由邮件、合同、招聘、分配和日结结果共同推进。 */
+  currentStep: TutorialStep
+  /** 引导推荐的人力外包合同 ID；用于 UI 标记推荐第一单和判定教学闭环。 */
+  starterLaborContractId?: string
+  /** 引导保底候选人简历 ID；用于招聘列表推荐标记和员工来源识别。 */
+  starterResumeIds: string[]
+  /** 创业第一天教学邮件 ID；用于判断玩家是否已阅读开局经营建议。 */
+  welcomeMailId?: string
+  /** 引导推荐的项目外包合同 ID；用于项目教学高亮、受控甲方事件和完成收款判定。 */
+  starterProjectContractId?: string
+  /** 项目教学保底候选人简历 ID；用于招聘高亮、Offer 保底成功和项目小队完整性判定。 */
+  starterProjectResumeIds: string[]
+  /** 第二天项目教学邮件 ID；用于判断玩家是否已阅读项目外包经营建议。 */
+  projectMailId?: string
+  /** 项目教学受控甲方事件 ID；用于事件高亮、处理状态判定和避免普通随机事件干扰。 */
+  projectClientEventId?: string
 }
 
 export interface LaborContract {
@@ -571,6 +612,8 @@ export interface GameState {
   pendingArbitrations: ArbitrationCase[]
   /** 招聘市场状态。 */
   market: MarketState
+  /** 新手教学状态；影响引导待办、推荐市场数据、保底 Offer、受控甲方事件和教学完成判定。 */
+  tutorial: TutorialState
   /** 随机数种子，用于可复现地生成市场和判定概率。 */
   rngSeed: number
   /** 自增 ID 计数器，保证新实体 ID 不重复。 */

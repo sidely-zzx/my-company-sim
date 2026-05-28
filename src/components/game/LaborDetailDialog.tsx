@@ -6,8 +6,9 @@ import {
   roleLabels,
   urgencyLabels,
 } from '../../game/ui'
+import { isStarterLaborContract } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
-import { button, cn, riskToneClass } from '../../styles/tw'
+import { button, cn, riskToneClass, tutorialTarget } from '../../styles/tw'
 import { money } from '../../utils'
 import {
   Dialog,
@@ -31,12 +32,14 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const tutorial = useGameStore((state) => state.tutorial)
   const acceptLaborContract = useGameStore((state) => state.acceptLaborContract)
   const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
   const assigned = employees.find((employee) => employee.id === contract.assignedEmployeeId)
   // 当前驻场员工的合同岗位能力会影响人力合同日结满意度；低于要求会让甲方满意度下降并可能触发预警或终止。
   const assignedAbility = assigned?.realSkillAbilities[contract.requiredRole] ?? 0
   const canAssign = canAssignLaborContract(contract)
+  const starterContract = isStarterLaborContract({ tutorial }, contract.id) && !tutorial.completed
 
   return (
     <Dialog>
@@ -56,6 +59,14 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
         <div className="grid min-h-[620px] grid-cols-[minmax(260px,0.75fr)_minmax(520px,1.25fr)] gap-4 max-[980px]:grid-cols-1">
           <section className="min-w-0 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-4">
             <div className="grid gap-3">
+              {starterContract ? (
+                <div className="rounded-md border border-[#7f6840] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
+                  <strong className="block text-[#ffe0a3]">推荐第一单</strong>
+                  <span className="mt-1 block text-xs leading-5 text-[#d8cfbb]">
+                    能力达标会稳定甲方满意度；签约后如果迟迟不安排员工，超过期限会产生违约金。
+                  </span>
+                </div>
+              ) : null}
               <dl className="m-0 grid grid-cols-2 gap-2 text-[13px] text-[#d8cfbb]">
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">需求岗位</dt>
@@ -92,7 +103,12 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                         签约会把合同状态改为已签约，并允许在本详情页继续安排员工。
                       </span>
                     </div>
-                    <button type="button" className={button} onClick={() => acceptLaborContract(contract.id)}>
+                    <button
+                      type="button"
+                      data-tutorial-anchor={starterContract ? 'starter-labor-sign-button' : undefined}
+                      className={cn(button, starterContract && cn('animate-pulse', tutorialTarget))}
+                      onClick={() => acceptLaborContract(contract.id)}
+                    >
                       签约
                     </button>
                   </div>
