@@ -113,12 +113,21 @@ function getTutorialNodeDefinition(nodeId: TutorialNodeId): TutorialNodeDefiniti
 }
 
 /** 默认教学状态创建；节点链表是教学进度的唯一来源，UI 只能通过 helper 读取当前节点。 */
-export function createInitialTutorialState(): TutorialState {
+export function createInitialTutorialState(enabled = true): TutorialState {
+  const nodes = createTutorialNodes()
+
+  if (!enabled) {
+    for (const node of Object.values(nodes)) {
+      node.completed = true
+    }
+  }
+
   return {
-    enabled: true,
-    completed: false,
-    currentNodeId: 'read_welcome_mail',
-    nodes: createTutorialNodes(),
+    // 关闭教程时直接进入 completed，避免待办、遮罩、高亮和教学保底市场继续影响正常开局。
+    enabled,
+    completed: !enabled,
+    currentNodeId: enabled ? 'read_welcome_mail' : 'completed',
+    nodes,
     starterResumeIds: [],
     starterStatusTriggered: false,
     starterStatusHandled: false,

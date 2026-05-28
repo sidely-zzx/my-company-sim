@@ -23,7 +23,7 @@ import type { AssignmentMode, EmployeeDisciplineAction, FinanceReport, GameSpeed
 
 export interface GameStore extends GameState {
   /** 开始一局新游戏；会重置全部游戏状态和市场数据。 */
-  startGame: () => void
+  startGame: (options?: { skipTutorial?: boolean }) => void
   /** 重置当前游戏；作用等同于重新创建初始状态。 */
   resetGame: () => void
   /** 设置游戏速度；0 为暂停，1 为正常，2 为二倍速。 */
@@ -100,7 +100,9 @@ function toGameState(state: GameStore): GameState {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...createInitialGameState(),
-  startGame: () => set(() => createInitialGameState()),
+  startGame: (options) =>
+    // skipTutorial 只影响新局生成：关闭教学保底资源和 UI 引导，不会改变普通合同/简历刷新规则。
+    set(() => createInitialGameState(undefined, { tutorialEnabled: !options?.skipTutorial })),
   resetGame: () => set(() => createInitialGameState()),
   setSpeed: (speed) => set((state) => setSpeed(toGameState(state), speed)),
   setOffWorkHour: (hour) => set((state) => syncTutorialProgress(setOffWorkHour(toGameState(state), hour))),

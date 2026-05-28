@@ -13,6 +13,7 @@ interface HomePageProps {
   exitStatus: string
   visualSettings: VisualSettings
   onStartNewGame: () => void
+  onStartNewGameWithoutTutorial: () => void
   onImportSaves: (event: ChangeEvent<HTMLInputElement>) => Promise<void>
   onLoadImportedSave: (save: ImportedSave) => void
   onUpdateVisualSettings: (patch: Partial<VisualSettings>) => void
@@ -25,6 +26,7 @@ function HomePage({
   exitStatus,
   visualSettings,
   onStartNewGame,
+  onStartNewGameWithoutTutorial,
   onImportSaves,
   onLoadImportedSave,
   onUpdateVisualSettings,
@@ -51,6 +53,13 @@ function HomePage({
             onClick={onStartNewGame}
           >
             开始新游戏
+          </button>
+          <button
+            type="button"
+            className={cn(menuAction, 'border-[#4f5f5b] text-[#c9ded8] hover:border-[#7fa79c] hover:bg-[#22302d] focus-visible:border-[#7fa79c] focus-visible:bg-[#22302d]')}
+            onClick={onStartNewGameWithoutTutorial}
+          >
+            跳过新手教程
           </button>
           <ContinueGameDialog
             importedSaves={importedSaves}

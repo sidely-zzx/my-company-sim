@@ -45,6 +45,13 @@ function App() {
     setView('game')
   }
 
+  function startNewGameWithoutTutorial() {
+    // 从开始菜单跳过教程时，只关闭教程系统本身，玩家仍从第 1 天和普通市场开始。
+    startGame({ skipTutorial: true })
+    setExitStatus('')
+    setView('game')
+  }
+
   async function importSaves(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget
     const files = Array.from(input.files ?? [])
@@ -142,6 +149,7 @@ function App() {
           exitStatus={exitStatus}
           visualSettings={visualSettings}
           onStartNewGame={startNewGame}
+          onStartNewGameWithoutTutorial={startNewGameWithoutTutorial}
           onImportSaves={importSaves}
           onLoadImportedSave={loadImportedSave}
           onUpdateVisualSettings={updateVisualSettings}

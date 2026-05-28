@@ -13,7 +13,13 @@ import { refreshResumes } from './systems/recruitingSystem'
 import { applyTutorialStarterMarket, createInitialTutorialState } from './systems/tutorialSystem'
 import type { GameState } from './types'
 
-export function createInitialGameState(seed = DEFAULT_SEED): GameState {
+interface CreateInitialGameStateOptions {
+  /** 是否启用新手教程；会影响教学保底合同、保底候选人、教学邮件和 UI 高亮是否生成。 */
+  tutorialEnabled?: boolean
+}
+
+export function createInitialGameState(seed = DEFAULT_SEED, options: CreateInitialGameStateOptions = {}): GameState {
+  const tutorialEnabled = options.tutorialEnabled ?? true
   const state: GameState = {
     settings: {
       offWorkHour: DEFAULT_OFF_WORK_HOUR,
@@ -48,9 +54,12 @@ export function createInitialGameState(seed = DEFAULT_SEED): GameState {
       vip: false,
       recruitingPosts: [],
     },
-    tutorial: createInitialTutorialState(),
+    tutorial: createInitialTutorialState(tutorialEnabled),
     rngSeed: seed,
     nextId: 1,
   }
-  return applyTutorialStarterMarket(refreshResumes(generateProjectContracts(generateLaborContracts(state))))
+  const regularMarketState = refreshResumes(generateProjectContracts(generateLaborContracts(state)))
+
+  // 新手教程开启时注入保底第一单和推荐候选人；跳过教程则保留纯普通市场开局。
+  return tutorialEnabled ? applyTutorialStarterMarket(regularMarketState) : regularMarketState
 }
