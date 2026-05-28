@@ -6,7 +6,7 @@ import {
   calculateEmployeeOutput,
   calculateFireCompensation,
 } from '../../game/systems/employeeSystem'
-import { createTestEmployee, createTestState } from './testHelpers'
+import { createTestEmployee, createTestProject, createTestState } from './testHelpers'
 
 describe('employeeSystem', () => {
   it('updates behavior only on every tenth game minute', () => {
@@ -16,6 +16,13 @@ describe('employeeSystem', () => {
         assignedTo: { type: 'project', id: 'project-test', role: 'product' },
         status: 'working',
         behaviorSeed: 1,
+      }),
+    ]
+    state.projectContracts = [
+      createTestProject({
+        status: 'active',
+        currentPhase: 'product',
+        assignedEmployees: { product: ['employee-test'] },
       }),
     ]
 

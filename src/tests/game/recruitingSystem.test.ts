@@ -32,7 +32,8 @@ describe('recruitingSystem', () => {
 
   it('keeps a rejected candidate visible and blocks another offer', () => {
     const state = createTestState(1)
-    const resume = state.resumes[0]
+    state.rngSeed = 1
+    const resume = state.resumes.find((item) => !state.tutorial.starterResumeIds.includes(item.id))
     if (!resume) {
       throw new Error('expected initial resume')
     }

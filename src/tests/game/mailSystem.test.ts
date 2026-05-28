@@ -13,8 +13,8 @@ describe('mailSystem', () => {
       body: '扣款',
     })
 
-    expect(state.mailbox[0]?.read).toBe(false)
-    expect(markMailRead(state, mailId).mailbox[0]?.read).toBe(true)
+    expect(state.mailbox.find((mail) => mail.id === mailId)?.read).toBe(false)
+    expect(markMailRead(state, mailId).mailbox.find((mail) => mail.id === mailId)?.read).toBe(true)
   })
 
   it('can mark all mail as read', () => {
