@@ -70,6 +70,7 @@ function DialogContent({
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button
               variant="ghost"
+              data-tutorial-anchor="dialog-close-button"
               className="absolute top-5 right-3 size-[34px] rounded-full bg-[#2c3330] p-0 text-[22px] leading-none text-[#efe2c8] hover:bg-[#3b453f] hover:text-[#efe2c8] focus-visible:bg-[#3b453f]"
               aria-label="关闭弹窗"
             >

@@ -76,12 +76,12 @@ export function EventPanel() {
                       <button
                         key={option.id}
                         type="button"
-                        data-tutorial-anchor={tutorialEvent && option.id === 'partial_rush' ? 'starter-event-recommended-option' : undefined}
+                        data-tutorial-anchor={tutorialEvent && option.id === 'compress_deadline' ? 'starter-event-recommended-option' : undefined}
                         className={cn(
                           button,
                           'min-h-12 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]',
                           tutorialEvent &&
-                            option.id === 'partial_rush' &&
+                            option.id === 'compress_deadline' &&
                             cn('animate-pulse', tutorialTarget),
                         )}
                         onClick={() => {

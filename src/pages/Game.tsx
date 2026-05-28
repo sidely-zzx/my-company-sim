@@ -62,9 +62,12 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const tutorial = useGameStore((state) => state.tutorial)
   const setSpeed = useGameStore((state) => state.setSpeed)
   const tutorialCoach = getTutorialCoach({ tutorial })
-  const tutorialOverlayCoach = tutorialCoach?.target === 'speed' && time.speed > 0 && !time.paused
+  const timeAdvancing = time.speed > 0 && !time.paused
+  const speedGuideSatisfied = tutorialCoach?.target === 'speed' && timeAdvancing
+  const tutorialOverlayCoach = speedGuideSatisfied
     ? undefined
     : tutorialCoach
+  const shouldHighlightSpeedControls = tutorialCoach?.target === 'speed' && !timeAdvancing
 
   const activeEmployees = employees.filter((employee) => employee.status !== 'fired')
   const workingEmployees = activeEmployees.filter((employee) =>
@@ -121,7 +124,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
 
   return (
     <main className="grid h-full w-full grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-2 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px),#151918] bg-[length:24px_24px] p-2">
-      <header className={cn(surface, 'fixed top-0 left-0 right-0 grid min-h-20 grid-cols-[minmax(210px,1fr)_minmax(360px,1.7fr)_auto] items-stretch gap-2 px-2.5 py-2')}>
+      <header className={cn(surface, 'fixed top-0 left-0 right-0 z-30 grid min-h-20 grid-cols-[minmax(210px,1fr)_minmax(360px,1.7fr)_auto] items-stretch gap-2 px-2.5 py-2')}>
         <div className="flex flex-nowrap items-center gap-2">
           <div className="grid h-12 w-12 place-items-center rounded-lg border border-[#7e735a] bg-[#2b2922] text-3xl font-black text-[#ead7aa] shadow-[inset_0_0_0_2px_#171a18]">M</div>
           <div>
@@ -136,7 +139,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
               type="button"
               data-tutorial-anchor="speed-normal"
               onClick={() => setSpeed(2)}
-              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 2 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
+              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 2 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', shouldHighlightSpeedControls && cn('animate-pulse', tutorialTarget))}
             >
               &gt;
             </button>
@@ -144,7 +147,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
               type="button"
               data-tutorial-anchor="speed-fast"
               onClick={() => setSpeed(6)}
-              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 6 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
+              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 6 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', shouldHighlightSpeedControls && cn('animate-pulse', tutorialTarget))}
             >
               &gt;&gt;
             </button>
@@ -188,7 +191,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
       <div className='h-full w-full'>
         <PixiContainer></PixiContainer>
       </div>
-      <div className="fixed left-0 top-25">
+      <div className="fixed left-0 top-25 z-20">
         <aside className="grid w-[230px] min-w-0 content-start gap-2">
           {tutorialCoach ? (
             <section className="rounded-lg border-2 border-[#ffd46a] bg-[#17120a] p-3.5 shadow-[0_0_0_2px_rgba(255,212,106,0.22),0_18px_44px_rgba(0,0,0,0.46)]">
@@ -244,7 +247,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         </aside>
       </div>
 
-      <div className='fixed right-0 bottom-25'>
+      <div className='fixed right-0 bottom-25 z-20'>
          <aside className="grid w-[260px] min-w-0 content-start gap-2">
           {hasPendingActions && (
             <Dialog>
@@ -284,7 +287,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         </aside>
       </div>
 
-      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[960px] grid-cols-8 gap-px')} aria-label="模块导航">
+      <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 z-30 mx-auto grid w-[960px] grid-cols-8 gap-px')} aria-label="模块导航">
         <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} highlighted={tutorialCoach?.target === 'employee'} hint="抓摸鱼" tutorialAnchor="dock-employee" title="员工列表" description="管理员工">
           <EmployeePanel />
         </DockDialog>

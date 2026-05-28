@@ -181,6 +181,10 @@ describe('tutorialSystem', () => {
 
     expect(state.tutorial.currentStep).toBe('resolve_deadline_cut_event')
     expect(state.pendingProjectClientEvents.some((event) => event.id === state.tutorial.projectClientEventId)).toBe(true)
+    expect(state.pendingProjectClientEvents.find((event) => event.id === state.tutorial.projectClientEventId)?.options.map((option) => option.id)).toEqual([
+      'compress_deadline',
+      'ignore_request',
+    ])
     expect(state.time.paused).toBe(true)
   })
 
@@ -247,7 +251,7 @@ describe('tutorialSystem', () => {
     if (!eventId) {
       throw new Error('expected tutorial event')
     }
-    state = syncTutorialProgress(resolveProjectClientEvent(state, eventId, 'partial_rush'))
+    state = syncTutorialProgress(resolveProjectClientEvent(state, eventId, 'compress_deadline'))
     expect(state.projectContracts.find((project) => project.id === projectId)?.deadlineDay).toBe(state.time.day)
     expect(state.tutorial.currentStep).toBe('finish_starter_project')
 

@@ -37,6 +37,7 @@ export type TutorialAnchorId =
   | 'dock-event'
   | 'speed-normal'
   | 'speed-fast'
+  | 'dialog-close-button'
   | 'welcome-mail-row'
   | 'welcome-mail-action'
   | 'project-mail-row'
@@ -105,6 +106,10 @@ const tutorialStepOrder: TutorialStep[] = [
   'finish_starter_project',
   'completed',
 ]
+
+function guideAnchors(...anchorIds: TutorialAnchorId[]): TutorialAnchorId[] {
+  return [...anchorIds, 'dialog-close-button']
+}
 
 export function createInitialTutorialState(): TutorialState {
   return {
@@ -481,32 +486,21 @@ function createStarterDeadlineCutEvent(state: GameState, project: ProjectContrac
     severity: 'danger',
     options: [
       {
-        id: 'accept_rush',
-        label: '接受今天交付',
-        description: '截止日改为今天，甲方信任提升，但项目小队压力和疲劳显著增加。',
+        id: 'compress_deadline',
+        label: '压缩工期',
+        description: '接受甲方要求，截止日压缩到今天，项目小队压力和疲劳上升。',
         effects: {
           deadlineDayDelta: deadlineDelta,
-          clientTrustDelta: 4,
-          employeePressureDelta: 12,
-          employeeEnergyDelta: -8,
+          clientTrustDelta: 2,
+          employeePressureDelta: 8,
+          employeeEnergyDelta: -5,
           employeeSatisfactionDelta: -3,
         },
       },
       {
-        id: 'partial_rush',
-        label: '只提前 1 天',
-        description: '教学推荐：对外承诺今天交付核心范围，团队压力可控，甲方信任略升。',
-        effects: {
-          deadlineDayDelta: deadlineDelta,
-          clientTrustDelta: 1,
-          employeePressureDelta: 6,
-          employeeEnergyDelta: -3,
-        },
-      },
-      {
-        id: 'reject_rush',
-        label: '拒绝额外压榨',
-        description: '不接受新增要求，但项目仍需今天交付，甲方信任下降并提高违约争议压力。',
+        id: 'ignore_request',
+        label: '无视甲方要求',
+        description: '不理会甲方催促；教学仍把截止日压缩到今天，但甲方信任下降且罚金风险上升。',
         effects: {
           deadlineDayDelta: deadlineDelta,
           clientTrustDelta: -8,
@@ -937,7 +931,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开底部「邮件」，阅读创业第一天邮件，确认第一单目标。',
       actionText: '点击「邮件」，把创业第一天邮件标记已读。',
       reasonText: '读完后会指向推荐驻场合同，开始第一笔稳定现金流。',
-      anchorIds: ['welcome-mail-action', 'welcome-mail-row', 'dock-mail'],
+      anchorIds: guideAnchors('welcome-mail-action', 'welcome-mail-row', 'dock-mail'),
       target: 'mail',
     }
   }
@@ -947,7 +941,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开「合同」，选择带有推荐标记的星河科技驻场前端。',
       actionText: '签下带「推荐第一单」标记的驻场合同。',
       reasonText: '签约后就能招聘并安排员工，跑通第一天日结。',
-      anchorIds: ['starter-labor-sign-button', 'starter-labor-row', 'dock-labor'],
+      anchorIds: guideAnchors('starter-labor-sign-button', 'starter-labor-row', 'dock-labor'),
       target: 'labor',
     }
   }
@@ -957,7 +951,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开「招聘」，给推荐候选人发 Offer。教学期只能小幅调整工资和社保，推荐候选人会接受。',
       actionText: '给推荐候选人发送 Offer。',
       reasonText: '教学期 Offer 会 100% 成功，入职后可安排到推荐合同。',
-      anchorIds: ['starter-resume-confirm-offer-button', 'starter-resume-offer-button', 'dock-recruiting'],
+      anchorIds: guideAnchors('starter-resume-confirm-offer-button', 'starter-resume-offer-button', 'dock-recruiting'),
       target: 'recruiting',
     }
   }
@@ -967,7 +961,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '回到「合同」详情，在员工列表里选择教学推荐员工并立即投入。',
       actionText: '进入推荐合同详情，点击教学推荐员工。',
       reasonText: '员工驻场后，先加速观察员工状态，再推进到下班看日结。',
-      anchorIds: ['starter-labor-employee', 'starter-labor-detail-button', 'starter-labor-row', 'dock-labor'],
+      anchorIds: guideAnchors('starter-labor-employee', 'starter-labor-detail-button', 'starter-labor-row', 'dock-labor'),
       target: 'labor',
     }
   }
@@ -977,7 +971,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '点击顶部速度按钮，让员工先工作一会儿，观察办公室里的员工状态变化。',
       actionText: '点击顶部速度按钮，推进几分钟观察员工状态。',
       reasonText: '员工状态会影响实际产出；摸鱼和离岗时产出为 0。',
-      anchorIds: ['speed-fast', 'speed-normal'],
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
       target: 'speed',
     }
   }
@@ -987,13 +981,13 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '点击办公室里的摸鱼员工，或打开「员工」找到高亮员工，处理当前状态。',
       actionText: '点击摸鱼员工，推荐使用「口头提醒」。',
       reasonText: '提醒或处罚会让员工回到工作；经常严厉处罚会伤害忠诚、士气和公司声誉。',
-      anchorIds: [
+      anchorIds: guideAnchors(
         'starter-employee-discipline-verbal-button',
         'starter-employee-discipline-button',
         'starter-employee-hotspot',
         'starter-employee-row',
         'dock-employee',
-      ],
+      ),
       target: 'employee',
     }
   }
@@ -1003,7 +997,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '点击顶部速度按钮加速到 18:00，查看第一笔驻场收入和人工成本。',
       actionText: '点击顶部速度按钮，把时间推进到下班。',
       reasonText: '日结会展示第一笔驻场收入、工资社保支出和净现金变化。',
-      anchorIds: ['speed-fast', 'speed-normal'],
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
       target: 'speed',
     }
   }
@@ -1013,7 +1007,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开「邮件」，阅读项目外包教学邮件，确认今天的小项目目标。',
       actionText: '打开「邮件」，阅读第二天项目外包备忘录。',
       reasonText: '读完后会指向推荐项目，开始学习项目外包闭环。',
-      anchorIds: ['project-mail-action', 'project-mail-row', 'dock-mail'],
+      anchorIds: guideAnchors('project-mail-action', 'project-mail-row', 'dock-mail'),
       target: 'mail',
     }
   }
@@ -1023,7 +1017,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开「项目」，选择带有项目教学标记的启明星官网改版。',
       actionText: '签下「启明星官网改版」推荐项目。',
       reasonText: '签约后需要招齐 5 个岗位，项目完成后一次性收款。',
-      anchorIds: ['starter-project-sign-button', 'starter-project-row', 'dock-project'],
+      anchorIds: guideAnchors('starter-project-sign-button', 'starter-project-row', 'dock-project'),
       target: 'project',
     }
   }
@@ -1033,7 +1027,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开「招聘」，给 5 个项目推荐候选人发 Offer。教学期 Offer 必定成功。',
       actionText: '给项目推荐候选人发送 Offer，招齐 5 个岗位。',
       reasonText: '产品、设计、前端、后端、测试齐了之后，才能推进完整项目。',
-      anchorIds: ['starter-project-resume-confirm-offer-button', 'starter-project-resume-offer-button', 'dock-recruiting'],
+      anchorIds: guideAnchors('starter-project-resume-confirm-offer-button', 'starter-project-resume-offer-button', 'dock-recruiting'),
       target: 'recruiting',
     }
   }
@@ -1043,7 +1037,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '打开「项目」详情，把产品、设计、前端、后端和测试员工分别投入推荐项目。',
       actionText: '在推荐项目详情里，为缺少的岗位分配教学推荐员工。',
       reasonText: '5 个岗位分配齐后，会触发一次受控甲方提前交付事件。',
-      anchorIds: ['starter-project-employee', 'starter-project-role-missing', 'starter-project-detail-button', 'starter-project-row', 'dock-project'],
+      anchorIds: guideAnchors('starter-project-employee', 'starter-project-role-missing', 'starter-project-detail-button', 'starter-project-row', 'dock-project'),
       target: 'project',
     }
   }
@@ -1053,17 +1047,17 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '推荐项目岗位已经分配齐。推进到下个工作日上午，教学甲方事件会自动触发。',
       actionText: '点击顶部速度按钮，把时间推进到下个工作日上午。',
       reasonText: '下午分配齐项目小队时会延后触发事件，避免项目没有完整工作日可完成。',
-      anchorIds: ['speed-fast', 'speed-normal'],
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
       target: 'speed',
     }
   }
   if (state.tutorial.currentStep === 'resolve_deadline_cut_event') {
     return {
       title: '处理甲方事件',
-      description: '打开「事件」，处理教学甲方事件。推荐选择「只提前 1 天」，处理后截止日会压缩到今天。',
-      actionText: '处理「甲方要求提前交付」，推荐选择「只提前 1 天」。',
+      description: '打开「事件」，处理教学甲方事件。推荐选择「压缩工期」，也可以选择无视甲方要求。',
+      actionText: '处理「甲方要求提前交付」，选择「压缩工期」或「无视甲方要求」。',
       reasonText: '处理后项目截止日会变成今天，观察项目风险和交付压力。',
-      anchorIds: ['starter-event-recommended-option', 'starter-event-card', 'dock-event'],
+      anchorIds: guideAnchors('starter-event-recommended-option', 'starter-event-card', 'dock-event'),
       target: 'event',
     }
   }
@@ -1073,7 +1067,7 @@ export function getTutorialCoach(state: Pick<GameState, 'tutorial'>): TutorialCo
       description: '继续推进时间，观察项目阶段完成、验收邮件和项目完成款入账。',
       actionText: '继续推进时间，等待推荐项目完成验收。',
       reasonText: '完成后会产生项目外包收入，新手教学结束。',
-      anchorIds: ['speed-fast', 'speed-normal'],
+      anchorIds: guideAnchors('speed-fast', 'speed-normal'),
       target: 'speed',
     }
   }

@@ -26,6 +26,12 @@ interface GuideCard {
 interface GuideLayout {
   spotlight: GuideRect;
   card: GuideCard;
+  anchorId: TutorialAnchorId;
+}
+
+interface VisibleAnchor {
+  anchorId: TutorialAnchorId;
+  element: HTMLElement;
 }
 
 const spotlightPadding = 10;
@@ -89,12 +95,12 @@ function isElementVisible(element: Element): element is HTMLElement {
   return Boolean(hitElement && (element === hitElement || element.contains(hitElement)));
 }
 
-function findVisibleAnchor(anchorIds: TutorialAnchorId[]): HTMLElement | undefined {
+function findVisibleAnchor(anchorIds: TutorialAnchorId[]): VisibleAnchor | undefined {
   for (const anchorId of anchorIds) {
     const elements = Array.from(document.querySelectorAll(anchorSelector(anchorId))).reverse();
     const element = elements.find(isElementVisible);
     if (element) {
-      return element;
+      return { anchorId, element };
     }
   }
 
@@ -220,11 +226,12 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
     const resizeObserver = new ResizeObserver(() => scheduleMeasure());
 
     function measure() {
-      const anchor = findVisibleAnchor(anchorIds);
-      if (!anchor) {
+      const visibleAnchor = findVisibleAnchor(anchorIds);
+      if (!visibleAnchor) {
         setLayout(undefined);
         return;
       }
+      const { anchorId, element: anchor } = visibleAnchor;
 
       if (observedAnchor !== anchor) {
         if (observedAnchor) {
@@ -238,6 +245,7 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
       setLayout({
         spotlight,
         card: placeCard(spotlight),
+        anchorId,
       });
     }
 
@@ -270,12 +278,16 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
     return null;
   }
 
-  const { spotlight, card } = layout;
+  const { spotlight, card, anchorId } = layout;
   const ArrowIcon = arrowIconByPlacement[card.placement];
   const spotlightBottom = spotlight.top + spotlight.height;
   const spotlightRight = spotlight.left + spotlight.width;
   const bottomMaskHeight = Math.max(0, window.innerHeight - spotlightBottom);
   const rightMaskWidth = Math.max(0, window.innerWidth - spotlightRight);
+  const closeDialogGuide = anchorId === 'dialog-close-button';
+  const title = closeDialogGuide ? '关闭弹窗' : coach.title;
+  const actionText = closeDialogGuide ? '点击右上角关闭按钮，回到主界面继续下一步。' : coach.actionText;
+  const reasonText = closeDialogGuide ? '弹窗内动作已经完成，关闭后会继续指向新的目标。' : coach.reasonText;
 
   return createPortal(
     <div className="pointer-events-none fixed inset-0 z-[60]" aria-hidden="true">
@@ -324,10 +336,10 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
           )}
         />
         <p className="m-0 text-[11px] font-black text-[#ffcf5a]">新手引导</p>
-        <h2 className="mb-2 mt-1 text-xl font-black leading-6 text-[#fff8df]">{coach.title}</h2>
-        <p className="m-0 text-[15px] font-black leading-6 text-[#fff3cd]">{coach.actionText}</p>
+        <h2 className="mb-2 mt-1 text-xl font-black leading-6 text-[#fff8df]">{title}</h2>
+        <p className="m-0 text-[15px] font-black leading-6 text-[#fff3cd]">{actionText}</p>
         <p className="mb-0 mt-2 text-xs font-extrabold leading-5 text-[#d8cfbb]">
-          {coach.reasonText}
+          {reasonText}
         </p>
       </section>
     </div>,
