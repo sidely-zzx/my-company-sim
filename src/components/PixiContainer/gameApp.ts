@@ -118,18 +118,24 @@ const createGameApp = async (
   options: GameAppOptions,
 ): Promise<GameAppHandle> => {
   const app = new Application();
+  const getNodeSize = () => ({
+    // Pixi 的绘制尺寸必须使用未经过 transform 缩放的布局尺寸。
+    // game-root 会用 CSS transform 做整屏适配，clientWidth/clientHeight 仍然是办公室容器的真实逻辑尺寸。
+    width: node.clientWidth || 1920,
+    height: node.clientHeight || 1080,
+  });
+  const initialSize = getNodeSize();
   // @ts-expect-error devtool插件
   globalThis.__PIXI_APP__ = app;
   await app.init({
-    resizeTo: node,
+    width: initialSize.width,
+    height: initialSize.height,
     antialias: false,
     autoDensity: false,
     backgroundAlpha: 0,
   });
 
   app.canvas.className = 'h-full w-full';
-  app.canvas.setAttribute('width', '1920');
-  app.canvas.setAttribute('height', '1080');
   node.appendChild(app.canvas);
 
   const sceneLayer = new Container();
@@ -157,13 +163,33 @@ const createGameApp = async (
   pcLayer.setActiveScreenCount(options.employees.length);
   chairLayer.setOccupiedEmployeeCount(options.employees.length);
 
+  let resizeFrame: number | null = null;
   const resizeOfficeLayer = () => {
     fitOfficeLayer(officeLayer, app.screen.width, app.screen.height);
   };
+  const syncRendererSize = () => {
+    const { width, height } = getNodeSize();
+    // renderer 尺寸会影响 app.screen，并进一步影响办公室背景、桌椅和员工的 cover 缩放比例。
+    // 只改变视觉坐标系，不修改员工数量、项目进度、现金流等游戏状态。
+    app.renderer.resize(width, height);
+    resizeOfficeLayer();
+  };
+  const scheduleSyncRendererSize = () => {
+    if (resizeFrame !== null) {
+      cancelAnimationFrame(resizeFrame);
+    }
 
-  resizeOfficeLayer();
+    // 首次切到游戏页时 React 布局、CSS transform 和 Pixi 初始化可能不在同一帧完成。
+    // 延后一帧再读取容器尺寸，避免 canvas 绘制缓冲区只拿到半高或旧高度。
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null;
+      syncRendererSize();
+    });
+  };
 
-  const resizeObserver = new ResizeObserver(resizeOfficeLayer);
+  scheduleSyncRendererSize();
+
+  const resizeObserver = new ResizeObserver(scheduleSyncRendererSize);
   resizeObserver.observe(node);
   const unbindRightButtonSceneDrag = bindRightButtonSceneDrag(app.canvas, sceneLayer);
 
@@ -174,6 +200,9 @@ const createGameApp = async (
       chairLayer.setOccupiedEmployeeCount(employees.length);
     },
     destroy: () => {
+      if (resizeFrame !== null) {
+        cancelAnimationFrame(resizeFrame);
+      }
       resizeObserver.disconnect();
       unbindRightButtonSceneDrag();
       employeeLayer.destroy();
