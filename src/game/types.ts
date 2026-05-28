@@ -1,7 +1,7 @@
 /** 玩家可选择的下班整点；到这个时间会自动日结并进入下一天。 */
 export type WorkHour = 18 | 19 | 20 | 21 | 22 | 23 | 24
-/** 游戏速度；0 表示暂停，1 表示正常速度，2 表示二倍速。 */
-export type GameSpeed = 0 | 1 | 2
+/** 游戏速度；0 表示暂停，1 表示正常速度，2 表示二倍速，6 表示快速推进。 */
+export type GameSpeed = 0 | 1 | 2 | 6
 /** 员工和项目使用的岗位/技能类型。 */
 export type SkillRole = 'product' | 'design' | 'frontend' | 'backend' | 'testing'
 /** 简历上自称的技能等级，只代表候选人包装，不直接决定真实效率。 */
@@ -97,11 +97,14 @@ export type TutorialStep =
   | 'review_labor_contract'
   | 'send_offer'
   | 'assign_employee'
+  | 'start_first_day_time'
+  | 'catch_slacking_employee'
   | 'settle_first_day'
   | 'read_project_mail'
   | 'review_project_contract'
   | 'hire_project_team'
   | 'assign_project_team'
+  | 'wait_project_deadline_cut_event'
   | 'resolve_deadline_cut_event'
   | 'finish_starter_project'
   | 'completed'
@@ -286,6 +289,12 @@ export interface TutorialState {
   starterResumeIds: string[]
   /** 创业第一天教学邮件 ID；用于判断玩家是否已阅读开局经营建议。 */
   welcomeMailId?: string
+  /** 第一天员工状态教学锁定的员工 ID；它受推荐驻场分配结果影响，用于办公室热点、员工列表高亮和处理完成判定。 */
+  starterStatusEmployeeId?: string
+  /** 是否已经触发过第一次受控摸鱼；它受第一天加速推进影响，避免教学摸鱼重复出现。 */
+  starterStatusTriggered?: boolean
+  /** 是否已经处理过第一次员工状态教学；它受玩家提醒、警告、罚款或忽略影响，完成后允许继续推进到第一天日结。 */
+  starterStatusHandled?: boolean
   /** 引导推荐的项目外包合同 ID；用于项目教学高亮、受控甲方事件和完成收款判定。 */
   starterProjectContractId?: string
   /** 项目教学保底候选人简历 ID；用于招聘高亮、Offer 保底成功和项目小队完整性判定。 */

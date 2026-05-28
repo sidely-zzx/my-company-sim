@@ -11,6 +11,11 @@ export function getSkillEfficiency(employee: Employee, role: SkillRole): number 
   return (employee.realSkillAbilities[role] ?? 0) / 100
 }
 
+export function calculateEmployeeEffectiveAbility(employee: Employee, role: SkillRole): number {
+  // 有效能力是员工真实能力和当前状态共同作用后的履约能力；它影响人力外包满意度，也让摸鱼/离岗真正反映到甲方反馈上。
+  return Math.round((employee.realSkillAbilities[role] ?? 0) * new EmployeeEntity(employee).calculateOutputMultiplier())
+}
+
 export function calculateFireCompensation(employee: Employee, compensationRatio: number): number {
   const normalizedRatio = Number.isFinite(compensationRatio) ? Math.max(0, compensationRatio) : 1
   // 赔偿月份由本公司工作天数折算；workDays 只受入职后的日结影响，不再使用候选人过往工作经验。

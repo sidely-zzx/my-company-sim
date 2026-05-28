@@ -44,4 +44,25 @@ describe('contractSystem', () => {
     expect(result.money).toBe(state.money + 700)
     expect(result.laborContracts[0]?.status).toBe('active')
   })
+
+  it('uses current employee status when checking labor satisfaction', () => {
+    let state = createTestState()
+    state.employees = [createTestEmployee({ id: 'employee-1', realSkillAbilities: { frontend: 90 } })]
+    state.laborContracts[0] = {
+      ...state.laborContracts[0]!,
+      requiredRole: 'frontend',
+      requiredAbility: 50,
+      satisfaction: 100,
+    }
+    state = acceptLaborContract(state, state.laborContracts[0]!.id)
+    state = assignEmployeeToLabor(state, 'employee-1', state.laborContracts[0]!.id)
+    state.employees[0] = {
+      ...state.employees[0]!,
+      status: 'slacking',
+    }
+
+    const result = settleLaborContractsEndOfDay(state, 1)
+
+    expect(result.laborContracts[0]?.satisfaction).toBeLessThan(100)
+  })
 })

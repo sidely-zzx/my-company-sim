@@ -62,6 +62,9 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const tutorial = useGameStore((state) => state.tutorial)
   const setSpeed = useGameStore((state) => state.setSpeed)
   const tutorialCoach = getTutorialCoach({ tutorial })
+  const tutorialOverlayCoach = tutorialCoach?.target === 'speed' && time.speed > 0 && !time.paused
+    ? undefined
+    : tutorialCoach
 
   const activeEmployees = employees.filter((employee) => employee.status !== 'fired')
   const workingEmployees = activeEmployees.filter((employee) =>
@@ -132,16 +135,16 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
             <button
               type="button"
               data-tutorial-anchor="speed-normal"
-              onClick={() => setSpeed(1)}
-              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 1 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
+              onClick={() => setSpeed(2)}
+              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 2 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
             >
               &gt;
             </button>
             <button
               type="button"
               data-tutorial-anchor="speed-fast"
-              onClick={() => setSpeed(2)}
-              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 2 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
+              onClick={() => setSpeed(6)}
+              className={cn(button, 'h-[34px] min-w-[38px] bg-[#1b201f] px-2.5 text-[#d8ccb2]', time.speed === 6 && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]', tutorialCoach?.target === 'speed' && cn('animate-pulse', tutorialTarget))}
             >
               &gt;&gt;
             </button>
@@ -282,7 +285,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
       </div>
 
       <nav className={cn(surface, 'fixed bottom-0 left-0 right-0 mx-auto grid w-[960px] grid-cols-8 gap-px')} aria-label="模块导航">
-        <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} title="员工列表" description="管理员工">
+        <DockDialog icon="EMP" label="员工" badge={activeEmployees.length} highlighted={tutorialCoach?.target === 'employee'} hint="抓摸鱼" tutorialAnchor="dock-employee" title="员工列表" description="管理员工">
           <EmployeePanel />
         </DockDialog>
         <DockDialog icon="REC" label="招聘" badge={resumes.length} highlighted={tutorialCoach?.target === 'recruiting'} hint="下一步" tutorialAnchor="dock-recruiting" title="简历市场" description="招聘候选人">
@@ -317,7 +320,7 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
         <span>摸鱼中 {slackingEmployees}</span>
         <span>待分配 {idleEmployees}</span>
       </div> */}
-      <TutorialGuideOverlay coach={tutorialCoach} />
+      <TutorialGuideOverlay coach={tutorialOverlayCoach} />
     </main>
   )
 }

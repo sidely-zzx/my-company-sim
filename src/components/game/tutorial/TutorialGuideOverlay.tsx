@@ -103,24 +103,24 @@ function findVisibleAnchor(anchorIds: TutorialAnchorId[]): HTMLElement | undefin
 
 function paddedSpotlight(rect: DOMRect): GuideRect {
   const top = clamp(
-    rect.top - spotlightPadding,
-    viewportMargin,
-    window.innerHeight - viewportMargin,
+    Math.floor(rect.top - spotlightPadding),
+    0,
+    window.innerHeight,
   );
   const left = clamp(
-    rect.left - spotlightPadding,
-    viewportMargin,
-    window.innerWidth - viewportMargin,
+    Math.floor(rect.left - spotlightPadding),
+    0,
+    window.innerWidth,
   );
   const right = clamp(
-    rect.right + spotlightPadding,
-    viewportMargin,
-    window.innerWidth - viewportMargin,
+    Math.ceil(rect.right + spotlightPadding),
+    0,
+    window.innerWidth,
   );
   const bottom = clamp(
-    rect.bottom + spotlightPadding,
-    viewportMargin,
-    window.innerHeight - viewportMargin,
+    Math.ceil(rect.bottom + spotlightPadding),
+    0,
+    window.innerHeight,
   );
 
   return {
@@ -274,6 +274,8 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
   const ArrowIcon = arrowIconByPlacement[card.placement];
   const spotlightBottom = spotlight.top + spotlight.height;
   const spotlightRight = spotlight.left + spotlight.width;
+  const bottomMaskHeight = Math.max(0, window.innerHeight - spotlightBottom);
+  const rightMaskWidth = Math.max(0, window.innerWidth - spotlightRight);
 
   return createPortal(
     <div className="pointer-events-none fixed inset-0 z-[60]" aria-hidden="true">
@@ -286,7 +288,7 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
         style={{
           top: spotlightBottom,
           width: '100vw',
-          height: `calc(100vh - ${spotlightBottom}px)`,
+          height: bottomMaskHeight,
         }}
       />
       <div
@@ -298,7 +300,7 @@ export function TutorialGuideOverlay({ coach }: TutorialGuideOverlayProps) {
         style={{
           top: spotlight.top,
           left: spotlightRight,
-          width: `calc(100vw - ${spotlightRight}px)`,
+          width: rightMaskWidth,
           height: spotlight.height,
         }}
       />

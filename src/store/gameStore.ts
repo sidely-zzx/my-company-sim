@@ -17,7 +17,7 @@ import {
 } from '../game/systems/projectSystem'
 import { refreshResumes, sendOffer } from '../game/systems/recruitingSystem'
 import { advanceGameTime, setOffWorkHour, setSpeed } from '../game/systems/timeSystem'
-import { syncTutorialProgress } from '../game/systems/tutorialSystem'
+import { markTutorialEmployeeStatusHandled, syncTutorialProgress } from '../game/systems/tutorialSystem'
 import type { AssignmentMode, EmployeeDisciplineAction, FinanceReport, GameSpeed, GameState, SkillRole, WorkHour } from '../game/types'
 
 export interface GameStore extends GameState {
@@ -125,7 +125,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   fireEmployee: (employeeId, compensationRatio) =>
     set((state) => fireEmployee(toGameState(state), employeeId, compensationRatio)),
   applyEmployeeDiscipline: (employeeId, action, fineRatio) =>
-    set((state) => applyEmployeeDiscipline(toGameState(state), employeeId, action, fineRatio)),
+    set((state) =>
+      markTutorialEmployeeStatusHandled(
+        applyEmployeeDiscipline(toGameState(state), employeeId, action, fineRatio),
+        employeeId,
+      ),
+    ),
   markMailRead: (mailId) => set((state) => syncTutorialProgress(markMailRead(toGameState(state), mailId))),
   markAllMailRead: () => set((state) => syncTutorialProgress(markAllMailRead(toGameState(state)))),
   exportSaveJson: () => createGameSaveJson(toGameState(get())),

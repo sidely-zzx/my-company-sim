@@ -11,9 +11,12 @@ import {
   skillClaimsText,
 } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
+import { isStarterStatusEmployee } from '../../game/systems/tutorialSystem'
 import { EmployeeDetailPanel, type EmployeeCompensationFormState } from './EmployeeDetailPanel'
+import { EmployeeDisciplineDialog } from './EmployeeDisciplineDialog'
 import {
   button,
+  cn,
   dialogPanel,
   emptyState,
   eyebrow,
@@ -22,6 +25,8 @@ import {
   panelTitle,
   table,
   tableWrap,
+  tutorialRow,
+  tutorialTarget,
 } from '../../styles/tw'
 import { money } from '../../utils'
 
@@ -29,17 +34,22 @@ export function EmployeePanel() {
   const employees = useGameStore((state) => state.employees)
   const laborContracts = useGameStore((state) => state.laborContracts)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const tutorial = useGameStore((state) => state.tutorial)
   const renameEmployee = useGameStore((state) => state.renameEmployee)
   const updateEmployeeCompensation = useGameStore((state) => state.updateEmployeeCompensation)
   const fireEmployee = useGameStore((state) => state.fireEmployee)
   const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>()
+  const [disciplineEmployeeId, setDisciplineEmployeeId] = useState<string>()
   const [nicknames, setNicknames] = useState<Record<string, string>>({})
   const [compensations, setCompensations] = useState<Record<string, string>>({})
   const [compensationForms, setCompensationForms] = useState<Record<string, EmployeeCompensationFormState>>({})
   const selectedEmployee = selectedEmployeeId
     ? employees.find((employee) => employee.id === selectedEmployeeId)
+    : undefined
+  const disciplineEmployee = disciplineEmployeeId
+    ? employees.find((employee) => employee.id === disciplineEmployeeId)
     : undefined
 
   function getCompensationForm(employeeId: string): EmployeeCompensationFormState {
@@ -131,34 +141,66 @@ export function EmployeePanel() {
               </tr>
             </thead>
             <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id}>
-                  <td>
-                    <strong>{employee.nickname || employee.name}</strong>
-                    <small>{employee.name} · {schoolLabels[employee.school]}</small>
-                  </td>
-                  <td>{employeeStatusLabels[employee.status]}</td>
-                  <td>{money(employee.salaryPerDay)} / {percent(employee.socialInsuranceRatio)}</td>
-                  <td>{employee.satisfaction}</td>
-                  <td>{skillClaimsText(employee.resumeSkills)}</td>
-                  <td>{abilitiesText(employee)}</td>
-                  <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
-                  <td>{pendingAssignmentText(employee, laborContracts, projectContracts)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={button}
-                      onClick={() => setSelectedEmployeeId(employee.id)}
-                    >
-                      详情
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {employees.map((employee) => {
+                const tutorialEmployee = isStarterStatusEmployee({ tutorial }, employee)
+                return (
+                  <tr
+                    key={employee.id}
+                    data-tutorial-anchor={tutorialEmployee ? 'starter-employee-row' : undefined}
+                    className={tutorialEmployee ? tutorialRow : undefined}
+                  >
+                    <td>
+                      <strong>{employee.nickname || employee.name}</strong>
+                      <small>{employee.name} · {schoolLabels[employee.school]}</small>
+                    </td>
+                    <td>{employeeStatusLabels[employee.status]}</td>
+                    <td>{money(employee.salaryPerDay)} / {percent(employee.socialInsuranceRatio)}</td>
+                    <td>{employee.satisfaction}</td>
+                    <td>{skillClaimsText(employee.resumeSkills)}</td>
+                    <td>{abilitiesText(employee)}</td>
+                    <td>{assignmentText(employee, laborContracts, projectContracts)}</td>
+                    <td>{pendingAssignmentText(employee, laborContracts, projectContracts)}</td>
+                    <td>
+                      <div className="flex flex-wrap gap-2">
+                        {tutorialEmployee ? (
+                          <button
+                            type="button"
+                            data-tutorial-anchor="starter-employee-discipline-button"
+                            className={cn(button, tutorialTarget)}
+                            onClick={() => setDisciplineEmployeeId(employee.id)}
+                          >
+                            处理状态
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={button}
+                          onClick={() => setSelectedEmployeeId(employee.id)}
+                        >
+                          详情
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
+      <EmployeeDisciplineDialog
+        employee={disciplineEmployee}
+        open={Boolean(disciplineEmployee)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDisciplineEmployeeId(undefined)
+          }
+        }}
+        onOpenDetail={(employeeId) => {
+          setDisciplineEmployeeId(undefined)
+          setSelectedEmployeeId(employeeId)
+        }}
+      />
     </section>
   )
 }

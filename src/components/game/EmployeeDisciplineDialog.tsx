@@ -15,7 +15,7 @@ import {
 } from '../../game/ui'
 import type { Employee, EmployeeDisciplineAction, EmployeeStatus } from '../../game/types'
 import { useGameStore } from '../../store/gameStore'
-import { button, cn } from '../../styles/tw'
+import { button, cn, tutorialTarget } from '../../styles/tw'
 import { money } from '../../utils'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Slider } from '../ui/slider'
@@ -72,6 +72,7 @@ export function EmployeeDisciplineDialog({
 }: EmployeeDisciplineDialogProps) {
   const applyEmployeeDiscipline = useGameStore((state) => state.applyEmployeeDiscipline)
   const projectContracts = useGameStore((state) => state.projectContracts)
+  const tutorial = useGameStore((state) => state.tutorial)
   const [fineRatio, setFineRatio] = useState(0.1)
 
   function handleAction(action: EmployeeDisciplineAction, nextFineRatio?: number) {
@@ -89,6 +90,11 @@ export function EmployeeDisciplineDialog({
   const currentProject = employee?.assignedTo?.type === 'project'
     ? projectContracts.find((project) => project.id === employee.assignedTo?.id)
     : undefined
+  const tutorialEmployee = Boolean(
+    employee &&
+      tutorial.currentStep === 'catch_slacking_employee' &&
+      tutorial.starterStatusEmployeeId === employee.id,
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -124,6 +130,12 @@ export function EmployeeDisciplineDialog({
               ) : null}
             </div>
 
+            {tutorialEmployee ? (
+              <div className="rounded-md border-2 border-[#ffd46a] bg-[#2b2110] p-3 text-sm font-extrabold leading-6 text-[#fff3cd] shadow-[0_0_0_2px_rgba(255,212,106,0.2)]">
+                摸鱼时当前产出为 0，长期不达标会让甲方满意度下降，严重时会退人。口头提醒、正式警告或罚款会让员工立刻回到工作；但频繁严厉处罚会降低满意度、忠诚和士气，后续也会影响公司声誉与离职风险。
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap justify-end gap-2">
               {onOpenDetail ? (
                 <button
@@ -140,7 +152,8 @@ export function EmployeeDisciplineDialog({
                   <button
                     key={action}
                     type="button"
-                    className={cn(button, 'inline-flex items-center gap-1.5', actionButtonClass(action))}
+                    data-tutorial-anchor={tutorialEmployee && action === 'verbal_warn' ? 'starter-employee-discipline-verbal-button' : undefined}
+                    className={cn(button, 'inline-flex items-center gap-1.5', actionButtonClass(action), tutorialEmployee && action === 'verbal_warn' && tutorialTarget)}
                     onClick={() => handleAction(action)}
                   >
                     <Icon className="size-4" data-icon="inline-start" />

@@ -5,8 +5,8 @@ import createEmployeeLayer, { type PixiEmployeeView } from './employee';
 import createPcLayer from './pc';
 
 const OFFICE_BACKGROUND_SRC = '/office.png';
-const OFFICE_IMAGE_WIDTH = 1672;
-const OFFICE_IMAGE_HEIGHT = 941;
+export const OFFICE_IMAGE_WIDTH = 1672;
+export const OFFICE_IMAGE_HEIGHT = 941;
 
 export interface GameAppHandle {
   destroy: () => void;

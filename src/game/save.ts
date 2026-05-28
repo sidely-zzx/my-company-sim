@@ -1,7 +1,7 @@
 import type { GameState } from './types'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 5
+export const GAME_SAVE_VERSION = 6
 
 export interface GameSaveFile {
   /** 存档格式标识；用于避免把其他 JSON 文件误当成游戏存档读取。 */

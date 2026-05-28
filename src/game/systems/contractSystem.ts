@@ -9,6 +9,7 @@ import { dynamicContractRefreshCount, randomClientByTrust } from './clientCompan
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
+import { calculateEmployeeEffectiveAbility } from './employeeSystem'
 
 const laborRoles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing']
 
@@ -129,7 +130,7 @@ export function settleLaborContractsEndOfDay(state: GameState, endedDay: number)
     }
 
     const employee = draft.employees.find((item) => item.id === contract.assignedEmployeeId)
-    const ability = employee?.realSkillAbilities[contract.requiredRole] ?? 0
+    const ability = employee ? calculateEmployeeEffectiveAbility(employee, contract.requiredRole) : 0
     if (ability < contract.requiredAbility) {
       contract.satisfaction = Math.max(0, contract.satisfaction - 25)
     } else {
