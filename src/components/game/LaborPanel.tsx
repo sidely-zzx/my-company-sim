@@ -2,6 +2,7 @@ import {
   laborStatusLabels,
   roleLabels,
   urgencyLabels,
+  levelLabels,
 } from '../../game/ui'
 import { isCurrentTutorialNode, isStarterLaborContract } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
@@ -21,7 +22,7 @@ import {
   tutorialRow,
   tutorialTarget,
 } from '../../styles/tw'
-import { money } from '../../utils'
+import { money, levelFromAbility } from '../../utils'
 
 export function LaborPanel() {
   const laborContracts = useGameStore((state) => state.laborContracts)
@@ -78,7 +79,7 @@ export function LaborPanel() {
                     ) : null}
                     <small>{contract.clientName}</small>
                   </td>
-                  <td>{roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility}</td>
+                  <td>{levelLabels[levelFromAbility(contract.requiredAbility)]} · {roleLabels[contract.requiredRole]}</td>
                   <td>{money(contract.dailyBudget)}/天</td>
                   <td>
                     {urgencyLabels[contract.urgency]} · {contract.durationDays} 天

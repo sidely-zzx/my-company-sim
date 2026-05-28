@@ -16,6 +16,7 @@ import type {
 } from '../types';
 import { addEvent, createId } from './eventSystem';
 import { clampTutorialOffer, isStarterResume } from './tutorialSystem';
+import { levelFromAbility } from '../../utils';
 
 const schoolTypes: SchoolType[] = ['normal', '211', '985', 'qs100'];
 const roles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing'];
@@ -29,15 +30,6 @@ function averageAbility(abilities: Partial<Record<SkillRole, number>>): number {
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
-function levelFromAbility(ability: number): ResumeSkillLevel {
-  if (ability >= 75) {
-    return 'senior';
-  }
-  if (ability >= 50) {
-    return 'mid';
-  }
-  return 'junior';
-}
 
 function generateResume(state: GameState): Resume {
   const name = randomChoiceName(state.rngSeed, FIRST_NAME, MIDDLE_NAME, LAST_NAME);
