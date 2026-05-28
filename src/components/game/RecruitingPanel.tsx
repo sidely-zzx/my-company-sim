@@ -8,11 +8,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
-import type { LaborContract, Resume, SkillRole } from '../../game/types'
-import { roleLabels, schoolLabels, skillClaimsText } from '../../game/ui'
+import type { Resume, SkillRole } from '../../game/types'
+import { schoolLabels, skillClaimsText } from '../../game/ui'
 import {
   TUTORIAL_OFFER_LIMITS,
-  getStarterLaborContract,
   getTutorialMinimumOffer,
   isCurrentTutorialNode,
   isStarterLaborResume,
@@ -44,7 +43,6 @@ type OfferFormState = CompensationFormState
 interface OfferDialogProps {
   resume: Resume
   form: OfferFormState
-  starterContract?: LaborContract
   starterResume: boolean
   starterProjectResume: boolean
   tutorialAnchor?: TutorialAnchorId
@@ -53,7 +51,7 @@ interface OfferDialogProps {
   onSendOffer: (resumeId: string, salaryPerDay: number, socialInsuranceRatio: number) => void
 }
 
-function OfferDialog({ resume, form, starterContract, starterResume, starterProjectResume, tutorialAnchor, confirmTutorialAnchor, onUpdateForm, onSendOffer }: OfferDialogProps) {
+function OfferDialog({ resume, form, starterResume, starterProjectResume, tutorialAnchor, confirmTutorialAnchor, onUpdateForm, onSendOffer }: OfferDialogProps) {
   const offerLimits = starterResume ? TUTORIAL_OFFER_LIMITS : undefined
   const compensationSummary = getCompensationSummary(form, resume.expectedSalaryPerDay, offerLimits)
   const starterLaborResume = starterResume && !starterProjectResume
@@ -69,10 +67,6 @@ function OfferDialog({ resume, form, starterContract, starterResume, starterProj
     ? undefined
     : confirmTutorialAnchor
   const estimatedDailyCost = compensationSummary.totalCost
-  const starterSkill = starterContract
-    ? resume.resumeSkills.find((skill) => skill.role === starterContract.requiredRole)
-    : undefined
-  const starterGrossProfit = starterContract ? starterContract.dailyBudget - estimatedDailyCost : 0
 
   return (
     <Dialog>
@@ -115,26 +109,6 @@ function OfferDialog({ resume, form, starterContract, starterResume, starterProj
           <p className="m-0 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-[#d8cfbb]">
             {resume.introduction}
           </p>
-
-          {starterContract ? (
-            <div className={cn(
-              'grid gap-2 rounded-md border bg-[#171c1b] p-3',
-              starterResume ? 'border-[#7f6840]' : 'border-[#303834]',
-            )}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <strong className="text-[#efe2c8]">推荐合同匹配</strong>
-                {starterResume ? <span className="text-xs font-extrabold text-[#e4b45b]">保底候选人 · Offer 必定接受</span> : null}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-[#d8cfbb] max-[560px]:grid-cols-1">
-                <span>岗位：{starterSkill ? `匹配 ${roleLabels[starterContract.requiredRole]}` : `不匹配 ${roleLabels[starterContract.requiredRole]}`}</span>
-                <span>简历等级：{starterSkill?.level ?? '无对应技能'} / 要求能力 {starterContract.requiredAbility}</span>
-                <span>预计日成本：{money(estimatedDailyCost)}</span>
-                <span className={cn(starterGrossProfit >= 0 ? 'text-[#92d16e]' : 'text-[#ff7968]')}>
-                  预计毛利：{starterGrossProfit >= 0 ? '+' : ''}{money(starterGrossProfit)}
-                </span>
-              </div>
-            </div>
-          ) : null}
 
           {starterProjectResume ? (
             <div className="grid gap-2 rounded-md border border-[#7f6840] bg-[#171c1b] p-3">
@@ -196,14 +170,10 @@ function OfferDialog({ resume, form, starterContract, starterResume, starterProj
 export function RecruitingPanel() {
   const resumes = useGameStore((state) => state.resumes)
   const market = useGameStore((state) => state.market)
-  const laborContracts = useGameStore((state) => state.laborContracts)
   const tutorial = useGameStore((state) => state.tutorial)
   const refreshResumes = useGameStore((state) => state.refreshResumes)
   const sendOffer = useGameStore((state) => state.sendOffer)
   const [forms, setForms] = useState<Record<string, OfferFormState>>({})
-  const starterContract = tutorial.enabled && !tutorial.completed
-    ? getStarterLaborContract({ laborContracts, tutorial })
-    : undefined
 
   function getForm(resume: Resume): OfferFormState {
     return forms[resume.id] ?? {
@@ -304,7 +274,6 @@ export function RecruitingPanel() {
                         <OfferDialog
                           resume={resume}
                           form={form}
-                          starterContract={starterLaborResume ? starterContract : undefined}
                           starterResume={starterResume}
                           starterProjectResume={starterProjectResume}
                           tutorialAnchor={offerAnchor}
