@@ -8,8 +8,6 @@ interface EmployeeBehaviorWeight {
 
 interface InitialEmployeeBehaviorInput {
   salaryFit: number
-  socialInsuranceRatio: number
-  satisfaction: number
   arbitrationTendency: number
   slackingTendency: number
   averageAbility: number
@@ -18,7 +16,6 @@ interface InitialEmployeeBehaviorInput {
 interface InitialEmployeeBehaviorProfile {
   behaviorSeed: number
   energy: number
-  loyalty: number
   pressure: number
   discipline: number
 }
@@ -37,6 +34,7 @@ export interface EmployeeDisciplineResult {
 
 const DISCIPLINABLE_STATUSES: EmployeeStatus[] = ['slacking', 'smoking', 'job_browsing', 'gaming']
 const LOW_SEVERITY_STATUSES: EmployeeStatus[] = ['drinking_water', 'toilet']
+const NON_WORK_STATUS_WEIGHT_RATIO = 0.3
 
 function clampAttribute(value: number): number {
   return Math.round(clamp(value, 0, 100))
@@ -71,8 +69,6 @@ export function createInitialEmployeeBehaviorProfile(
   const disciplineRoll = randomInt(pressureRoll.seed, -10, 10)
   const behaviorSeedRoll = nextRandom(disciplineRoll.seed)
   const salaryBonus = clamp((input.salaryFit - 0.85) * 28, -14, 18)
-  const socialBonus = input.socialInsuranceRatio * 12
-  const satisfactionBonus = (input.satisfaction - 70) * 0.35
   const slackingPenalty = input.slackingTendency * 55
 
   return {
@@ -80,7 +76,6 @@ export function createInitialEmployeeBehaviorProfile(
     profile: {
       behaviorSeed: behaviorSeedRoll.seed,
       energy: energyRoll.value,
-      loyalty: clampAttribute(55 + salaryBonus + socialBonus + satisfactionBonus),
       pressure: clampAttribute(28 + input.arbitrationTendency * 0.18 - salaryBonus + pressureRoll.value),
       discipline: clampAttribute(62 - slackingPenalty + input.averageAbility * 0.16 + disciplineRoll.value),
     },
@@ -142,7 +137,6 @@ export class EmployeeEntity {
     }
 
     if (action === 'ignore') {
-      this.employee.loyalty = clampAttribute(this.employee.loyalty + 1)
       this.employee.pressure = clampAttribute(this.employee.pressure - 1)
       return {
         applied: true,
@@ -155,7 +149,6 @@ export class EmployeeEntity {
       const lightWarning = LOW_SEVERITY_STATUSES.includes(this.employee.status)
       this.employee.pressure = clampAttribute(this.employee.pressure + (lightWarning ? 2 : 4))
       this.employee.discipline = clampAttribute(this.employee.discipline + (lightWarning ? 2 : 4))
-      this.employee.loyalty = clampAttribute(this.employee.loyalty - 1)
       this.employee.satisfaction = clampAttribute(this.employee.satisfaction - (lightWarning ? 1 : 2))
       this.restoreWorkAfterDiscipline()
       return {
@@ -176,7 +169,6 @@ export class EmployeeEntity {
     if (action === 'formal_warn') {
       this.employee.pressure = clampAttribute(this.employee.pressure + 8)
       this.employee.discipline = clampAttribute(this.employee.discipline + 8)
-      this.employee.loyalty = clampAttribute(this.employee.loyalty - 6)
       this.employee.satisfaction = clampAttribute(this.employee.satisfaction - 8)
       this.employee.arbitrationTendency = clampAttribute(this.employee.arbitrationTendency + 3)
       this.restoreWorkAfterDiscipline()
@@ -190,8 +182,8 @@ export class EmployeeEntity {
     const fineAmount = Math.round(this.employee.salaryPerDay * clamp(fineRatio, 0, 1))
     this.employee.pressure = clampAttribute(this.employee.pressure + 12)
     this.employee.discipline = clampAttribute(this.employee.discipline + 10)
-    this.employee.loyalty = clampAttribute(this.employee.loyalty - 10)
-    this.employee.satisfaction = clampAttribute(this.employee.satisfaction - 12)
+    // 罚款满意度扣除直接跟罚款比例挂钩；扣得越重，员工越容易在日结离职流程中跑路。
+    this.employee.satisfaction = clampAttribute(this.employee.satisfaction - Math.ceil(clamp(fineRatio, 0, 1) * 50))
     this.employee.arbitrationTendency = clampAttribute(this.employee.arbitrationTendency + 8)
     this.restoreWorkAfterDiscipline()
     return {
@@ -213,8 +205,8 @@ export class EmployeeEntity {
     const energyLow = (100 - this.employee.energy) / 100
     const pressureHigh = this.employee.pressure / 100
     const disciplineLow = (100 - this.employee.discipline) / 100
-    const loyaltyLow = (100 - this.employee.loyalty) / 100
     const satisfactionLow = (100 - this.employee.satisfaction) / 100
+    const nonWorkWeight = (weight: number) => weight * NON_WORK_STATUS_WEIGHT_RATIO
 
     return [
       {
@@ -224,31 +216,32 @@ export class EmployeeEntity {
       },
       {
         status: 'working',
-        weight: 36 + this.employee.energy * 0.18 + this.employee.discipline * 0.1 + this.employee.loyalty * 0.08 - this.employee.pressure * 0.08,
+        // 普通工作权重保留稳定基础，避免员工过度频繁进入非工作状态。
+        weight: 42 + this.employee.energy * 0.18 + this.employee.discipline * 0.1 - this.employee.pressure * 0.08,
       },
       {
         status: 'slacking',
-        weight: this.employee.slackingTendency * 20 + disciplineLow * 10 + energyLow * 10,
+        weight: nonWorkWeight(this.employee.slackingTendency * 20 + disciplineLow * 10 + energyLow * 10),
       },
       {
         status: 'drinking_water',
-        weight: 2 + energyLow * 10 + pressureHigh * 4,
+        weight: nonWorkWeight(2 + energyLow * 10 + pressureHigh * 4),
       },
       {
         status: 'smoking',
-        weight: 1 + pressureHigh * 10 + disciplineLow * 10,
+        weight: nonWorkWeight(1 + pressureHigh * 10 + disciplineLow * 10),
       },
       {
         status: 'toilet',
-        weight: 31 + energyLow * 10 + pressureHigh * 5,
+        weight: nonWorkWeight(31 + energyLow * 10 + pressureHigh * 5),
       },
       {
         status: 'job_browsing',
-        weight: loyaltyLow * 10 +  satisfactionLow * 20,
+        weight: nonWorkWeight(satisfactionLow * 20 + pressureHigh * 6),
       },
       {
         status: 'gaming',
-        weight: disciplineLow * 10 + this.employee.slackingTendency * 20 + pressureHigh * 4,
+        weight: nonWorkWeight(disciplineLow * 10 + this.employee.slackingTendency * 20 + pressureHigh * 4),
       },
     ]
   }
@@ -281,14 +274,12 @@ export class EmployeeEntity {
         this.employee.pressure = clampAttribute(this.employee.pressure - 1)
         break
       case 'job_browsing':
-        this.employee.loyalty = clampAttribute(this.employee.loyalty - 2)
         this.employee.pressure = clampAttribute(this.employee.pressure - 1)
         break
       case 'gaming':
         this.employee.energy = clampAttribute(this.employee.energy + 2)
         this.employee.pressure = clampAttribute(this.employee.pressure - 2)
         this.employee.discipline = clampAttribute(this.employee.discipline - 2)
-        this.employee.loyalty = clampAttribute(this.employee.loyalty - 1)
         break
       default:
         break

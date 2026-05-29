@@ -49,6 +49,6 @@ export function recoverCompanyReputationFromMorale(state: GameState): void {
 }
 
 export function companyReputationOfferMultiplier(companyReputation: number): number {
-  // 声誉系数会压低候选人接受 Offer 的概率：100 声誉无惩罚，50 声誉约为 80%，0 声誉约为 60%。
+  // 正常声誉系数会压低候选人接受 Offer 的概率；声誉归零时由招聘系统单独限制到最高 10%。
   return 0.6 + clamp(companyReputation, 0, 100) / 250
 }

@@ -155,7 +155,6 @@ export function EmployeeDetailPanel({
           <h3 className="m-0 text-[16px] text-[#efe2c8]">风险属性</h3>
           <div className="grid gap-2">
             <DetailStat label="精力" value={`${employee.energy}`} tone={employee.energy >= 60 ? 'positive' : 'negative'} />
-            <DetailStat label="忠诚度" value={`${employee.loyalty}`} tone={employee.loyalty >= 60 ? 'positive' : 'negative'} />
             <DetailStat label="压力" value={`${employee.pressure}`} tone={employee.pressure >= 65 ? 'negative' : undefined} />
             <DetailStat label="自律" value={`${employee.discipline}`} tone={employee.discipline >= 60 ? 'positive' : 'negative'} />
             <DetailStat label="仲裁倾向" value={`${employee.arbitrationTendency}`} tone={employee.arbitrationTendency >= 60 ? 'negative' : undefined} />

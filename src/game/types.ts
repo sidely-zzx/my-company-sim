@@ -234,8 +234,8 @@ export interface Employee {
    */
   socialInsuranceRatio: number
   /**
-   * 员工满意度；它受加班、社保不足和工资调整影响，
-   * 过低会提高社保投诉、劳动仲裁等风险，并影响公司运营稳定性展示。
+   * 员工满意度；它受加班、薪酬下调、管理处罚和甲方事件影响。
+   * 满意度越低越容易跑路、社保投诉或劳动仲裁；降到 0 时会在日结离职流程中直接跑路。
    */
   satisfaction: number
   /** 员工仲裁倾向；越高越容易在不满时发起仲裁。 */
@@ -250,13 +250,8 @@ export interface Employee {
    */
   energy: number
   /**
-   * 员工忠诚度；受薪酬满意、管理处罚和长期压力影响。
-   * 忠诚度越低越容易刷招聘软件，也会放大离职、仲裁等后续系统的风险空间。
-   */
-  loyalty: number
-  /**
    * 员工压力；受加班、正式处罚和高强度工作影响。
-   * 压力越高越容易抽烟、上厕所、刷招聘软件，且会影响满意度、忠诚度和劳动风险。
+   * 压力越高越容易抽烟、上厕所、刷招聘软件，且会影响离职概率和劳动风险。
    */
   pressure: number
   /**
@@ -269,6 +264,16 @@ export interface Employee {
    * 它用于辞退赔偿和劳动风险计算，不再使用候选人简历里的过往工作年限。
    */
   workDays: number
+  /**
+   * 当天第一次调整薪酬前的日薪基准；只用于日结计算“当天降薪”对满意度的一次性影响。
+   * 如果日结前工资恢复到不低于该基准，则不会因为当天工资调整扣满意度。
+   */
+  dailyCompensationBaselineSalaryPerDay?: number
+  /**
+   * 当天第一次调整社保前的缴纳比例基准；只用于日结计算“当天降社保”对满意度的一次性影响。
+   * 社保当前值越低，还会继续通过压力和仲裁系统影响后续风险。
+   */
+  dailyCompensationBaselineSocialInsuranceRatio?: number
   /** 当前工作分配；未分配时为空。 */
   assignedTo?: Assignment
   /**

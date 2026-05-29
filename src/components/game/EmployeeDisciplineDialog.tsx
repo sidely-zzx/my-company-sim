@@ -170,7 +170,6 @@ export function EmployeeDisciplineDialog({
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-[520px]:grid-cols-1">
                 <AttributeBar label="精力" value={employee.energy} />
-                <AttributeBar label="忠诚" value={employee.loyalty} />
                 <AttributeBar label="压力" value={employee.pressure} reversed />
                 <AttributeBar label="自律" value={employee.discipline} />
                 <AttributeBar label="满意度" value={employee.satisfaction} />
@@ -185,7 +184,7 @@ export function EmployeeDisciplineDialog({
 
             {tutorialEmployee ? (
               <div className="rounded-md border-2 border-[#ffd46a] bg-[#2b2110] p-3 text-sm font-extrabold leading-6 text-[#fff3cd] shadow-[0_0_0_2px_rgba(255,212,106,0.2)]">
-                摸鱼时当前产出为 0，长期不达标会让甲方满意度下降，严重时会退人。口头提醒、正式警告或罚款会让员工立刻回到工作；但频繁严厉处罚会降低满意度、忠诚和士气，后续也会影响公司声誉与离职风险。
+                摸鱼时当前产出为 0，长期不达标会让甲方满意度下降，严重时会退人。口头提醒、正式警告或罚款会让员工立刻回到工作；但频繁严厉处罚会降低满意度和士气，后续也会影响公司声誉与离职风险。
               </div>
             ) : null}
 

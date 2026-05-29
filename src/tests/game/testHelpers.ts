@@ -25,7 +25,6 @@ export function createTestEmployee(overrides: Partial<Employee> = {}): Employee 
     slackingTendency: 0,
     behaviorSeed: 1,
     energy: 80,
-    loyalty: 70,
     pressure: 30,
     discipline: 80,
     workDays: 0,

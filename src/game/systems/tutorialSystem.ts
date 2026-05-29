@@ -345,7 +345,7 @@ const tutorialNodeDefinitions: TutorialNodeDefinition[] = [
       title: '抓摸鱼',
       description: '点击办公室里的摸鱼员工，或打开「员工」找到高亮员工，处理当前状态。',
       actionText: '点击摸鱼员工，推荐使用「口头提醒」。',
-      reasonText: '提醒或处罚会让员工回到工作；经常严厉处罚会伤害忠诚、士气和公司声誉。',
+      reasonText: '提醒或处罚会让员工回到工作；经常严厉处罚会伤害满意度、士气和公司声誉。',
       anchorIds: guideAnchors(
         'starter-employee-discipline-verbal-button',
         'starter-employee-discipline-button',

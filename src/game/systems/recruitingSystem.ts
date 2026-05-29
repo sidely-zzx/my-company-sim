@@ -39,6 +39,10 @@ export function calculateOfferAcceptanceChance(
 ): number {
   const salaryFit = salaryPerDay / Math.max(expectedSalaryPerDay, 1);
   const baseChance = clamp(0.2 + (salaryFit - 0.8) * 0.8 + socialInsuranceRatio * 0.25, 0.01, 0.95);
+  if (companyReputation <= 0) {
+    // 声誉归零时，候选人默认极度不信任公司；薪资和社保仍有影响，但最终接受率不会超过 10%。
+    return clamp((baseChance / 0.95) * 0.1, 0.01, 0.1);
+  }
   // Offer 接受率由薪资、社保和公司声誉共同决定；声誉越低，候选人越担心公司口碑，从而降低接受概率。
   return clamp(baseChance * companyReputationOfferMultiplier(companyReputation), 0.01, 0.95);
 }
@@ -221,8 +225,6 @@ export function sendOffer(
   const employeeId = createId(draft, 'employee');
   const behaviorProfile = createInitialEmployeeBehaviorProfile(draft.rngSeed, {
     salaryFit,
-    socialInsuranceRatio,
-    satisfaction: resume.satisfaction,
     arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
     averageAbility: averageAbility(resume.realSkillAbilities),
@@ -242,7 +244,6 @@ export function sendOffer(
     slackingTendency: resume.slackingTendency,
     behaviorSeed: behaviorProfile.profile.behaviorSeed,
     energy: behaviorProfile.profile.energy,
-    loyalty: behaviorProfile.profile.loyalty,
     pressure: behaviorProfile.profile.pressure,
     discipline: behaviorProfile.profile.discipline,
     workDays: 0,

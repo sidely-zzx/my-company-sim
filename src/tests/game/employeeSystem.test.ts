@@ -131,7 +131,6 @@ describe('employeeSystem', () => {
         id: 'employee-1',
         status: 'gaming',
         salaryPerDay: 300,
-        loyalty: 70,
         satisfaction: 80,
         assignedTo: { type: 'project', id: 'project-test', role: 'product' },
       }),
@@ -141,8 +140,7 @@ describe('employeeSystem', () => {
 
     expect(result.money).toBe(state.money + 60)
     expect(result.financeRecords[0]?.type).toBe('discipline_fine')
-    expect(result.employees[0]?.loyalty).toBeLessThan(70)
-    expect(result.employees[0]?.satisfaction).toBeLessThan(80)
+    expect(result.employees[0]?.satisfaction).toBe(70)
   })
 
   it('changes caught employees back to working after warning or penalty', () => {

@@ -2,7 +2,7 @@ import type { GameState } from './types'
 import { INITIAL_COMPANY_REPUTATION } from './systems/reputationSystem'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
-export const GAME_SAVE_VERSION = 9
+export const GAME_SAVE_VERSION = 10
 const TUTORIAL_SAVE_NODE_IDS = [
   'read_welcome_mail',
   'review_labor_contract',
@@ -81,10 +81,13 @@ function hasEmployeeShape(value: unknown): boolean {
     hasNumberField(value, 'slackingTendency') &&
     hasNumberField(value, 'behaviorSeed') &&
     hasNumberField(value, 'energy') &&
-    hasNumberField(value, 'loyalty') &&
     hasNumberField(value, 'pressure') &&
     hasNumberField(value, 'discipline') &&
     hasNumberField(value, 'workDays') &&
+    (value.dailyCompensationBaselineSalaryPerDay === undefined ||
+      hasNumberField(value, 'dailyCompensationBaselineSalaryPerDay')) &&
+    (value.dailyCompensationBaselineSocialInsuranceRatio === undefined ||
+      hasNumberField(value, 'dailyCompensationBaselineSocialInsuranceRatio')) &&
     typeof value.status === 'string'
   )
 }
