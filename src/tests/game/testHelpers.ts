@@ -28,7 +28,6 @@ export function createTestEmployee(overrides: Partial<Employee> = {}): Employee 
     loyalty: 70,
     pressure: 30,
     discipline: 80,
-    ambition: 70,
     workDays: 0,
     status: 'idle',
     ...overrides,

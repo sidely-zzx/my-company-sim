@@ -168,7 +168,6 @@ export function EmployeeDetailPanel({
             <DetailStat label="忠诚度" value={`${employee.loyalty}`} tone={employee.loyalty >= 60 ? 'positive' : 'negative'} />
             <DetailStat label="压力" value={`${employee.pressure}`} tone={employee.pressure >= 65 ? 'negative' : undefined} />
             <DetailStat label="自律" value={`${employee.discipline}`} tone={employee.discipline >= 60 ? 'positive' : 'negative'} />
-            <DetailStat label="进取心" value={`${employee.ambition}`} />
             <DetailStat label="仲裁倾向" value={`${employee.arbitrationTendency}`} tone={employee.arbitrationTendency >= 60 ? 'negative' : undefined} />
             <DetailStat label="摸鱼倾向" value={percent(employee.slackingTendency)} tone={employee.slackingTendency >= 0.45 ? 'negative' : undefined} />
             <DetailStat label="行为种子" value={`${employee.behaviorSeed}`} />

@@ -13,7 +13,6 @@ interface InitialEmployeeBehaviorInput {
   arbitrationTendency: number
   slackingTendency: number
   averageAbility: number
-  resumeWorkYears: number
 }
 
 interface InitialEmployeeBehaviorProfile {
@@ -22,7 +21,6 @@ interface InitialEmployeeBehaviorProfile {
   loyalty: number
   pressure: number
   discipline: number
-  ambition: number
 }
 
 export interface InitialEmployeeBehaviorResult {
@@ -71,8 +69,7 @@ export function createInitialEmployeeBehaviorProfile(
   const energyRoll = randomInt(seed, 70, 95)
   const pressureRoll = randomInt(energyRoll.seed, -8, 10)
   const disciplineRoll = randomInt(pressureRoll.seed, -10, 10)
-  const ambitionRoll = randomInt(disciplineRoll.seed, -8, 12)
-  const behaviorSeedRoll = nextRandom(ambitionRoll.seed)
+  const behaviorSeedRoll = nextRandom(disciplineRoll.seed)
   const salaryBonus = clamp((input.salaryFit - 0.85) * 28, -14, 18)
   const socialBonus = input.socialInsuranceRatio * 12
   const satisfactionBonus = (input.satisfaction - 70) * 0.35
@@ -86,15 +83,14 @@ export function createInitialEmployeeBehaviorProfile(
       loyalty: clampAttribute(55 + salaryBonus + socialBonus + satisfactionBonus),
       pressure: clampAttribute(28 + input.arbitrationTendency * 0.18 - salaryBonus + pressureRoll.value),
       discipline: clampAttribute(62 - slackingPenalty + input.averageAbility * 0.16 + disciplineRoll.value),
-      ambition: clampAttribute(35 + input.resumeWorkYears * 3 + input.averageAbility * 0.38 + ambitionRoll.value),
     },
   }
 }
 
 export class EmployeeEntity {
-   private readonly employee: Employee
+  private readonly employee: Employee
   constructor(employee: Employee) {
-    this.employee = employee;
+    this.employee = employee
   }
 
   updateBehavior(totalMinutes: number, hasProductiveWork: boolean): void {
@@ -223,7 +219,8 @@ export class EmployeeEntity {
     return [
       {
         status: 'focused_work',
-        weight: 6 + this.employee.energy * 0.18 + this.employee.discipline * 0.12 + this.employee.ambition * 0.2 - this.employee.pressure * 0.12,
+        // 全力工作的概率主要受精力和自律影响，压力会压低专注状态出现概率。
+        weight: 6 + this.employee.energy * 0.18 + this.employee.discipline * 0.12 - this.employee.pressure * 0.12,
       },
       {
         status: 'working',

@@ -84,7 +84,6 @@ function hasEmployeeShape(value: unknown): boolean {
     hasNumberField(value, 'loyalty') &&
     hasNumberField(value, 'pressure') &&
     hasNumberField(value, 'discipline') &&
-    hasNumberField(value, 'ambition') &&
     hasNumberField(value, 'workDays') &&
     typeof value.status === 'string'
   )

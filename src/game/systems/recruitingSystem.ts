@@ -226,7 +226,6 @@ export function sendOffer(
     arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
     averageAbility: averageAbility(resume.realSkillAbilities),
-    resumeWorkYears: resume.workYears,
   });
   draft.rngSeed = behaviorProfile.seed;
   draft.employees.push({
@@ -246,7 +245,6 @@ export function sendOffer(
     loyalty: behaviorProfile.profile.loyalty,
     pressure: behaviorProfile.profile.pressure,
     discipline: behaviorProfile.profile.discipline,
-    ambition: behaviorProfile.profile.ambition,
     workDays: 0,
     status: 'idle',
   });
