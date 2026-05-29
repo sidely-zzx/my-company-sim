@@ -7,6 +7,7 @@ import {
   assignmentModes,
   assignmentText,
   laborStatusLabels,
+  levelLabels,
   pendingAssignmentText,
   roleLabels,
   skillClaimsText,
@@ -16,7 +17,7 @@ import {
 import { isStarterEmployee, isStarterLaborContract } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import { cn, emptyState, riskToneClass, tutorialTarget } from '../../styles/tw'
-import { money } from '../../utils'
+import { money, levelFromAbility } from '../../utils'
 
 type EmployeeAvailabilityFilter = 'all' | 'idle' | 'busy'
 type LaborMatchFilter = 'all' | 'role' | 'qualified'
@@ -175,7 +176,7 @@ export function LaborEmployeePicker({
             {contract.clientName} · {laborStatusLabels[contract.status]} · {urgencyLabels[contract.urgency]} · {contract.durationDays} 天 · 第 {contract.endDay} 天到期
           </span>
           <span className="text-xs font-extrabold text-[#d8cfbb]">
-            需求 {roleLabels[contract.requiredRole]} · 能力 {contract.requiredAbility} · 今日产出 {Math.round(contract.todayOutput)} / {Math.round(contract.todayRequiredOutput)} · {money(contract.dailyBudget)}/天
+            需求 {levelLabels[levelFromAbility(contract.requiredAbility)]} {roleLabels[contract.requiredRole]} · 今日产出 {Math.round(contract.todayOutput)} / {Math.round(contract.todayRequiredOutput)} · {money(contract.dailyBudget)}/天
           </span>
         </div>
         <div className="mb-2 flex flex-wrap items-center gap-2">

@@ -12,7 +12,7 @@ import type {
   WorkHour,
   ResumeSkillLevel
 } from './types'
-import { money } from '../utils'
+import { money, levelFromAbility } from '../utils'
 
 export const workHours: WorkHour[] = [18, 19, 20, 21, 22, 23, 24]
 export const skillRoles: SkillRole[] = ['product', 'design', 'frontend', 'backend', 'testing']
@@ -170,6 +170,13 @@ export function clampNumber(value: string, fallback: number): number {
 
 export function skillClaimsText(skills: { role: SkillRole; level: ResumeSkillLevel }[]): string {
   return skills.map((skill) => `${levelLabels[skill.level]}${roleLabels[skill.role]}`).join('、')
+}
+
+export function realSkillText(employee: Employee): string {
+  return skillRoles
+    .filter(role => employee.realSkillAbilities[role] ?? 0 > 0)
+    .map((role) => `${levelLabels[levelFromAbility(employee.realSkillAbilities[role]!)]} ${roleLabels[role]}`)
+    .join(' / ')
 }
 
 export function abilitiesText(employee: Employee): string {

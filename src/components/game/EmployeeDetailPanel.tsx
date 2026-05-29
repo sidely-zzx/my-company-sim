@@ -1,20 +1,10 @@
 import { useState } from 'react'
 
 import {
-  assignmentText,
-  employeeStatusLabels,
-  pendingAssignmentText,
-  percent,
-  progressTone,
-  roleLabels,
-  levelLabels,
-  schoolLabels,
-  skillClaimsText,
-  skillRoles,
+  realSkillText
 } from '../../game/ui'
 import type { AssignmentMode, Employee, LaborContract, ProjectContract, SkillRole } from '../../game/types'
-import { amountNegative, amountPositive, button, cn, emptyState, progressFill, progressToneClass, progressTrack } from '../../styles/tw'
-import { money } from '../../utils'
+import { button, emptyState } from '../../styles/tw'
 import { Input } from '../ui/input'
 import { CompensationSettings, type CompensationFormState } from './CompensationSettings'
 import { EmployeeAssignmentControl } from './EmployeeAssignmentControl'
@@ -116,7 +106,7 @@ export function EmployeeDetailPanel({
             )}
           </div>
           <p className="m-0 mt-1 text-[13px] text-[#9aa29a]">
-            {employee.resumeSkills.map(item => `${levelLabels[item.level]}${roleLabels[item.role]} `)} · 入职 {employee.workDays} 天
+            {realSkillText(employee)} · 入职 {employee.workDays} 天
           </p>
         </div>
         <button type="button" className={button} onClick={onBack}>

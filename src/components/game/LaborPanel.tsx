@@ -97,9 +97,9 @@ export function LaborPanel() {
                       <>
                         <strong>{assigned.nickname || assigned.name}</strong>
                         <small>
-                          {roleLabels[contract.requiredRole]}能力 {assigned.realSkillAbilities[contract.requiredRole] ?? 0}
+                          {roleLabels[contract.requiredRole]}能力 { assigned.realSkillAbilities[contract.requiredRole] ? levelFromAbility(assigned.realSkillAbilities[contract.requiredRole]!) : '无'}
                           {' / '}
-                          要求 {contract.requiredAbility}
+                          要求 {levelLabels[levelFromAbility(contract.requiredAbility)]}
                         </small>
                       </>
                     ) : '未分配'}
