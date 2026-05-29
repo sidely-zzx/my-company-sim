@@ -5,11 +5,12 @@ import {
   laborStatusLabels,
   roleLabels,
   urgencyLabels,
+  levelLabels
 } from '../../game/ui'
 import { isStarterLaborContract } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
 import { button, cn, riskToneClass, tutorialTarget } from '../../styles/tw'
-import { money } from '../../utils'
+import { money, levelFromAbility } from '../../utils'
 import {
   Dialog,
   DialogContent,
@@ -74,7 +75,7 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                 </div>
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">最低能力</dt>
-                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{contract.requiredAbility}</dd>
+                  <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{levelLabels[levelFromAbility(contract.requiredAbility)]}</dd>
                 </div>
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">日预算</dt>

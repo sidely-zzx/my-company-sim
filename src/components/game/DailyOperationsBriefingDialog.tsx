@@ -5,6 +5,7 @@ import {
   DialogTitle,
 } from '../ui/dialog'
 import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import type { DailyBriefingItem } from '../../game/systems/dailyBriefingSystem'
 import { selectDailyBriefingSummary } from '../../game/systems/dailyBriefingSystem'
 import { isStarterProjectClientEvent } from '../../game/systems/tutorialSystem'
@@ -12,6 +13,8 @@ import { useGameStore } from '../../store/gameStore'
 import { amountNegative, amountPositive, button, cn, emptyState, eventBorderToneClass, srOnly, tutorialTarget } from '../../styles/tw'
 import { money } from '../../utils'
 import { LaborEmployeePicker } from './LaborEmployeePicker'
+
+type DailyBriefingTab = 'overview' | 'labor' | 'project' | 'finance'
 
 function canAssignLaborContract(status?: string): boolean {
   return status === 'accepted' || status === 'active' || status === 'warning'
@@ -67,6 +70,7 @@ function BriefingSection({
 }
 
 export function DailyOperationsBriefingDialog() {
+  const [activeTab, setActiveTab] = useState<DailyBriefingTab>('overview')
   const state = useGameStore()
   const employees = state.employees
   const laborContracts = state.laborContracts
@@ -80,6 +84,85 @@ export function DailyOperationsBriefingDialog() {
   const summary = activeDailyBriefingDay ? selectDailyBriefingSummary(state, activeDailyBriefingDay) : undefined
   const requiredActionCount = pendingProjectClientEvents.length + pendingLaborClientNotices.length
   const blockingBriefing = Boolean(activeDailyBriefingDay !== undefined && state.time.paused)
+  const requiredItemIds = new Set(summary?.requiredItems.map((item) => item.id) ?? [])
+  const laborTabItems = summary?.laborItems.filter((item) => !requiredItemIds.has(item.id)) ?? []
+  const projectTabItems = summary?.projectItems.filter((item) => !requiredItemIds.has(item.id)) ?? []
+  const financeTabItems = summary?.financeItems ?? []
+
+  useEffect(() => {
+    if (activeDailyBriefingDay !== undefined) {
+      setActiveTab('overview')
+    }
+  }, [activeDailyBriefingDay])
+
+  const renderRequiredItemAction = (item: DailyBriefingItem): ReactNode => {
+    if (item.action === 'resolve_project_event') {
+      const event = pendingProjectClientEvents.find((candidate) => `project-event-${candidate.id}` === item.id)
+      const project = event ? projectContracts.find((candidate) => candidate.id === event.projectId) : undefined
+      const tutorialEvent = event ? isStarterProjectClientEvent(state.tutorial, event.id) : false
+      return event ? (
+        <div className="grid gap-2">
+          <span className="text-xs font-extrabold text-[#aeb5ac]">{project?.title ?? event.projectTitle}</span>
+          {event.options.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              data-tutorial-anchor={tutorialEvent && option.id === 'compress_deadline' ? 'starter-event-recommended-option' : undefined}
+              className={cn(
+                button,
+                'min-h-12 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]',
+                tutorialEvent && option.id === 'compress_deadline' && cn('animate-pulse', tutorialTarget),
+              )}
+              onClick={() => resolveProjectClientEvent(event.id, option.id)}
+            >
+              <span className="grid gap-1">
+                <strong>{option.label}</strong>
+                <small className="font-medium leading-5 text-[#aeb5ac]">{option.description}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null
+    }
+
+    if (item.action === 'replace_labor_employee') {
+      const notice = pendingLaborClientNotices.find((candidate) => `labor-notice-${candidate.id}` === item.id)
+      const contract = notice ? laborContracts.find((candidate) => candidate.id === notice.contractId) : undefined
+      return notice ? (
+        <div className="grid gap-3">
+          <button type="button" className={cn(button, 'justify-self-start')} onClick={() => resolveLaborClientNotice(notice.id)}>
+            确认不换人
+          </button>
+          {contract ? (
+            <LaborEmployeePicker
+              contract={contract}
+              employees={employees}
+              laborContracts={laborContracts}
+              projectContracts={projectContracts}
+              canAssign={canAssignLaborContract(contract.status)}
+              onAssignEmployee={(employeeId) => resolveLaborClientNotice(notice.id, employeeId, 'immediate')}
+            />
+          ) : null}
+        </div>
+      ) : null
+    }
+
+    return null
+  }
+
+  const renderTabButton = (tab: DailyBriefingTab, label: string, meta: string): ReactNode => (
+    <button
+      type="button"
+      className={cn(
+        button,
+        'min-h-9 px-3 text-sm',
+        activeTab === tab && 'border-[#b59d65] bg-[#373226] text-[#ffe0a3]',
+      )}
+      onClick={() => setActiveTab(tab)}
+    >
+      {label} <span className="ml-1 text-xs text-[#aeb5ac]">{meta}</span>
+    </button>
+  )
 
   return (
     <Dialog open={activeDailyBriefingDay !== undefined}>
@@ -106,88 +189,50 @@ export function DailyOperationsBriefingDialog() {
         <DialogDescription className={srOnly}>查看昨日经营汇总并处理必须完成的甲方事项</DialogDescription>
         {summary ? (
           <section className="grid max-h-[min(78vh,760px)] gap-4 overflow-y-auto pr-1">
-            <div className="grid grid-cols-3 gap-3 max-[760px]:grid-cols-1">
-              <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
-                <span className="block text-xs text-[#9aa29a]">昨日收入</span>
-                <strong className={cn('mt-1 block text-xl', amountPositive)}>{money(summary.incomeTotal)}</strong>
-              </div>
-              <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
-                <span className="block text-xs text-[#9aa29a]">昨日支出</span>
-                <strong className={cn('mt-1 block text-xl', amountNegative)}>{money(summary.expenseTotal)}</strong>
-              </div>
-              <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
-                <span className="block text-xs text-[#9aa29a]">净利润</span>
-                <strong className={cn('mt-1 block text-xl', summary.net >= 0 ? amountPositive : amountNegative)}>{money(summary.net)}</strong>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {renderTabButton('overview', '总览', `必须处理 ${requiredActionCount}`)}
+              {renderTabButton('labor', '人力外包', String(laborTabItems.length))}
+              {renderTabButton('project', '项目外包', String(projectTabItems.length))}
+              {renderTabButton('finance', '财务', String(financeTabItems.length))}
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-extrabold text-[#d8cfbb]">
-              <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2 py-1">人力异常 {summary.laborIssueCount}</span>
-              <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2 py-1">项目事件 {summary.projectEventCount}</span>
-              <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2 py-1">必须处理 {requiredActionCount}</span>
-            </div>
-            {summary.requiredItems.length > 0 ? (
-              <BriefingSection title="必须处理" items={summary.requiredItems}>
-                {(item) => {
-                  if (item.action === 'resolve_project_event') {
-                    const event = pendingProjectClientEvents.find((candidate) => `project-event-${candidate.id}` === item.id)
-                    const project = event ? projectContracts.find((candidate) => candidate.id === event.projectId) : undefined
-                    const tutorialEvent = event ? isStarterProjectClientEvent(state.tutorial, event.id) : false
-                    return event ? (
-                      <div className="grid gap-2">
-                        <span className="text-xs font-extrabold text-[#aeb5ac]">{project?.title ?? event.projectTitle}</span>
-                        {event.options.map((option) => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            data-tutorial-anchor={tutorialEvent && option.id === 'compress_deadline' ? 'starter-event-recommended-option' : undefined}
-                            className={cn(
-                              button,
-                              'min-h-12 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]',
-                              tutorialEvent && option.id === 'compress_deadline' && cn('animate-pulse', tutorialTarget),
-                            )}
-                            onClick={() => resolveProjectClientEvent(event.id, option.id)}
-                          >
-                            <span className="grid gap-1">
-                              <strong>{option.label}</strong>
-                              <small className="font-medium leading-5 text-[#aeb5ac]">{option.description}</small>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null
-                  }
-
-                  if (item.action === 'replace_labor_employee') {
-                    const notice = pendingLaborClientNotices.find((candidate) => `labor-notice-${candidate.id}` === item.id)
-                    const contract = notice ? laborContracts.find((candidate) => candidate.id === notice.contractId) : undefined
-                    return notice ? (
-                      <div className="grid gap-3">
-                        <button type="button" className={cn(button, 'justify-self-start')} onClick={() => resolveLaborClientNotice(notice.id)}>
-                          确认不换人
-                        </button>
-                        {contract ? (
-                          <LaborEmployeePicker
-                            contract={contract}
-                            employees={employees}
-                            laborContracts={laborContracts}
-                            projectContracts={projectContracts}
-                            canAssign={canAssignLaborContract(contract.status)}
-                            onAssignEmployee={(employeeId) => resolveLaborClientNotice(notice.id, employeeId, 'immediate')}
-                          />
-                        ) : null}
-                      </div>
-                    ) : null
-                  }
-
-                  return null
-                }}
-              </BriefingSection>
+            {activeTab === 'overview' ? (
+              <>
+                <div className="grid grid-cols-3 gap-3 max-[760px]:grid-cols-1">
+                  <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+                    <span className="block text-xs text-[#9aa29a]">昨日收入</span>
+                    <strong className={cn('mt-1 block text-xl', amountPositive)}>{money(summary.incomeTotal)}</strong>
+                  </div>
+                  <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+                    <span className="block text-xs text-[#9aa29a]">昨日支出</span>
+                    <strong className={cn('mt-1 block text-xl', amountNegative)}>{money(summary.expenseTotal)}</strong>
+                  </div>
+                  <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+                    <span className="block text-xs text-[#9aa29a]">净利润</span>
+                    <strong className={cn('mt-1 block text-xl', summary.net >= 0 ? amountPositive : amountNegative)}>{money(summary.net)}</strong>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs font-extrabold text-[#d8cfbb]">
+                  <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2 py-1">人力异常 {summary.laborIssueCount}</span>
+                  <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2 py-1">项目事件 {summary.projectEventCount}</span>
+                  <span className="rounded-md border border-[#303834] bg-[#171c1b] px-2 py-1">必须处理 {requiredActionCount}</span>
+                </div>
+                {summary.requiredItems.length > 0 ? (
+                  <BriefingSection title="必须处理" items={summary.requiredItems}>
+                    {renderRequiredItemAction}
+                  </BriefingSection>
+                ) : (
+                  <p className={emptyState}>没有必须处理的经营事项。</p>
+                )}
+              </>
             ) : null}
-            <BriefingSection title="人力外包" items={summary.laborItems.filter((item) => !summary.requiredItems.some((required) => required.id === item.id))} />
-            <BriefingSection title="项目外包" items={summary.projectItems.filter((item) => !summary.requiredItems.some((required) => required.id === item.id))} />
-            <BriefingSection title="财务" items={summary.financeItems} />
-            {summary.requiredItems.length === 0 && summary.laborItems.length === 0 && summary.projectItems.length === 0 && summary.financeItems.length === 0 ? (
-              <p className={emptyState}>昨日没有需要汇总的经营事项。</p>
+            {activeTab === 'labor' ? (
+              laborTabItems.length > 0 ? <BriefingSection title="人力外包" items={laborTabItems} /> : <p className={emptyState}>昨日没有人力外包事项。</p>
+            ) : null}
+            {activeTab === 'project' ? (
+              projectTabItems.length > 0 ? <BriefingSection title="项目外包" items={projectTabItems} /> : <p className={emptyState}>昨日没有项目外包事项。</p>
+            ) : null}
+            {activeTab === 'finance' ? (
+              financeTabItems.length > 0 ? <BriefingSection title="财务" items={financeTabItems} /> : <p className={emptyState}>昨日没有财务流水。</p>
             ) : null}
             <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-[#303834] bg-[#151918] py-3">
               <span className="text-xs font-extrabold text-[#aeb5ac]">
