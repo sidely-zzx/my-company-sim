@@ -231,27 +231,27 @@ export class EmployeeEntity {
       },
       {
         status: 'slacking',
-        weight: 5 + this.employee.slackingTendency * 90 + disciplineLow * 22 + energyLow * 16 + satisfactionLow * 8,
+        weight: this.employee.slackingTendency * 20 + disciplineLow * 10 + energyLow * 10,
       },
       {
         status: 'drinking_water',
-        weight: 4 + energyLow * 11 + pressureHigh * 4,
+        weight: 2 + energyLow * 10 + pressureHigh * 4,
       },
       {
         status: 'smoking',
-        weight: 1 + pressureHigh * 14 + disciplineLow * 5,
+        weight: 1 + pressureHigh * 10 + disciplineLow * 10,
       },
       {
         status: 'toilet',
-        weight: 3 + energyLow * 7 + pressureHigh * 5,
+        weight: 31 + energyLow * 10 + pressureHigh * 5,
       },
       {
         status: 'job_browsing',
-        weight: 1 + loyaltyLow * 24 + pressureHigh * 8 + satisfactionLow * 10 + this.employee.ambition * 0.03,
+        weight: loyaltyLow * 10 +  satisfactionLow * 20,
       },
       {
         status: 'gaming',
-        weight: 1 + disciplineLow * 20 + this.employee.slackingTendency * 55 + pressureHigh * 4,
+        weight: disciplineLow * 10 + this.employee.slackingTendency * 20 + pressureHigh * 4,
       },
     ]
   }
