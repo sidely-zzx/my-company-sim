@@ -15,6 +15,7 @@ import type {
   SkillRole,
 } from '../types';
 import { addEvent, createId } from './eventSystem';
+import { companyReputationOfferMultiplier } from './reputationSystem';
 import { clampTutorialOffer, isStarterResume } from './tutorialSystem';
 import { levelFromAbility } from '../../utils';
 
@@ -28,6 +29,18 @@ function averageAbility(abilities: Partial<Record<SkillRole, number>>): number {
     return 0;
   }
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+export function calculateOfferAcceptanceChance(
+  expectedSalaryPerDay: number,
+  salaryPerDay: number,
+  socialInsuranceRatio: number,
+  companyReputation: number,
+): number {
+  const salaryFit = salaryPerDay / Math.max(expectedSalaryPerDay, 1);
+  const baseChance = clamp(0.2 + (salaryFit - 0.8) * 0.8 + socialInsuranceRatio * 0.25, 0.01, 0.95);
+  // Offer 接受率由薪资、社保和公司声誉共同决定；声誉越低，候选人越担心公司口碑，从而降低接受概率。
+  return clamp(baseChance * companyReputationOfferMultiplier(companyReputation), 0.01, 0.95);
 }
 
 
@@ -184,7 +197,12 @@ export function sendOffer(
   const salaryFit = offer.salaryPerDay / resume.expectedSalaryPerDay;
   const chance = starterResumeOffer
     ? 1
-    : clamp(0.2 + (salaryFit - 0.8) * 0.8 + offer.socialInsuranceRatio * 0.25, 0.01, 0.95);
+    : calculateOfferAcceptanceChance(
+      resume.expectedSalaryPerDay,
+      offer.salaryPerDay,
+      offer.socialInsuranceRatio,
+      draft.companyReputation,
+    );
   const roll = starterResumeOffer ? { value: 0, seed: draft.rngSeed } : nextRandom(draft.rngSeed);
   draft.rngSeed = roll.seed;
   if (roll.value > chance) {

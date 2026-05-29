@@ -84,6 +84,7 @@ function toGameState(state: GameStore): GameState {
     settings: state.settings,
     time: state.time,
     money: state.money,
+    companyReputation: state.companyReputation,
     employees: state.employees,
     resumes: state.resumes,
     laborContracts: state.laborContracts,

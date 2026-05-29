@@ -20,11 +20,11 @@ import { StatusBar } from '../components/game/StatusBar'
 import { EventLogItem } from '../components/game/EventLogItem'
 import { TutorialGuideOverlay } from '../components/game/tutorial/TutorialGuideOverlay'
 import {
-  average,
   formatTime,
   percent,
   signedMoney,
 } from '../game/ui'
+import { calculateTeamMorale } from '../game/systems/reputationSystem'
 import { getTutorialCoach, getTutorialTodos } from '../game/systems/tutorialSystem'
 import { useGameStore } from '../store/gameStore'
 import {
@@ -50,8 +50,8 @@ interface GamePageProps {
 
 export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSettings }: GamePageProps) {
   const time = useGameStore((state) => state.time)
-  const settings = useGameStore((state) => state.settings)
   const moneyValue = useGameStore((state) => state.money)
+  const companyReputation = useGameStore((state) => state.companyReputation)
   const employees = useGameStore((state) => state.employees)
   const resumes = useGameStore((state) => state.resumes)
   const laborContracts = useGameStore((state) => state.laborContracts)
@@ -76,9 +76,6 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
     employee.status === 'focused_work' || employee.status === 'working',
   ).length
   const idleEmployees = activeEmployees.filter((employee) => employee.status === 'idle').length
-  const satisfaction = Math.round(
-    average(activeEmployees.map((employee) => employee.satisfaction), activeEmployees.length > 0 ? 0 : 72),
-  )
   const incomeTotal = financeRecords
     .filter((record) => record.amount > 0)
     .reduce((total, record) => total + record.amount, 0)
@@ -110,12 +107,10 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
   const tutorialTodoDone = tutorial.enabled && !tutorial.completed ? todos.filter((todo) => todo.done).length : 0
   const tutorialTodoCurrentIndex = tutorial.enabled && !tutorial.completed ? todos.findIndex((todo) => todo.current) : -1
   const tutorialTodoProgress = tutorialTodoCurrentIndex >= 0 ? tutorialTodoCurrentIndex + 1 : tutorialTodoDone
-  const morale = Math.max(0, Math.min(100, satisfaction))
+  const morale = Math.max(0, Math.min(100, calculateTeamMorale({ employees })))
   const efficiency = Math.round(
     activeEmployees.length > 0 ? ((workingEmployees + idleEmployees * 0.45) / activeEmployees.length) * 100 : 68,
   )
-  const overtime = Math.max(10, Math.min(95, 25 + (settings.offWorkHour - 18) * 14))
-  const stability = Math.round(employees.length > 0 ? (activeEmployees.length / employees.length) * 100 : 72)
   const recentEvents = events.slice(-5).reverse()
   const pendingActionCount = pendingProjectClientEvents.length + pendingLaborClientNotices.length
   const hasPendingActions = pendingActionCount > 0
@@ -240,10 +235,9 @@ export default function GamePage({ visualSettings, onOpenHome, onUpdateVisualSet
           <section className={cn(surface, 'min-w-0 p-3.5')}>
             <h2 className="mb-3 mt-0 text-[17px] text-[#efe2c8]">公司状态</h2>
             <div className="grid gap-2.5">
+              <StatusBar label="公司声誉" value={companyReputation} />
               <StatusBar label="团队士气" value={morale} />
               <StatusBar label="工作效率" value={efficiency} />
-              <StatusBar label="加班强度" value={overtime} inverse />
-              <StatusBar label="人员稳定性" value={stability} />
             </div>
           </section>
         </aside>

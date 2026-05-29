@@ -1,11 +1,13 @@
 import { BASE_OUTPUT_PER_MINUTE } from '../constants'
 import { EmployeeEntity } from '../entities/EmployeeEntity'
 import { isProjectRoleActive } from '../projectPhase'
-import { clamp, cloneState } from '../seed'
+import { clamp, cloneState, nextRandom } from '../seed'
 import type { Employee, EmployeeDisciplineAction, GameState, SkillRole } from '../types'
 import { processIdlePendingAssignments, releaseEmployeeFromCurrentAssignment } from './assignmentSystem'
 import { addEvent } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
+import { sendMail } from './mailSystem'
+import { adjustCompanyReputation } from './reputationSystem'
 
 export function getSkillEfficiency(employee: Employee, role: SkillRole): number {
   return (employee.realSkillAbilities[role] ?? 0) / 100
@@ -80,6 +82,65 @@ export function updateEmployeeSatisfaction(state: GameState): GameState {
       message: `今天 ${draft.settings.offWorkHour}:00 下班，加班导致员工满意度下降 ${overtimePenalty}。`,
       severity: 'warning',
     })
+  }
+  return draft
+}
+
+function calculateVoluntaryResignationChance(employee: Employee): number {
+  // 主动离职概率受满意度、忠诚度和压力共同影响；满意度/忠诚越低、压力越高，员工越可能离开并损害公司声誉。
+  return clamp(
+    (35 - employee.satisfaction) / 120 +
+      (30 - employee.loyalty) / 160 +
+      employee.pressure / 600,
+    0.02,
+    0.35,
+  )
+}
+
+export function processVoluntaryResignations(state: GameState): GameState {
+  const draft = cloneState(state)
+  let hasResignation = false
+
+  for (const employee of draft.employees) {
+    if (
+      employee.status === 'fired' ||
+      (employee.satisfaction >= 35 && employee.loyalty >= 30)
+    ) {
+      continue
+    }
+
+    const roll = nextRandom(draft.rngSeed)
+    draft.rngSeed = roll.seed
+    const chance = calculateVoluntaryResignationChance(employee)
+    if (roll.value > chance) {
+      continue
+    }
+
+    const displayName = employee.nickname ?? employee.name
+    releaseEmployeeFromCurrentAssignment(draft, employee)
+    employee.pendingAssignment = undefined
+    employee.status = 'fired'
+    employee.firedDay = draft.time.day
+    hasResignation = true
+    adjustCompanyReputation(draft, -10, `${displayName} 主动离职`, employee.id)
+    sendMail(draft, {
+      type: 'employee_resignation',
+      from: displayName,
+      subject: `员工主动离职：${displayName}`,
+      body: `${displayName} 因满意度或忠诚度过低选择主动离职，已自动释放当前工作安排。公司声誉受到影响。`,
+      relatedEntityId: employee.id,
+    })
+    addEvent(draft, {
+      type: 'employee',
+      title: '员工主动离职',
+      message: `${displayName} 主动离职，当前工作和后续安排已释放。`,
+      severity: 'danger',
+      relatedEntityId: employee.id,
+    })
+  }
+
+  if (hasResignation) {
+    processIdlePendingAssignments(draft)
   }
   return draft
 }

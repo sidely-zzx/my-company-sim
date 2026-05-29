@@ -1,4 +1,5 @@
 import type { GameState } from './types'
+import { INITIAL_COMPANY_REPUTATION } from './systems/reputationSystem'
 
 export const GAME_SAVE_FORMAT = 'my-company-sim-save'
 export const GAME_SAVE_VERSION = 9
@@ -150,6 +151,7 @@ function hasGameStateShape(value: unknown): value is GameState {
     hasNumberField(value.time, 'speed') &&
     typeof value.time.paused === 'boolean' &&
     hasNumberField(value, 'money') &&
+    (value.companyReputation === undefined || hasNumberField(value, 'companyReputation')) &&
     hasArrayField(value, 'employees') &&
     (value.employees as unknown[]).every(hasEmployeeShape) &&
     hasArrayField(value, 'resumes') &&
@@ -185,7 +187,13 @@ function hasGameStateShape(value: unknown): value is GameState {
 }
 
 function normalizeGameState(state: GameState): GameState {
-  return state
+  return {
+    ...state,
+    // 早期版本存档没有公司声誉字段；读取时补默认值，避免旧局面因为新增玩家数据无法进入游戏。
+    companyReputation: Number.isFinite(state.companyReputation)
+      ? state.companyReputation
+      : INITIAL_COMPANY_REPUTATION,
+  }
 }
 
 export function createGameSaveJson(state: GameState, savedAt = new Date()): string {

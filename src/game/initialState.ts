@@ -10,6 +10,7 @@ import { CLIENT_COMPANIES } from './data/clientCompanies'
 import { generateLaborContracts } from './systems/contractSystem'
 import { generateProjectContracts } from './systems/projectSystem'
 import { refreshResumes } from './systems/recruitingSystem'
+import { INITIAL_COMPANY_REPUTATION } from './systems/reputationSystem'
 import { applyTutorialStarterMarket, createInitialTutorialState } from './systems/tutorialSystem'
 import type { GameState } from './types'
 
@@ -33,6 +34,7 @@ export function createInitialGameState(seed = DEFAULT_SEED, options: CreateIniti
       paused: false,
     },
     money: STARTING_MONEY,
+    companyReputation: INITIAL_COMPANY_REPUTATION,
     employees: [],
     resumes: [],
     laborContracts: [],

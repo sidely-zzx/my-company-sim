@@ -20,6 +20,7 @@ import {
   type TutorialAnchorId,
 } from '../../game/systems/tutorialSystem'
 import { useGameStore } from '../../store/gameStore'
+import { calculateOfferAcceptanceChance } from '../../game/systems/recruitingSystem'
 import { CompensationSettings, getCompensationSummary, type CompensationFormState } from './CompensationSettings'
 import {
   button,
@@ -45,13 +46,14 @@ interface OfferDialogProps {
   form: OfferFormState
   starterResume: boolean
   starterProjectResume: boolean
+  companyReputation: number
   tutorialAnchor?: TutorialAnchorId
   confirmTutorialAnchor?: TutorialAnchorId
   onUpdateForm: (resumeId: string, patch: Partial<OfferFormState>) => void
   onSendOffer: (resumeId: string, salaryPerDay: number, socialInsuranceRatio: number) => void
 }
 
-function OfferDialog({ resume, form, starterResume, starterProjectResume, tutorialAnchor, confirmTutorialAnchor, onUpdateForm, onSendOffer }: OfferDialogProps) {
+function OfferDialog({ resume, form, starterResume, starterProjectResume, companyReputation, tutorialAnchor, confirmTutorialAnchor, onUpdateForm, onSendOffer }: OfferDialogProps) {
   const offerLimits = starterResume ? TUTORIAL_OFFER_LIMITS : undefined
   const compensationSummary = getCompensationSummary(form, resume.expectedSalaryPerDay, offerLimits)
   const starterLaborResume = starterResume && !starterProjectResume
@@ -67,6 +69,14 @@ function OfferDialog({ resume, form, starterResume, starterProjectResume, tutori
     ? undefined
     : confirmTutorialAnchor
   const estimatedDailyCost = compensationSummary.totalCost
+  const acceptanceChance = starterResume
+    ? 1
+    : calculateOfferAcceptanceChance(
+      resume.expectedSalaryPerDay,
+      compensationSummary.salaryPerDay,
+      compensationSummary.socialInsuranceRatio,
+      companyReputation,
+    )
 
   return (
     <Dialog>
@@ -96,6 +106,14 @@ function OfferDialog({ resume, form, starterResume, starterProjectResume, tutori
             <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
               <span className="block text-xs font-extrabold text-[#aaa48f]">期望日薪</span>
               <strong className="mt-1 block text-[#efe2c8]">{money(resume.expectedSalaryPerDay)}</strong>
+            </div>
+            <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+              <span className="block text-xs font-extrabold text-[#aaa48f]">公司声誉</span>
+              <strong className="mt-1 block text-[#efe2c8]">{companyReputation}%</strong>
+            </div>
+            <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+              <span className="block text-xs font-extrabold text-[#aaa48f]">预计接受率</span>
+              <strong className="mt-1 block text-[#efe2c8]">{Math.round(acceptanceChance * 100)}%</strong>
             </div>
           </div>
 
@@ -170,6 +188,7 @@ function OfferDialog({ resume, form, starterResume, starterProjectResume, tutori
 export function RecruitingPanel() {
   const resumes = useGameStore((state) => state.resumes)
   const market = useGameStore((state) => state.market)
+  const companyReputation = useGameStore((state) => state.companyReputation)
   const tutorial = useGameStore((state) => state.tutorial)
   const refreshResumes = useGameStore((state) => state.refreshResumes)
   const sendOffer = useGameStore((state) => state.sendOffer)
@@ -276,6 +295,7 @@ export function RecruitingPanel() {
                           form={form}
                           starterResume={starterResume}
                           starterProjectResume={starterProjectResume}
+                          companyReputation={companyReputation}
                           tutorialAnchor={offerAnchor}
                           confirmTutorialAnchor={confirmOfferAnchor}
                           onUpdateForm={updateForm}

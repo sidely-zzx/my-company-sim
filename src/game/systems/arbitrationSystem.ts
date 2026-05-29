@@ -4,6 +4,7 @@ import type { ArbitrationReason, GameState } from '../types'
 import { addEvent, createId } from './eventSystem'
 import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
+import { adjustCompanyReputation } from './reputationSystem'
 
 function calculateComplaintChance(socialInsuranceRatio: number, satisfaction: number): number {
   return clamp((1 - socialInsuranceRatio) * 0.25 + (50 - satisfaction) / 500, 0, 0.75)
@@ -62,6 +63,7 @@ export function processSocialInsuranceComplaints(state: GameState): GameState {
       severity: 'danger',
       relatedEntityId: employee.id,
     })
+    adjustCompanyReputation(draft, -8, `${employee.nickname ?? employee.name} 社保公积金投诉成功`, employee.id)
   }
   return draft
 }
@@ -150,6 +152,7 @@ export function processArbitrationResults(state: GameState, endedDay: number): G
         reason: `${arbitrationCase.employeeName} 仲裁赔偿`,
         relatedEntityId: arbitrationCase.id,
       })
+      adjustCompanyReputation(draft, -12, `${arbitrationCase.employeeName} 仲裁胜诉并获得赔偿`, arbitrationCase.employeeId)
     }
 
     sendMail(draft, {

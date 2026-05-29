@@ -85,6 +85,7 @@ export type MailType =
   | 'labor_dispute_filed'
   | 'labor_dispute_result'
   | 'social_insurance_complaint'
+  | 'employee_resignation'
 /** 仲裁原因，决定邮件文案和胜诉风险判断。 */
 export type ArbitrationReason =
   | 'underpaid_social_insurance'
@@ -720,6 +721,11 @@ export interface GameState {
   time: GameTime
   /** 公司当前现金余额。 */
   money: number
+  /**
+   * 公司声誉；它受社保投诉、仲裁赔偿、员工主动离职和团队士气影响，
+   * 并会影响候选人接受 Offer 的概率，是玩家长期经营口碑的核心数据。
+   */
+  companyReputation: number
   /** 当前在职或历史员工列表。 */
   employees: Employee[]
   /** 当前招聘市场可浏览的简历池。 */

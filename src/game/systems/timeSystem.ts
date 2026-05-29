@@ -12,13 +12,14 @@ import {
   processSocialInsuranceComplaints,
 } from './arbitrationSystem'
 import { settleLaborContractsEndOfDay } from './contractSystem'
-import { updateEmployeeSatisfaction } from './employeeSystem'
+import { processVoluntaryResignations, updateEmployeeSatisfaction } from './employeeSystem'
 import { addEvent } from './eventSystem'
 import { settleDailyFinance } from './financeSystem'
 import { generateFinanceReport } from './financeReportSystem'
 import { processDailyProjectClientEvents } from './projectClientEventSystem'
 import { advanceProjectProgress, generateProjectContracts, settleProjectsEndOfDay } from './projectSystem'
 import { refreshResumes, resetDailyRecruiting } from './recruitingSystem'
+import { recoverCompanyReputationFromMorale } from './reputationSystem'
 
 function offWorkMinute(state: GameState): number {
   return state.settings.offWorkHour * 60
@@ -30,6 +31,8 @@ function settleEndOfDay(state: GameState): GameState {
   nextState = settleLaborContractsEndOfDay(nextState, endedDay)
   nextState = settleDailyFinance(nextState)
   nextState = updateEmployeeSatisfaction(nextState)
+  nextState = processVoluntaryResignations(nextState)
+  recoverCompanyReputationFromMorale(nextState)
   nextState = processSocialInsuranceComplaints(nextState)
   nextState = processArbitrationFilings(nextState)
   nextState = processArbitrationResults(nextState, endedDay)
