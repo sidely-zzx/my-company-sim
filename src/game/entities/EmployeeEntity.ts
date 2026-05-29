@@ -181,7 +181,7 @@ export class EmployeeEntity {
     const fineAmount = Math.round(this.employee.salaryPerDay * normalizedFineRatio)
     this.employee.pressure = clampAttribute(this.employee.pressure + 12)
     // 罚款会大幅提高自律，让同一个员工后续更难再进入可罚状态，避免玩家稳定刷罚款收入。
-    this.employee.discipline = clampAttribute(this.employee.discipline + Math.ceil(normalizedFineRatio * 50))
+    this.employee.discipline = clampAttribute(this.employee.discipline + Math.ceil(normalizedFineRatio * 20))
     // 罚款满意度扣除直接跟罚款比例挂钩；扣得越重，员工越容易在日结离职流程中跑路。
     this.employee.satisfaction = clampAttribute(this.employee.satisfaction - Math.ceil(normalizedFineRatio * 50))
     this.restoreWorkAfterDiscipline()
