@@ -176,7 +176,6 @@ function createStarterResumes(state: GameState): Resume[] {
     introduction: '做过多个中后台页面，能接受短期驻场，沟通节奏比较稳定。',
     realSkillAbilities: { [starterRole]: 62 },
     satisfaction: 84,
-    arbitrationTendency: 18,
     slackingTendency: 0.08,
   }
 
@@ -235,7 +234,6 @@ function createStarterProjectResume(state: GameState, role: SkillRole, name: str
     // 项目教学候选人的真实能力会影响阶段推进速度；这里给高能力值，确保受控甲方事件后仍能在一个工作日内完成。
     realSkillAbilities: { [role]: 120 },
     satisfaction: 86,
-    arbitrationTendency: 12,
     slackingTendency: 0.02,
   }
 }

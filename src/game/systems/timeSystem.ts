@@ -9,7 +9,6 @@ import type { GameSpeed, GameState, WorkHour } from '../types'
 import {
   processArbitrationFilings,
   processArbitrationResults,
-  processSocialInsuranceComplaints,
 } from './arbitrationSystem'
 import { settleLaborContractsEndOfDay } from './contractSystem'
 import { processVoluntaryResignations, updateEmployeeSatisfaction } from './employeeSystem'
@@ -33,7 +32,6 @@ function settleEndOfDay(state: GameState): GameState {
   nextState = updateEmployeeSatisfaction(nextState)
   nextState = processVoluntaryResignations(nextState)
   recoverCompanyReputationFromMorale(nextState)
-  nextState = processSocialInsuranceComplaints(nextState)
   nextState = processArbitrationFilings(nextState)
   nextState = processArbitrationResults(nextState, endedDay)
   nextState = generateFinanceReport(nextState, endedDay)

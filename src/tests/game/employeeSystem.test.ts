@@ -132,6 +132,7 @@ describe('employeeSystem', () => {
         status: 'gaming',
         salaryPerDay: 300,
         satisfaction: 80,
+        discipline: 80,
         assignedTo: { type: 'project', id: 'project-test', role: 'product' },
       }),
     ]
@@ -141,6 +142,7 @@ describe('employeeSystem', () => {
     expect(result.money).toBe(state.money + 60)
     expect(result.financeRecords[0]?.type).toBe('discipline_fine')
     expect(result.employees[0]?.satisfaction).toBe(70)
+    expect(result.employees[0]?.discipline).toBe(90)
   })
 
   it('changes caught employees back to working after warning or penalty', () => {
@@ -168,7 +170,7 @@ describe('employeeSystem', () => {
   it('uses workDays for fire compensation and employee shape', () => {
     const employee = createTestEmployee({ salaryPerDay: 300, workDays: 31 })
 
-    expect(calculateFireCompensation(employee, 1)).toBe(600)
+    expect(calculateFireCompensation(employee)).toBe(600)
     expect('workYears' in employee).toBe(false)
   })
 })

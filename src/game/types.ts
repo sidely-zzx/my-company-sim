@@ -68,7 +68,7 @@ export type FinanceRecordType =
   | 'labor_penalty'
   | 'project_income'
   | 'project_penalty'
-  | 'social_insurance_complaint'
+  | 'social_insurance_backpay'
   | 'arbitration'
   | 'fire_compensation'
   | 'discipline_fine'
@@ -84,7 +84,6 @@ export type MailType =
   | 'daily_finance_report'
   | 'labor_dispute_filed'
   | 'labor_dispute_result'
-  | 'social_insurance_complaint'
   | 'employee_resignation'
 /** 仲裁原因，决定邮件文案和胜诉风险判断。 */
 export type ArbitrationReason =
@@ -225,21 +224,19 @@ export interface Employee {
   realSkillAbilities: Partial<Record<SkillRole, number>>
   /**
    * 员工每日税前工资；它受 offer 和详情页调薪影响，
-   * 会影响每日工资支出、社保公司成本、辞退赔偿和仲裁诉求金额。
+   * 会影响每日工资支出、社保公司成本、固定辞退赔偿和社保欠缴差额累计。
    */
   salaryPerDay: number
   /**
    * 社保公积金缴纳比例；1 表示按工资 100% 缴纳。
-   * 它受 offer 和详情页社保设置影响，会影响每日社保成本、满意度下降、社保投诉概率和仲裁风险。
+   * 它受 offer 和详情页社保设置影响，会影响每日社保成本、满意度下降、社保欠缴差额和仲裁风险。
    */
   socialInsuranceRatio: number
   /**
    * 员工满意度；它受加班、薪酬下调、管理处罚和甲方事件影响。
-   * 满意度越低越容易跑路、社保投诉或劳动仲裁；降到 0 时会在日结离职流程中直接跑路。
+   * 满意度越低越容易跑路或劳动仲裁；降到 0 时会在日结离职流程中直接跑路。
    */
   satisfaction: number
-  /** 员工仲裁倾向；越高越容易在不满时发起仲裁。 */
-  arbitrationTendency: number
   /** 员工摸鱼倾向；每分钟工作时按这个概率产出为 0。 */
   slackingTendency: number
   /** 员工行为随机种子；入职时由全局种子生成，之后每次个人行为判定都会推进它。它受员工自身行为消耗影响，并影响摸鱼、产出等个人随机行为，使员工表现不再受其他系统随机数顺序干扰。 */
@@ -256,7 +253,8 @@ export interface Employee {
   pressure: number
   /**
    * 员工自律；受个人性格、提醒、警告和罚款影响。
-   * 自律越高越不容易摸鱼或玩游戏，也会提高正常工作、全力工作的权重。
+   * 自律越高越会强力压低摸鱼、抽烟、刷招聘软件、玩游戏等可罚非工作状态，并提高正常工作、全力工作的权重。
+   * 自律达到 100 时，可罚非工作状态不会再出现，但仍可能因为生理需求喝水或上厕所。
    */
   discipline: number
   /**
@@ -265,15 +263,20 @@ export interface Employee {
    */
   workDays: number
   /**
-   * 当天第一次调整薪酬前的日薪基准；只用于日结计算“当天降薪”对满意度的一次性影响。
-   * 如果日结前工资恢复到不低于该基准，则不会因为当天工资调整扣满意度。
+   * 员工历史最高日薪；每日结算时和当前工资比较，工资下降会按差额比例持续降低满意度。
+   * 日结最后会用当前工资刷新最高值，因此涨薪当天先即时加满意度，之后成为新的长期对比基准。
    */
-  dailyCompensationBaselineSalaryPerDay?: number
+  highestSalaryPerDay: number
   /**
-   * 当天第一次调整社保前的缴纳比例基准；只用于日结计算“当天降社保”对满意度的一次性影响。
-   * 社保当前值越低，还会继续通过压力和仲裁系统影响后续风险。
+   * 员工历史最高社保公积金比例；每日结算时和当前比例比较，比例下降会按差额持续降低满意度。
+   * 它用于衡量玩家是否曾经提高过待遇，之后降低待遇会持续伤害员工观感。
    */
-  dailyCompensationBaselineSocialInsuranceRatio?: number
+  highestSocialInsuranceRatio: number
+  /**
+   * 累计社保公积金欠缴差额；每日按当前工资 * 未缴比例 * 公司社保公积金费率累加。
+   * 员工低满意度离职或触发仲裁时会读取它；为 0 时不触发社保相关仲裁或补缴扣款。
+   */
+  unpaidSocialInsuranceGap: number
   /** 当前工作分配；未分配时为空。 */
   assignedTo?: Assignment
   /**
@@ -309,8 +312,6 @@ export interface Resume {
   offerRejected?: boolean
   /** 候选人初始满意度，入职后成为员工满意度。 */
   satisfaction: number
-  /** 候选人隐藏仲裁倾向，入职后成为员工风险属性。 */
-  arbitrationTendency: number
   /** 候选人隐藏摸鱼倾向，入职后影响实际产出。 */
   slackingTendency: number
 }
@@ -550,7 +551,7 @@ export interface ProjectClientEventEffect {
   employeePressureDelta?: number
   /** 当前项目成员精力增减；精力会影响工作状态概率和项目推进速度。 */
   employeeEnergyDelta?: number
-  /** 当前项目成员满意度增减；满意度会影响离职、仲裁和社保投诉风险。 */
+  /** 当前项目成员满意度增减；满意度会影响离职、仲裁和社保补缴风险。 */
   employeeSatisfactionDelta?: number
 }
 
@@ -722,7 +723,7 @@ export interface GameState {
   /** 公司当前现金余额。 */
   money: number
   /**
-   * 公司声誉；它受社保投诉、仲裁赔偿、员工主动离职和团队士气影响，
+   * 公司声誉；它受社保补缴、仲裁赔偿、员工主动离职和团队士气影响，
    * 并会影响候选人接受 Offer 的概率，是玩家长期经营口碑的核心数据。
    */
   companyReputation: number

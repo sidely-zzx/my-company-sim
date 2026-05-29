@@ -1,4 +1,4 @@
-import { BASE_OUTPUT_PER_MINUTE } from '../constants'
+import { BASE_OUTPUT_PER_MINUTE, SOCIAL_INSURANCE_COMPANY_RATE } from '../constants'
 import { EmployeeEntity } from '../entities/EmployeeEntity'
 import { isProjectRoleActive } from '../projectPhase'
 import { clamp, cloneState, nextRandom } from '../seed'
@@ -9,8 +9,8 @@ import { addFinanceRecord } from './financeSystem'
 import { sendMail } from './mailSystem'
 import { adjustCompanyReputation } from './reputationSystem'
 
-const SALARY_DECREASE_SATISFACTION_FACTOR = 50
-const SOCIAL_DECREASE_SATISFACTION_FACTOR = 30
+const SALARY_DECREASE_SATISFACTION_FACTOR = 30
+const SOCIAL_DECREASE_SATISFACTION_FACTOR = 10
 
 const RESIGNATION_COMPLAINTS = [
   '这破公司谁爱待谁待，我是不奉陪了。',
@@ -29,11 +29,10 @@ export function calculateEmployeeEffectiveAbility(employee: Employee, role: Skil
   return Math.round((employee.realSkillAbilities[role] ?? 0) * new EmployeeEntity(employee).calculateOutputMultiplier())
 }
 
-export function calculateFireCompensation(employee: Employee, compensationRatio: number): number {
-  const normalizedRatio = Number.isFinite(compensationRatio) ? Math.max(0, compensationRatio) : 1
+export function calculateFireCompensation(employee: Employee): number {
   // 赔偿月份由本公司工作天数折算；workDays 只受入职后的日结影响，不再使用候选人过往工作经验。
   const compensationWeeks = Math.max(1, Math.ceil(employee.workDays / 7))
-  return Math.round(employee.salaryPerDay * compensationWeeks * normalizedRatio)
+  return Math.round(employee.salaryPerDay * compensationWeeks)
 }
 
 export function calculateEmployeeOutput(
@@ -72,25 +71,24 @@ export function updateEmployeeSatisfaction(state: GameState): GameState {
   const draft = cloneState(state)
   const overtimePenalty = Math.max(0, draft.settings.offWorkHour - 18) * 2
   let compensationPenaltyTotal = 0
+  let unpaidSocialInsuranceGapTotal = 0
   draft.employees = draft.employees.map((employee) => {
     if (employee.status === 'fired') {
       return employee
     }
 
-    const salaryBaseline = employee.dailyCompensationBaselineSalaryPerDay
-    const socialBaseline = employee.dailyCompensationBaselineSocialInsuranceRatio
-    const salaryDecreaseRatio =
-      salaryBaseline !== undefined
-        ? Math.max(0, salaryBaseline - employee.salaryPerDay) / Math.max(salaryBaseline, 1)
-        : 0
-    const socialDecreaseRatio =
-      socialBaseline !== undefined
-        ? Math.max(0, socialBaseline - employee.socialInsuranceRatio)
-        : 0
+    const highestSalaryPerDay = employee.highestSalaryPerDay
+    const highestSocialInsuranceRatio = employee.highestSocialInsuranceRatio
+    const salaryDecreaseRatio = Math.max(0, highestSalaryPerDay - employee.salaryPerDay) / Math.max(highestSalaryPerDay, 1)
+    const socialDecreaseRatio = Math.max(0, highestSocialInsuranceRatio - employee.socialInsuranceRatio)
     const compensationPenalty =
       Math.ceil(salaryDecreaseRatio * SALARY_DECREASE_SATISFACTION_FACTOR) +
       Math.ceil(socialDecreaseRatio * SOCIAL_DECREASE_SATISFACTION_FACTOR)
     compensationPenaltyTotal += compensationPenalty
+    const unpaidSocialInsuranceGap = Math.round(
+      employee.salaryPerDay * (1 - employee.socialInsuranceRatio) * SOCIAL_INSURANCE_COMPANY_RATE,
+    )
+    unpaidSocialInsuranceGapTotal += unpaidSocialInsuranceGap
 
     const socialPressure =
       employee.socialInsuranceRatio < 1 ? Math.ceil((1 - employee.socialInsuranceRatio) * 5) : 0
@@ -99,13 +97,14 @@ export function updateEmployeeSatisfaction(state: GameState): GameState {
       ...employee,
       workDays: employee.workDays + 1,
       energy: clamp(employee.energy + 30 - overtimePenalty * 2, 0, 100),
-      // 低社保不再每天直接扣满意度，但仍会增加压力，并继续被投诉/仲裁系统读取。
+      // 低社保仍会增加压力；社保欠缴差额还会每日累计，低满意度离职或仲裁时才集中结算。
       pressure: clamp(employee.pressure - 8 + overtimePenalty * 2 + socialPressure, 0, 100),
-      // 降薪、降社保只在当天日结按“首次调整前基准 -> 当前值”的下降幅度扣一次满意度。
+      // 工资和社保按历史最高待遇做长期对比：玩家降待遇后，每个日结都会持续伤害满意度。
       satisfaction: clamp(employee.satisfaction - overtimePenalty - compensationPenalty, 0, 100),
       status: employee.assignedTo ? employee.status : 'idle',
-      dailyCompensationBaselineSalaryPerDay: undefined,
-      dailyCompensationBaselineSocialInsuranceRatio: undefined,
+      highestSalaryPerDay: Math.max(highestSalaryPerDay, employee.salaryPerDay),
+      highestSocialInsuranceRatio: Math.max(highestSocialInsuranceRatio, employee.socialInsuranceRatio),
+      unpaidSocialInsuranceGap: employee.unpaidSocialInsuranceGap + unpaidSocialInsuranceGap,
     }
   })
   if (overtimePenalty > 0) {
@@ -121,6 +120,14 @@ export function updateEmployeeSatisfaction(state: GameState): GameState {
       type: 'employee',
       title: '薪酬调整影响满意度',
       message: `今日降薪或降低社保在日结时共扣除 ${compensationPenaltyTotal} 点员工满意度。`,
+      severity: 'warning',
+    })
+  }
+  if (unpaidSocialInsuranceGapTotal > 0) {
+    addEvent(draft, {
+      type: 'warning',
+      title: '社保公积金差额累计',
+      message: `今日未足额缴纳的社保公积金差额累计 ${unpaidSocialInsuranceGapTotal}，低满意度离职或仲裁时可能按 200% 补缴。`,
       severity: 'warning',
     })
   }
@@ -150,12 +157,25 @@ function sendLowSatisfactionDepartureMail(
 ): void {
   const displayName = employee.nickname ?? employee.name
   const complaint = pickResignationComplaint(state)
+  const backpay = employee.unpaidSocialInsuranceGap > 0 ? employee.unpaidSocialInsuranceGap * 2 : 0
+  const financeRecordId = backpay > 0
+    ? addFinanceRecord(state, {
+      type: 'social_insurance_backpay',
+      amount: -backpay,
+      reason: `${displayName} 离职社保公积金差额 200% 补缴`,
+      relatedEntityId: employee.id,
+    })
+    : undefined
+  const backpayText = backpay > 0
+    ? `累计社保公积金差额 ${employee.unpaidSocialInsuranceGap}，按 200% 补缴 ${backpay}，已从公司现金扣除。`
+    : '该员工没有累计社保公积金差额，本次不产生补缴扣款。'
   sendMail(state, {
     type: 'employee_resignation',
     from: displayName,
     subject: `${subjectPrefix}：${displayName}`,
-    body: `${displayName} ${reasonText}：“${complaint}” 当前工作和后续安排已自动释放，公司声誉受到影响。`,
+    body: `${displayName} ${reasonText}：“${complaint}” 当前工作和后续安排已自动释放，公司声誉受到影响。${backpayText}`,
     relatedEntityId: employee.id,
+    financeRecordId,
   })
 }
 
@@ -309,23 +329,20 @@ export function updateEmployeeCompensation(
   const nextSocialRatio = Number.isFinite(socialInsuranceRatio)
     ? clamp(socialInsuranceRatio, 0, 1)
     : 0
-
-  if (
-    employee.dailyCompensationBaselineSalaryPerDay === undefined ||
-    employee.dailyCompensationBaselineSocialInsuranceRatio === undefined
-  ) {
-    // 当天多次调整只记录第一次调整前的基准；日结时按最终值结算，恢复到基准以上就不扣满意度。
-    employee.dailyCompensationBaselineSalaryPerDay = previousSalary
-    employee.dailyCompensationBaselineSocialInsuranceRatio = previousSocialRatio
-  }
+  const salaryIncreaseBonus =
+    nextSalary > previousSalary ? Math.ceil(((nextSalary - previousSalary) / Math.max(previousSalary, 1)) * SALARY_DECREASE_SATISFACTION_FACTOR) : 0
+  const socialIncreaseBonus =
+    nextSocialRatio > previousSocialRatio ? Math.ceil((nextSocialRatio - previousSocialRatio) * SOCIAL_DECREASE_SATISFACTION_FACTOR) : 0
 
   employee.salaryPerDay = nextSalary
   employee.socialInsuranceRatio = nextSocialRatio
+  // 提高工资或社保会在当天立刻提升满意度；降低待遇不立刻扣，后续每日按历史最高差额持续扣。
+  employee.satisfaction = clamp(employee.satisfaction + salaryIncreaseBonus + socialIncreaseBonus, 0, 100)
 
   addEvent(draft, {
     type: 'employee',
     title: '员工薪酬已调整',
-    message: `${employee.nickname ?? employee.name} 日薪 ${previousSalary} -> ${nextSalary}，社保 ${Math.round(previousSocialRatio * 100)}% -> ${Math.round(nextSocialRatio * 100)}%；若低于今日首次调整前基准，会在日结时扣满意度。`,
+    message: `${employee.nickname ?? employee.name} 日薪 ${previousSalary} -> ${nextSalary}，社保 ${Math.round(previousSocialRatio * 100)}% -> ${Math.round(nextSocialRatio * 100)}%；涨薪或涨社保即时增加满意度 ${salaryIncreaseBonus + socialIncreaseBonus}，低于历史最高值会在日结持续扣满意度。`,
     severity: nextSalary < previousSalary || nextSocialRatio < previousSocialRatio ? 'warning' : 'success',
     relatedEntityId: employee.id,
   })
@@ -335,7 +352,6 @@ export function updateEmployeeCompensation(
 export function fireEmployee(
   state: GameState,
   employeeId: string,
-  compensationRatio: number,
 ): GameState {
   const draft = cloneState(state)
   const employee = draft.employees.find((item) => item.id === employeeId)
@@ -348,7 +364,7 @@ export function fireEmployee(
     })
     return draft
   }
-  const compensation = calculateFireCompensation(employee, compensationRatio)
+  const compensation = calculateFireCompensation(employee)
   releaseEmployeeFromCurrentAssignment(draft, employee)
   employee.pendingAssignment = undefined
   employee.status = 'fired'
@@ -363,7 +379,7 @@ export function fireEmployee(
     type: 'employee',
     title: '员工已离职',
     message: `${employee.nickname ?? employee.name} 已被辞退，赔偿 ${compensation}。`,
-    severity: compensationRatio < 1 ? 'warning' : 'info',
+    severity: 'info',
     relatedEntityId: employee.id,
   })
   if (employee.satisfaction < 35) {

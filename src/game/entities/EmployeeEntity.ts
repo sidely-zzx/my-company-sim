@@ -8,7 +8,6 @@ interface EmployeeBehaviorWeight {
 
 interface InitialEmployeeBehaviorInput {
   salaryFit: number
-  arbitrationTendency: number
   slackingTendency: number
   averageAbility: number
 }
@@ -34,7 +33,7 @@ export interface EmployeeDisciplineResult {
 
 const DISCIPLINABLE_STATUSES: EmployeeStatus[] = ['slacking', 'smoking', 'job_browsing', 'gaming']
 const LOW_SEVERITY_STATUSES: EmployeeStatus[] = ['drinking_water', 'toilet']
-const NON_WORK_STATUS_WEIGHT_RATIO = 0.3
+const NON_WORK_STATUS_WEIGHT_RATIO = 1
 
 function clampAttribute(value: number): number {
   return Math.round(clamp(value, 0, 100))
@@ -76,8 +75,9 @@ export function createInitialEmployeeBehaviorProfile(
     profile: {
       behaviorSeed: behaviorSeedRoll.seed,
       energy: energyRoll.value,
-      pressure: clampAttribute(28 + input.arbitrationTendency * 0.18 - salaryBonus + pressureRoll.value),
-      discipline: clampAttribute(62 - slackingPenalty + input.averageAbility * 0.16 + disciplineRoll.value),
+      pressure: clampAttribute(28 - salaryBonus + pressureRoll.value),
+      // 初始自律刻意压低到约 20-50：摸鱼倾向会明显拉低自律，能力只提供少量正向修正，给后续管理动作留下成长空间。
+      discipline: clampAttribute(36 - slackingPenalty * 0.45 + input.averageAbility * 0.08 + disciplineRoll.value),
     },
   }
 }
@@ -148,8 +148,7 @@ export class EmployeeEntity {
     if (action === 'verbal_warn') {
       const lightWarning = LOW_SEVERITY_STATUSES.includes(this.employee.status)
       this.employee.pressure = clampAttribute(this.employee.pressure + (lightWarning ? 2 : 4))
-      this.employee.discipline = clampAttribute(this.employee.discipline + (lightWarning ? 2 : 4))
-      this.employee.satisfaction = clampAttribute(this.employee.satisfaction - (lightWarning ? 1 : 2))
+      this.employee.discipline = clampAttribute(this.employee.discipline + 1)
       this.restoreWorkAfterDiscipline()
       return {
         applied: true,
@@ -168,9 +167,8 @@ export class EmployeeEntity {
 
     if (action === 'formal_warn') {
       this.employee.pressure = clampAttribute(this.employee.pressure + 8)
-      this.employee.discipline = clampAttribute(this.employee.discipline + 8)
-      this.employee.satisfaction = clampAttribute(this.employee.satisfaction - 8)
-      this.employee.arbitrationTendency = clampAttribute(this.employee.arbitrationTendency + 3)
+      this.employee.discipline = clampAttribute(this.employee.discipline + 5)
+      this.employee.satisfaction = clampAttribute(this.employee.satisfaction - 3)
       this.restoreWorkAfterDiscipline()
       return {
         applied: true,
@@ -179,12 +177,13 @@ export class EmployeeEntity {
       }
     }
 
-    const fineAmount = Math.round(this.employee.salaryPerDay * clamp(fineRatio, 0, 1))
+    const normalizedFineRatio = clamp(fineRatio, 0, 1)
+    const fineAmount = Math.round(this.employee.salaryPerDay * normalizedFineRatio)
     this.employee.pressure = clampAttribute(this.employee.pressure + 12)
-    this.employee.discipline = clampAttribute(this.employee.discipline + 10)
+    // 罚款会大幅提高自律，让同一个员工后续更难再进入可罚状态，避免玩家稳定刷罚款收入。
+    this.employee.discipline = clampAttribute(this.employee.discipline + Math.ceil(normalizedFineRatio * 50))
     // 罚款满意度扣除直接跟罚款比例挂钩；扣得越重，员工越容易在日结离职流程中跑路。
-    this.employee.satisfaction = clampAttribute(this.employee.satisfaction - Math.ceil(clamp(fineRatio, 0, 1) * 50))
-    this.employee.arbitrationTendency = clampAttribute(this.employee.arbitrationTendency + 8)
+    this.employee.satisfaction = clampAttribute(this.employee.satisfaction - Math.ceil(normalizedFineRatio * 50))
     this.restoreWorkAfterDiscipline()
     return {
       applied: true,
@@ -206,7 +205,12 @@ export class EmployeeEntity {
     const pressureHigh = this.employee.pressure / 100
     const disciplineLow = (100 - this.employee.discipline) / 100
     const satisfactionLow = (100 - this.employee.satisfaction) / 100
-    const nonWorkWeight = (weight: number) => weight * NON_WORK_STATUS_WEIGHT_RATIO
+    // 自律用平方曲线压制可罚状态：中等自律已经明显减少摸鱼，高自律会让可罚状态趋近消失。
+    const disciplineSuppression = Math.pow(1 - this.employee.discipline / 100, 2)
+    const punishableNonWorkWeight = (weight: number) => weight * NON_WORK_STATUS_WEIGHT_RATIO * disciplineSuppression
+    // 喝水和上厕所是低严重度状态，不产生罚款收益；自律 100 时仍保留少量生理需求。
+    const lowSeverityNonWorkWeight = (weight: number) =>
+      weight * NON_WORK_STATUS_WEIGHT_RATIO * Math.max(0.15, disciplineSuppression)
 
     return [
       {
@@ -221,27 +225,27 @@ export class EmployeeEntity {
       },
       {
         status: 'slacking',
-        weight: nonWorkWeight(this.employee.slackingTendency * 20 + disciplineLow * 10 + energyLow * 10),
+        weight: punishableNonWorkWeight(this.employee.slackingTendency * 20 + disciplineLow * 10 + energyLow * 10),
       },
       {
         status: 'drinking_water',
-        weight: nonWorkWeight(2 + energyLow * 10 + pressureHigh * 4),
+        weight: lowSeverityNonWorkWeight(2 + energyLow * 10 + pressureHigh * 4),
       },
       {
         status: 'smoking',
-        weight: nonWorkWeight(1 + pressureHigh * 10 + disciplineLow * 10),
+        weight: punishableNonWorkWeight(1 + pressureHigh * 10 + disciplineLow * 10),
       },
       {
         status: 'toilet',
-        weight: nonWorkWeight(31 + energyLow * 10 + pressureHigh * 5),
+        weight: lowSeverityNonWorkWeight(31 + energyLow * 10 + pressureHigh * 5),
       },
       {
         status: 'job_browsing',
-        weight: nonWorkWeight(satisfactionLow * 20 + pressureHigh * 6),
+        weight: punishableNonWorkWeight(satisfactionLow * 20 + pressureHigh * 6),
       },
       {
         status: 'gaming',
-        weight: nonWorkWeight(disciplineLow * 10 + this.employee.slackingTendency * 20 + pressureHigh * 4),
+        weight: punishableNonWorkWeight(disciplineLow * 10 + this.employee.slackingTendency * 20 + pressureHigh * 4),
       },
     ]
   }

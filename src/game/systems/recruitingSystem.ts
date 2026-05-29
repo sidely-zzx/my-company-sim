@@ -102,8 +102,6 @@ function generateResume(state: GameState): Resume {
   state.rngSeed = expectedSalaryFactor.seed;
   const satisfaction = randomInt(state.rngSeed, 65, 90);
   state.rngSeed = satisfaction.seed;
-  const arbitrationTendency = randomInt(state.rngSeed, 5 * workYears.value, 75);
-  state.rngSeed = arbitrationTendency.seed;
   const slackingTendency = randomInt(state.rngSeed, 5, 35);
   state.rngSeed = slackingTendency.seed;
 
@@ -117,7 +115,6 @@ function generateResume(state: GameState): Resume {
     introduction: intro.value,
     realSkillAbilities,
     satisfaction: satisfaction.value,
-    arbitrationTendency: arbitrationTendency.value,
     slackingTendency: slackingTendency.value / 100,
   };
 }
@@ -225,7 +222,6 @@ export function sendOffer(
   const employeeId = createId(draft, 'employee');
   const behaviorProfile = createInitialEmployeeBehaviorProfile(draft.rngSeed, {
     salaryFit,
-    arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
     averageAbility: averageAbility(resume.realSkillAbilities),
   });
@@ -240,13 +236,15 @@ export function sendOffer(
     salaryPerDay: offer.salaryPerDay,
     socialInsuranceRatio: clamp(offer.socialInsuranceRatio, 0, 1),
     satisfaction: resume.satisfaction,
-    arbitrationTendency: resume.arbitrationTendency,
     slackingTendency: resume.slackingTendency,
     behaviorSeed: behaviorProfile.profile.behaviorSeed,
     energy: behaviorProfile.profile.energy,
     pressure: behaviorProfile.profile.pressure,
     discipline: behaviorProfile.profile.discipline,
     workDays: 0,
+    highestSalaryPerDay: offer.salaryPerDay,
+    highestSocialInsuranceRatio: clamp(offer.socialInsuranceRatio, 0, 1),
+    unpaidSocialInsuranceGap: 0,
     status: 'idle',
   });
   draft.resumes = draft.resumes.filter((item) => item.id !== resume.id);

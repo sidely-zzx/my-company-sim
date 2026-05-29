@@ -28,7 +28,7 @@ export interface CompensationSummary {
 }
 
 export interface CompensationLimits {
-  /** 日薪滑杆下限百分比；日薪会影响现金流、社保成本、辞退赔偿和 Offer 接受判断。 */
+  /** 日薪滑杆下限百分比；日薪会影响现金流、社保成本、固定辞退赔偿和 Offer 接受判断。 */
   salaryMinPercent?: number
   /** 日薪滑杆上限百分比；教学期会收窄它，避免第一单被极端工资破坏。 */
   salaryMaxPercent?: number
@@ -53,7 +53,7 @@ interface CompensationSettingsProps {
 }
 
 const SOCIAL_INSURANCE_TIP =
-  '法律规定社保基数为实际工资，实际工资*26%社保+实际工资*12%公积金。如果未足额缴纳员工投诉举报后要双倍补缴'
+  '法律规定社保基数为实际工资，实际工资*26%社保+实际工资*12%公积金。未足额缴纳会累计差额，低满意度离职或仲裁时可能双倍补缴'
 
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) {

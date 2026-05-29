@@ -57,10 +57,10 @@ export interface GameStore extends GameState {
   dismissDailyBriefing: () => void
   /** 修改员工花名，用于玩家自定义员工显示名。 */
   renameEmployee: (employeeId: string, nickname: string) => void
-  /** 调整员工日薪和社保公积金比例；会立即影响成本、满意度和后续劳动风险。 */
+  /** 调整员工日薪和社保公积金比例；会立即影响成本，涨待遇会增加满意度，降待遇会在日结后持续影响满意度。 */
   updateEmployeeCompensation: (employeeId: string, salaryPerDay: number, socialInsuranceRatio: number) => void
-  /** 辞退员工并按赔偿系数扣款；赔偿不足会提高后续风险。 */
-  fireEmployee: (employeeId: string, compensationRatio: number) => void
+  /** 辞退员工并按固定 100% 赔偿扣款。 */
+  fireEmployee: (employeeId: string) => void
   /** 对员工当前状态执行管理动作，例如提醒、警告或罚款。 */
   applyEmployeeDiscipline: (employeeId: string, action: EmployeeDisciplineAction, fineRatio?: number) => void
   /** 将指定邮件标记为已读。 */
@@ -140,8 +140,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) =>
       updateEmployeeCompensation(toGameState(state), employeeId, salaryPerDay, socialInsuranceRatio),
     ),
-  fireEmployee: (employeeId, compensationRatio) =>
-    set((state) => fireEmployee(toGameState(state), employeeId, compensationRatio)),
+  fireEmployee: (employeeId) =>
+    set((state) => fireEmployee(toGameState(state), employeeId)),
   applyEmployeeDiscipline: (employeeId, action, fineRatio) =>
     set((state) =>
       markTutorialEmployeeStatusHandled(

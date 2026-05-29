@@ -3,7 +3,6 @@ import { useState } from 'react'
 import {
   abilitiesText,
   assignmentText,
-  clampNumber,
   employeeStatusLabels,
   pendingAssignmentText,
   realSkillText,
@@ -43,7 +42,6 @@ export function EmployeePanel() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>()
   const [disciplineEmployeeId, setDisciplineEmployeeId] = useState<string>()
   const [nicknames, setNicknames] = useState<Record<string, string>>({})
-  const [compensations, setCompensations] = useState<Record<string, string>>({})
   const [compensationForms, setCompensationForms] = useState<Record<string, EmployeeCompensationFormState>>({})
   const selectedEmployee = selectedEmployeeId
     ? employees.find((employee) => employee.id === selectedEmployeeId)
@@ -79,7 +77,6 @@ export function EmployeePanel() {
           laborContracts={laborContracts}
           projectContracts={projectContracts}
           nickname={nicknames[selectedEmployee.id] ?? selectedEmployee.nickname ?? ''}
-          fireCompensationRatio={compensations[selectedEmployee.id] ?? '1'}
           compensationForm={getCompensationForm(selectedEmployee.id)}
           onBack={() => setSelectedEmployeeId(undefined)}
           onNicknameChange={(value) =>
@@ -89,11 +86,8 @@ export function EmployeePanel() {
             selectedEmployee.id,
             (nicknames[selectedEmployee.id] ?? selectedEmployee.nickname ?? selectedEmployee.name) || selectedEmployee.name,
           )}
-          onFireCompensationRatioChange={(value) =>
-            setCompensations((current) => ({ ...current, [selectedEmployee.id]: value }))
-          }
           onFire={() =>
-            fireEmployee(selectedEmployee.id, clampNumber(compensations[selectedEmployee.id] ?? '1', 1))
+            fireEmployee(selectedEmployee.id)
           }
           onCompensationFormChange={(patch) => updateCompensationForm(selectedEmployee.id, patch)}
           onSaveCompensation={(salaryPerDay, socialInsuranceRatio) => {

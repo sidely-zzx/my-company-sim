@@ -17,12 +17,10 @@ interface EmployeeDetailPanelProps {
   laborContracts: LaborContract[]
   projectContracts: ProjectContract[]
   nickname: string
-  fireCompensationRatio: string
   compensationForm: EmployeeCompensationFormState
   onBack: () => void
   onNicknameChange: (value: string) => void
   onRename: () => void
-  onFireCompensationRatioChange: (value: string) => void
   onFire: () => void
   onCompensationFormChange: (patch: Partial<EmployeeCompensationFormState>) => void
   onSaveCompensation: (salaryPerDay: number, socialInsuranceRatio: number) => void
@@ -47,12 +45,10 @@ export function EmployeeDetailPanel({
   laborContracts,
   projectContracts,
   nickname,
-  fireCompensationRatio,
   compensationForm,
   onBack,
   onNicknameChange,
   onRename,
-  onFireCompensationRatioChange,
   onFire,
   onCompensationFormChange,
   onSaveCompensation,
@@ -157,7 +153,6 @@ export function EmployeeDetailPanel({
             <DetailStat label="精力" value={`${employee.energy}`} tone={employee.energy >= 60 ? 'positive' : 'negative'} />
             <DetailStat label="压力" value={`${employee.pressure}`} tone={employee.pressure >= 65 ? 'negative' : undefined} />
             <DetailStat label="自律" value={`${employee.discipline}`} tone={employee.discipline >= 60 ? 'positive' : 'negative'} />
-            <DetailStat label="仲裁倾向" value={`${employee.arbitrationTendency}`} tone={employee.arbitrationTendency >= 60 ? 'negative' : undefined} />
             <DetailStat label="摸鱼倾向" value={percent(employee.slackingTendency)} tone={employee.slackingTendency >= 0.45 ? 'negative' : undefined} />
             <DetailStat label="行为种子" value={`${employee.behaviorSeed}`} />
           </div>
@@ -177,9 +172,7 @@ export function EmployeeDetailPanel({
           <h3 className="m-0 text-[16px] text-[#efe2c8]">离职操作</h3>
           <FireCompensationControl
             employee={employee}
-            ratio={fireCompensationRatio}
             disabled={isFired}
-            onRatioChange={onFireCompensationRatioChange}
             onFire={onFire}
           />
         </section>

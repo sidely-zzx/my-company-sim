@@ -1,6 +1,5 @@
 import { useState } from 'react'
 
-import { clampNumber } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
 import { panel, srOnly } from '../../styles/tw'
 import {
@@ -31,7 +30,6 @@ export function EmployeeDetailDialog({
   const assignEmployeeToLabor = useGameStore((state) => state.assignEmployeeToLabor)
   const assignEmployeeToProject = useGameStore((state) => state.assignEmployeeToProject)
   const [nicknames, setNicknames] = useState<Record<string, string>>({})
-  const [compensations, setCompensations] = useState<Record<string, string>>({})
   const [compensationForms, setCompensationForms] = useState<Record<string, EmployeeCompensationFormState>>({})
   const employee = employeeId ? employees.find((item) => item.id === employeeId) : undefined
 
@@ -66,7 +64,6 @@ export function EmployeeDetailDialog({
               laborContracts={laborContracts}
               projectContracts={projectContracts}
               nickname={nicknames[employee.id] ?? employee.nickname ?? ''}
-              fireCompensationRatio={compensations[employee.id] ?? '1'}
               compensationForm={getCompensationForm(employee.id)}
               backLabel="关闭详情"
               onBack={() => onOpenChange(false)}
@@ -77,11 +74,8 @@ export function EmployeeDetailDialog({
                 employee.id,
                 (nicknames[employee.id] ?? employee.nickname ?? employee.name) || employee.name,
               )}
-              onFireCompensationRatioChange={(value) =>
-                setCompensations((current) => ({ ...current, [employee.id]: value }))
-              }
               onFire={() =>
-                fireEmployee(employee.id, clampNumber(compensations[employee.id] ?? '1', 1))
+                fireEmployee(employee.id)
               }
               onCompensationFormChange={(patch) => updateCompensationForm(employee.id, patch)}
               onSaveCompensation={(salaryPerDay, socialInsuranceRatio) => {

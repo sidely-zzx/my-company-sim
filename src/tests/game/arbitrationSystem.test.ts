@@ -3,36 +3,18 @@ import { describe, expect, it } from 'vitest'
 import {
   processArbitrationFilings,
   processArbitrationResults,
-  processSocialInsuranceComplaints,
 } from '../../game/systems/arbitrationSystem'
 import { createTestEmployee, createTestState } from './testHelpers'
 
 describe('arbitrationSystem', () => {
-  it('deducts double missed social insurance when a complaint is triggered', () => {
-    const state = createTestState()
-    state.rngSeed = 1
-    state.employees = [
-      createTestEmployee({
-        salaryPerDay: 1000,
-        socialInsuranceRatio: 0,
-        satisfaction: 0,
-      }),
-    ]
-
-    const result = processSocialInsuranceComplaints(state)
-
-    expect(result.financeRecords[0]?.amount).toBe(-760)
-    expect(result.mailbox.some((mail) => mail.type === 'social_insurance_complaint')).toBe(true)
-  })
-
-  it('files arbitration and sends the result on the third day', () => {
+  it('files arbitration only for low satisfaction employees with unpaid social insurance gap', () => {
     const state = createTestState()
     state.rngSeed = 1
     state.employees = [
       createTestEmployee({
         socialInsuranceRatio: 0,
         satisfaction: 0,
-        arbitrationTendency: 100,
+        unpaidSocialInsuranceGap: 100,
       }),
     ]
 
@@ -44,5 +26,19 @@ describe('arbitrationSystem', () => {
     expect(result.pendingArbitrations[0]?.status).toBe('won_by_employee')
     expect(result.mailbox.some((mail) => mail.type === 'labor_dispute_result')).toBe(true)
     expect(result.financeRecords.some((record) => record.type === 'arbitration')).toBe(true)
+  })
+
+  it('does not file arbitration without unpaid social insurance gap', () => {
+    const state = createTestState()
+    state.employees = [
+      createTestEmployee({
+        satisfaction: 0,
+        unpaidSocialInsuranceGap: 0,
+      }),
+    ]
+
+    const result = processArbitrationFilings(state)
+
+    expect(result.pendingArbitrations).toHaveLength(0)
   })
 })
