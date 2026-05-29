@@ -250,10 +250,10 @@ export function LaborEmployeePicker({
                   <span className="rounded border border-[#3d4642] bg-[#202624] px-2 py-1 text-[#d8cfbb]">
                     主工种 {employeePrimaryRole ? roleLabels[employeePrimaryRole] : '未知'}
                   </span>
-                  <span className="rounded border border-[#3d4642] bg-[#202624] px-2 py-1 text-[#d8cfbb]">
+                  {/* <span className="rounded border border-[#3d4642] bg-[#202624] px-2 py-1 text-[#d8cfbb]">
                     {roleLabels[contract.requiredRole]}能力 {ability} / 要求 {contract.requiredAbility}
-                  </span>
-                  <span
+                  </span> */}
+                  {/* <span
                     className={cn(
                       'rounded border px-2 py-1',
                       qualified
@@ -262,7 +262,7 @@ export function LaborEmployeePicker({
                     )}
                   >
                     {qualified ? (idle && matchesRole ? '推荐' : '达标') : `差距 ${abilityGap}`}
-                  </span>
+                  </span> */}
                 </span>
 
                 <span className="grid gap-1 text-xs text-[#aeb5ac]">

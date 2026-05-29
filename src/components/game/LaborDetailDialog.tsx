@@ -139,11 +139,11 @@ export function LaborDetailDialog({ contract, trigger }: LaborDetailDialogProps)
                 {assigned ? (
                   <div className="mt-2 grid gap-1 text-xs text-[#aeb5ac]">
                     <span className="font-extrabold text-[#d8cfbb]">{assigned.nickname || assigned.name}</span>
-                    <span>
+                    {/* <span>
                       {roleLabels[contract.requiredRole]}能力 {assignedAbility} / 要求 {contract.requiredAbility}
-                    </span>
+                    </span> */}
                     <span className={cn(assignedAbility >= contract.requiredAbility ? riskToneClass.success : riskToneClass.danger)}>
-                      {assignedAbility >= contract.requiredAbility ? '当前员工能力达标' : `当前员工低于要求 ${contract.requiredAbility - assignedAbility}`}
+                      {assignedAbility >= contract.requiredAbility - 20 ? '当前员工能力达标' : `当前员工不满足要求`}
                     </span>
                   </div>
                 ) : (

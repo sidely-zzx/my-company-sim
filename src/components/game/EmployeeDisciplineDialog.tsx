@@ -12,6 +12,7 @@ import {
   employeeStatusLabels,
   projectStatusLabels,
   roleLabels,
+  levelLabels,
 } from '../../game/ui'
 import { isCurrentTutorialNode } from '../../game/systems/tutorialSystem'
 import type { Employee, EmployeeDisciplineAction, EmployeeStatus } from '../../game/types'
@@ -65,6 +66,57 @@ function actionButtonClass(action: EmployeeDisciplineAction): string {
   return 'border-[#303834] bg-[#171c1b] text-[#d8cfbb] hover:bg-[#242b28]'
 }
 
+function attributeLevel(value: number): number {
+  // 员工属性内部仍然是 0-100，这里只折算成 5 档，避免玩家看到精确数值。
+  return Math.min(5, Math.max(1, Math.ceil(value / 20)))
+}
+
+function attributeBarTone(level: number, reversed?: boolean): string {
+  // 压力是反向属性：段数越多代表风险越高，所以颜色逻辑和正向属性相反。
+  const dangerLevel = reversed ? level : 6 - level
+  if (dangerLevel >= 5) {
+    return 'border-[#8f3f32] bg-[#d35d48]'
+  }
+  if (dangerLevel >= 4) {
+    return 'border-[#8a5a29] bg-[#d8923d]'
+  }
+  if (dangerLevel >= 3) {
+    return 'border-[#8b7f3f] bg-[#d8c45a]'
+  }
+  return 'border-[#4f6f3f] bg-[#7fb85c]'
+}
+
+interface AttributeBarProps {
+  label: string
+  value: number
+  reversed?: boolean
+}
+
+function AttributeBar({ label, value, reversed }: AttributeBarProps) {
+  const level = attributeLevel(value)
+  const activeTone = attributeBarTone(level, reversed)
+
+  return (
+    <div className="grid grid-cols-[3.5em_minmax(0,1fr)] items-center gap-2">
+      <span className="font-extrabold text-[#d8cfbb]">{label}</span>
+      <div className="grid grid-cols-5 gap-1" aria-label={`${label}状态条`}>
+        {Array.from({ length: 5 }, (_, index) => {
+          const active = index < level
+          return (
+            <span
+              key={index}
+              className={cn(
+                'h-2.5 rounded-sm border',
+                active ? activeTone : 'border-[#303834] bg-[#202624]',
+              )}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function EmployeeDisciplineDialog({
   employee,
   open,
@@ -103,7 +155,7 @@ export function EmployeeDisciplineDialog({
         <DialogHeader>
           <DialogTitle>员工处理</DialogTitle>
           <DialogDescription>
-            {employee ? `${employee.nickname ?? employee.name} 当前状态：${employeeStatusLabels[employee.status]}` : '未选择员工'}
+            {employee ? `${employee.nickname ?? employee.name} ${employee.resumeSkills.map((item) => `${levelLabels[item.level]}${roleLabels[item.role]}`).join(', ')} 当前状态：${employeeStatusLabels[employee.status]}` : '未选择员工'}
           </DialogDescription>
         </DialogHeader>
 
@@ -116,12 +168,12 @@ export function EmployeeDisciplineDialog({
                   {employeeStatusLabels[employee.status]}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-2 max-[520px]:grid-cols-1">
-                <span>精力 {employee.energy}</span>
-                <span>忠诚 {employee.loyalty}</span>
-                <span>压力 {employee.pressure}</span>
-                <span>自律 {employee.discipline}</span>
-                <span>满意度 {employee.satisfaction}</span>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-[520px]:grid-cols-1">
+                <AttributeBar label="精力" value={employee.energy} />
+                <AttributeBar label="忠诚" value={employee.loyalty} />
+                <AttributeBar label="压力" value={employee.pressure} reversed />
+                <AttributeBar label="自律" value={employee.discipline} />
+                <AttributeBar label="满意度" value={employee.satisfaction} />
                 <span>入职 {employee.workDays} 天</span>
               </div>
               {currentProject ? (
