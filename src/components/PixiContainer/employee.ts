@@ -16,6 +16,7 @@ import {
   DESK_ROWS,
   DESK_ROW_CENTER_YS,
 } from './desk';
+import { createEmployeeStationAnimation, type EmployeeStationAnimationHandle } from './employeeStationAnimation';
 
 const WORKING_EMPLOYEE_JSON_SRC = '/employee/working_employee.json';
 const WORKING_EMPLOYEE_IMAGE_FALLBACK_SRC = '/employee/working_employee.png';
@@ -25,7 +26,6 @@ const WORKING_EMPLOYEE_DISPLAY_WIDTH = DESK_DISPLAY_WIDTH * 0.4;
 const WORKING_EMPLOYEE_DISPLAY_HEIGHT = WORKING_EMPLOYEE_DISPLAY_WIDTH;
 const WORKING_EMPLOYEE_OFFSET_X = -20;
 const WORKING_EMPLOYEE_OFFSET_Y = 0;
-const WORKING_EMPLOYEE_ANIMATION_SPEED = 0;
 const STATUS_LABEL_OFFSET_Y = -58;
 const MAX_VISIBLE_EMPLOYEES = DESK_COLUMNS * DESK_ROWS;
 
@@ -72,8 +72,10 @@ export interface PixiEmployeeView {
 interface EmployeeStation {
   layer: Container;
   employee: AnimatedSprite;
+  animation: EmployeeStationAnimationHandle;
   statusText: Text;
   employeeId?: string;
+  status?: EmployeeStatus;
 }
 
 function statusLabelColor(status: EmployeeStatus): number {
@@ -151,10 +153,11 @@ const createWorkingEmployeeMatrix = (frames: Texture[], onEmployeeClick: (employ
       const employeeStationLayer = new Container();
       const employee = new AnimatedSprite({
         textures: frames,
-        animationSpeed: WORKING_EMPLOYEE_ANIMATION_SPEED,
+        animationSpeed: 0,
         autoUpdate: false,
         loop: true,
       });
+      const animation = createEmployeeStationAnimation();
 
       const statusText = new Text({
         text: '',
@@ -184,12 +187,12 @@ const createWorkingEmployeeMatrix = (frames: Texture[], onEmployeeClick: (employ
       employee.width = WORKING_EMPLOYEE_DISPLAY_WIDTH;
       employee.height = WORKING_EMPLOYEE_DISPLAY_HEIGHT;
       employee.visible = false;
-      employee.play();
+      employee.stop();
       statusText.anchor.set(0.5);
       statusText.y = STATUS_LABEL_OFFSET_Y;
       statusText.resolution = 2;
 
-      const station: EmployeeStation = { layer: employeeStationLayer, employee, statusText };
+      const station: EmployeeStation = { layer: employeeStationLayer, employee, animation, statusText };
       employeeStationLayer.on('pointertap', () => {
         if (station.employeeId) {
           onEmployeeClick(station.employeeId);
@@ -198,6 +201,7 @@ const createWorkingEmployeeMatrix = (frames: Texture[], onEmployeeClick: (employ
 
       stations.push(station);
       employeeStationLayer.addChild(employee);
+      employeeStationLayer.addChild(animation.effectLayer);
       employeeStationLayer.addChild(statusText);
       employeeLayer.addChild(employeeStationLayer);
     }
@@ -223,20 +227,33 @@ async function createEmployeeLayer(
       const employeeView = visibleEmployees[index];
       const visible = Boolean(employeeView);
       station.layer.visible = visible;
-      station.employee.visible = visible;
       station.layer.eventMode = visible ? 'static' : 'none';
-      station.employeeId = employeeView?.id;
       station.statusText.visible = visible;
       station.statusText.text = employeeView?.statusLabel ?? '';
       station.statusText.style.fill = employeeView ? statusLabelColor(employeeView.status) : 0xd8cfbb;
+
+      const shouldResetAnimation = station.employeeId !== employeeView?.id || station.status !== employeeView?.status;
+      station.employeeId = employeeView?.id;
+      station.status = employeeView?.status;
+
+      if (shouldResetAnimation) {
+        // 工位动画受员工 ID 和状态共同影响：换人或状态变化时重置动作节奏和道具位置，避免上一名员工的烟雾、水杯位置残留。
+        // 这里只更新 Pixi 表现层，不会修改员工、项目、合同或财务等游戏状态。
+        station.animation.setStatus(employeeView?.status, station.employee);
+      }
     });
   };
 
   const updateEmployees = (ticker: Ticker) => {
     stations.forEach((station) => {
+      if (!station.layer.visible) {
+        return;
+      }
+
       if (station.employee.visible) {
         station.employee.update(ticker);
       }
+      station.animation.update(ticker, station.employee);
     });
   };
 
