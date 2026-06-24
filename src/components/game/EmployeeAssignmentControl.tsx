@@ -130,20 +130,23 @@ export function EmployeeAssignmentControl({
   }
 
   return (
-    <section className="grid gap-3 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-4">
+    <section className="grid gap-2.5 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.5)] p-3">
       <div>
-        <h3 className="m-0 text-[16px] text-[#efe2c8]">工作安排</h3>
+        <h3 className="m-0 text-[15px] text-[#efe2c8]">工作安排</h3>
         <p className="m-0 mt-1 text-xs font-extrabold text-[#aaa48f]">
           从员工视角安排当前或后续工作。
         </p>
       </div>
 
-      <div className="grid gap-2 text-[13px] text-[#d8cfbb]">
-        <p className="m-0 rounded-md border border-[#303834] bg-[#171c1b] p-3">
-          当前分配：{assignmentText(employee, laborContracts, projectContracts)}
+      <div className="grid grid-cols-2 gap-2 text-[13px] text-[#d8cfbb] max-[760px]:grid-cols-1">
+        {/* 当前分配影响员工今天的产出来源；后续安排会在当前合同释放后接管，两个摘要并排展示以减少详情页纵向高度。 */}
+        <p className="m-0 min-w-0 rounded-md border border-[#303834] bg-[#171c1b] p-2">
+          <span className="block text-xs font-extrabold text-[#aaa48f]">当前</span>
+          <span className="mt-1 block truncate">{assignmentText(employee, laborContracts, projectContracts)}</span>
         </p>
-        <p className="m-0 rounded-md border border-[#303834] bg-[#171c1b] p-3">
-          后续安排：{pendingAssignmentText(employee, laborContracts, projectContracts)}
+        <p className="m-0 min-w-0 rounded-md border border-[#303834] bg-[#171c1b] p-2">
+          <span className="block text-xs font-extrabold text-[#aaa48f]">后续</span>
+          <span className="mt-1 block truncate">{pendingAssignmentText(employee, laborContracts, projectContracts)}</span>
         </p>
       </div>
 
@@ -168,7 +171,7 @@ export function EmployeeAssignmentControl({
 
       {targetType === 'labor' ? (
         laborOptions.length > 0 ? (
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             <SelectField
               label="人力合同"
               name={`employee-assignment-labor-${employee.id}`}
@@ -179,7 +182,7 @@ export function EmployeeAssignmentControl({
               onValueChange={setSelectedLaborId}
             />
             {selectedLabor ? (
-              <div className="grid gap-1 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-xs text-[#aeb5ac]">
+              <div className="grid gap-1 rounded-md border border-[#303834] bg-[#171c1b] p-2 text-xs text-[#aeb5ac]">
                 <strong className="text-[#efe2c8]">{selectedLabor.title}</strong>
                 <span>
                   {laborStatusLabels[selectedLabor.status]} · {roleLabels[selectedLabor.requiredRole]} · 能力 {employeeAbility(employee, selectedLabor.requiredRole)} / 要求 {selectedLabor.requiredAbility}
@@ -192,7 +195,7 @@ export function EmployeeAssignmentControl({
           <p className={emptyState}>暂无可安排的人力外包合同。</p>
         )
       ) : projectOptions.length > 0 ? (
-        <div className="grid gap-3">
+        <div className="grid gap-2">
           <div className="flex flex-wrap gap-2">
             <SelectField
               label="项目"
@@ -215,7 +218,7 @@ export function EmployeeAssignmentControl({
             ) : null}
           </div>
           {selectedProject ? (
-            <div className="grid gap-1 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-xs text-[#aeb5ac]">
+            <div className="grid gap-1 rounded-md border border-[#303834] bg-[#171c1b] p-2 text-xs text-[#aeb5ac]">
               <strong className="text-[#efe2c8]">{selectedProject.title}</strong>
               <span>
                 {projectStatusLabels[selectedProject.status]} · {roleLabels[activeProjectRole]}进度 {Math.round(selectedProject.phaseProgress[activeProjectRole])}% · 员工能力 {employeeAbility(employee, activeProjectRole)}

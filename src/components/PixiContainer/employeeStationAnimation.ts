@@ -1,366 +1,270 @@
-import { Container, Graphics, type AnimatedSprite, type Ticker } from 'pixi.js';
+import { Container, Graphics, Sprite, type Texture, type Ticker } from 'pixi.js';
 import type { EmployeeStatus } from '../../game/types';
 
-type EmployeeStationEffect = 'none' | 'phone' | 'cup' | 'smoke';
+type StaticEmployeePoseName = 'idle' | 'typingA' | 'phone' | 'cupDown' | 'cupUp' | 'smoke';
+type EmployeePoseName = StaticEmployeePoseName | 'workTyping';
+type EmployeeStationPoseName = EmployeePoseName | 'hidden';
+
+interface PoseOffset {
+  x: number;
+  y: number;
+}
 
 interface EmployeeStationAnimationConfig {
-  animationSpeed: number;
-  bodyVisible: boolean;
-  effect: EmployeeStationEffect;
-  bobRange: number;
-  swayRange: number;
-  swaySpeed: number;
+  pose: EmployeeStationPoseName;
+  nextPose?: StaticEmployeePoseName;
+  frameSpeed: number;
+  breatheRange: number;
+  breatheSpeed: number;
+  smokeVisible: boolean;
 }
 
-interface PhoneEffect {
-  layer: Container;
-  screen: Graphics;
+interface SmokeParticle {
+  sprite: Graphics;
+  offset: number;
 }
 
-interface CupEffect {
-  layer: Container;
-}
-
-interface SmokeEffect {
-  layer: Container;
-  cigarette: Graphics;
-  particles: Graphics[];
+export interface EmployeePoseTextures {
+  idle: Texture;
+  typingA: Texture;
+  phone: Texture;
+  cupDown: Texture;
+  cupUp: Texture;
+  smoke: Texture;
+  workTypingFrames: Texture[];
 }
 
 export interface EmployeeStationAnimationHandle {
   effectLayer: Container;
-  setStatus: (status?: EmployeeStatus, employee?: AnimatedSprite) => void;
-  update: (ticker: Ticker, employee: AnimatedSprite) => void;
+  setStatus: (status?: EmployeeStatus) => void;
+  update: (ticker: Ticker) => void;
 }
 
-const PHONE_X = -58;
-const PHONE_Y = 18;
-const CUP_X = -54;
-const CUP_FROM_Y = 20;
-const CUP_TO_Y = -16;
-const SMOKE_X = -66;
-const SMOKE_Y = -8;
+const POSE_CELL_DISPLAY_HEIGHT = 300;
+const POSE_OFFSET_X = 0;
+const POSE_OFFSET_Y = 0;
+const SMOKE_ORIGIN_X = 28;
+const SMOKE_ORIGIN_Y = -52;
+const POSE_OFFSETS: Record<EmployeePoseName, PoseOffset> = {
+  idle: { x: 0, y: 0 },
+  typingA: { x: 6, y: 0 },
+  workTyping: { x: 6, y: 0 },
+  phone: { x: 16, y: 0 },
+  cupDown: { x: 0, y: 42 },
+  cupUp: { x: 7, y: 42 },
+  smoke: { x: -5, y: 42 },
+};
 
 const EMPLOYEE_STATION_ANIMATION_CONFIGS: Record<EmployeeStatus, EmployeeStationAnimationConfig> = {
   idle: {
-    animationSpeed: 0,
-    bodyVisible: true,
-    effect: 'none',
-    bobRange: 0.9,
-    swayRange: 0.08,
-    swaySpeed: 0.045,
+    pose: 'idle',
+    frameSpeed: 0,
+    breatheRange: 0.7,
+    breatheSpeed: 0.045,
+    smokeVisible: false,
   },
   focused_work: {
-    animationSpeed: 0.22,
-    bodyVisible: true,
-    effect: 'none',
-    bobRange: 0.8,
-    swayRange: 0.08,
-    swaySpeed: 0.12,
+    pose: 'workTyping',
+    frameSpeed: 0.16,
+    breatheRange: 0,
+    breatheSpeed: 0,
+    smokeVisible: false,
   },
   working: {
-    animationSpeed: 0.14,
-    bodyVisible: true,
-    effect: 'none',
-    bobRange: 0.6,
-    swayRange: 0.06,
-    swaySpeed: 0.09,
+    pose: 'workTyping',
+    frameSpeed: 0.1,
+    breatheRange: 0,
+    breatheSpeed: 0,
+    smokeVisible: false,
   },
   slacking: {
-    animationSpeed: 0.035,
-    bodyVisible: true,
-    effect: 'phone',
-    bobRange: 1.4,
-    swayRange: 0.65,
-    swaySpeed: 0.04,
+    pose: 'phone',
+    frameSpeed: 0,
+    breatheRange: 0.65,
+    breatheSpeed: 0.035,
+    smokeVisible: false,
   },
   drinking_water: {
-    animationSpeed: 0,
-    bodyVisible: true,
-    effect: 'cup',
-    bobRange: 0.5,
-    swayRange: 0.12,
-    swaySpeed: 0.035,
+    pose: 'cupDown',
+    nextPose: 'cupUp',
+    frameSpeed: 0.035,
+    breatheRange: 0.45,
+    breatheSpeed: 0.032,
+    smokeVisible: false,
   },
   smoking: {
-    animationSpeed: 0,
-    bodyVisible: true,
-    effect: 'smoke',
-    bobRange: 0.5,
-    swayRange: 0.12,
-    swaySpeed: 0.03,
+    pose: 'smoke',
+    frameSpeed: 0,
+    breatheRange: 0.45,
+    breatheSpeed: 0.03,
+    smokeVisible: true,
   },
   toilet: {
-    animationSpeed: 0,
-    bodyVisible: false,
-    effect: 'none',
-    bobRange: 0,
-    swayRange: 0,
-    swaySpeed: 0,
+    pose: 'hidden',
+    frameSpeed: 0,
+    breatheRange: 0,
+    breatheSpeed: 0,
+    smokeVisible: false,
   },
   job_browsing: {
-    animationSpeed: 0.04,
-    bodyVisible: true,
-    effect: 'phone',
-    bobRange: 1.2,
-    swayRange: 0.55,
-    swaySpeed: 0.045,
+    pose: 'phone',
+    frameSpeed: 0,
+    breatheRange: 0.6,
+    breatheSpeed: 0.04,
+    smokeVisible: false,
   },
   gaming: {
-    animationSpeed: 0.05,
-    bodyVisible: true,
-    effect: 'phone',
-    bobRange: 1,
-    swayRange: 0.75,
-    swaySpeed: 0.055,
+    pose: 'phone',
+    frameSpeed: 0,
+    breatheRange: 0.55,
+    breatheSpeed: 0.048,
+    smokeVisible: false,
   },
   fired: {
-    animationSpeed: 0,
-    bodyVisible: false,
-    effect: 'none',
-    bobRange: 0,
-    swayRange: 0,
-    swaySpeed: 0,
+    pose: 'hidden',
+    frameSpeed: 0,
+    breatheRange: 0,
+    breatheSpeed: 0,
+    smokeVisible: false,
   },
 };
 
-const easeInOut = (value: number) => {
-  const clampedValue = Math.max(0, Math.min(1, value));
+const createSmokeParticles = () => Array.from({ length: 4 }, (_, index): SmokeParticle => {
+  const sprite = new Graphics();
 
-  return clampedValue * clampedValue * (3 - 2 * clampedValue);
-};
+  // 烟雾粒子只补强 smoking 的视觉反馈：它跟随员工状态显示，不改变压力、满意度、处罚收益或项目进度。
+  sprite
+    .circle(0, 0, 2.6 + index * 0.25)
+    .fill({ color: 0xf4f0df, alpha: 0.48 });
+  sprite.visible = false;
 
-const createPhoneEffect = (): PhoneEffect => {
-  const layer = new Container();
-  const body = new Graphics();
-  const screen = new Graphics();
-  const button = new Graphics();
+  return {
+    sprite,
+    offset: index * 0.23,
+  };
+});
 
-  // 手机只表现摸鱼、刷招聘软件和打游戏等非工作状态；它受员工 status 影响，但不会改变产出、罚款或满意度。
-  body
-    .roundRect(-8, -14, 16, 28, 4)
-    .fill({ color: 0x1b2028 })
-    .stroke({ width: 1.5, color: 0x06080b, alpha: 0.9 });
-  screen
-    .roundRect(-5, -10, 10, 19, 2)
-    .fill({ color: 0x7fd4ff, alpha: 0.8 });
-  button
-    .circle(0, 10.5, 1.2)
-    .fill({ color: 0xd8e7ef, alpha: 0.9 });
-
-  layer.addChild(body);
-  layer.addChild(screen);
-  layer.addChild(button);
-  layer.x = PHONE_X;
-  layer.y = PHONE_Y;
-  layer.rotation = -0.24;
-  layer.visible = false;
-
-  return { layer, screen };
-};
-
-const createCupEffect = (): CupEffect => {
-  const layer = new Container();
-  const body = new Graphics();
-  const water = new Graphics();
-  const handle = new Graphics();
-
-  // 水杯表现喝水这种低严重度休息状态；视觉上提醒玩家员工短暂停工，实际精力、产出仍由员工系统按 status 结算。
-  body
-    .roundRect(-7, -10, 14, 20, 3)
-    .fill({ color: 0xc6f0ff, alpha: 0.9 })
-    .stroke({ width: 1.5, color: 0x34596d, alpha: 0.85 });
-  water
-    .roundRect(-4.5, -6, 9, 6, 2)
-    .fill({ color: 0x48b7ff, alpha: 0.75 });
-  handle
-    .roundRect(5, -4, 6, 10, 4)
-    .stroke({ width: 1.5, color: 0x9eddf3, alpha: 0.9 });
-
-  layer.addChild(body);
-  layer.addChild(water);
-  layer.addChild(handle);
-  layer.x = CUP_X;
-  layer.y = CUP_FROM_Y;
-  layer.visible = false;
-
-  return { layer };
-};
-
-const createSmokeEffect = (): SmokeEffect => {
-  const layer = new Container();
-  const cigarette = new Graphics();
-  const particles = Array.from({ length: 4 }, (_, index) => {
-    const particle = new Graphics();
-    const radius = 2.6 + index * 0.3;
-
-    // 烟雾粒子只表达抽烟状态的视觉反馈；粒子生命周期不参与压力、满意度或劳动风险计算。
-    particle
-      .circle(0, 0, radius)
-      .fill({ color: 0xf4f0df, alpha: 0.55 });
-    particle.visible = false;
-
-    return particle;
-  });
-
-  // 香烟道具让 smoking 状态在小尺寸下也能被识别；真实处罚和状态恢复仍走员工管理动作。
-  cigarette
-    .moveTo(-8, 0)
-    .lineTo(8, 0)
-    .stroke({ width: 2.5, color: 0xf2ead4, alpha: 0.95 })
-    .circle(8.5, 0, 2)
-    .fill({ color: 0xff8a3d, alpha: 0.9 });
-  cigarette.x = SMOKE_X;
-  cigarette.y = SMOKE_Y;
-  cigarette.rotation = -0.28;
-
-  layer.addChild(cigarette);
-  particles.forEach((particle) => layer.addChild(particle));
-  layer.visible = false;
-
-  return { layer, cigarette, particles };
-};
-
-export const createEmployeeStationAnimation = (): EmployeeStationAnimationHandle => {
+export const createEmployeeStationAnimation = (textures: EmployeePoseTextures): EmployeeStationAnimationHandle => {
   const effectLayer = new Container();
-  const phone = createPhoneEffect();
-  const cup = createCupEffect();
-  const smoke = createSmokeEffect();
+  const poseSprite = new Sprite(textures.idle);
+  const smokeParticles = createSmokeParticles();
   let elapsedTime = 0;
   let currentStatus: EmployeeStatus | undefined;
+  let currentPose: EmployeeStationPoseName = 'hidden';
+  let currentTexture: Texture | undefined;
 
-  effectLayer.addChild(phone.layer);
-  effectLayer.addChild(cup.layer);
-  effectLayer.addChild(smoke.layer);
+  poseSprite.anchor.set(0.5);
+  poseSprite.height = POSE_CELL_DISPLAY_HEIGHT;
+  poseSprite.width = POSE_CELL_DISPLAY_HEIGHT * (poseSprite.texture.width / poseSprite.texture.height);
+  poseSprite.x = POSE_OFFSET_X;
+  poseSprite.y = POSE_OFFSET_Y;
+  poseSprite.visible = false;
 
-  const setEffectVisibility = (effect: EmployeeStationEffect) => {
-    phone.layer.visible = effect === 'phone';
-    cup.layer.visible = effect === 'cup';
-    smoke.layer.visible = effect === 'smoke';
-    effectLayer.visible = effect !== 'none';
-  };
+  effectLayer.addChild(poseSprite);
+  smokeParticles.forEach((particle) => effectLayer.addChild(particle.sprite));
 
-  const resetEffects = () => {
-    phone.layer.x = PHONE_X;
-    phone.layer.y = PHONE_Y;
-    phone.screen.alpha = 0.8;
-    cup.layer.x = CUP_X;
-    cup.layer.y = CUP_FROM_Y;
-    cup.layer.rotation = 0;
-    smoke.cigarette.alpha = 1;
-    smoke.particles.forEach((particle) => {
-      particle.visible = false;
-      particle.alpha = 0;
-      particle.scale.set(1);
+  const resetSmoke = () => {
+    smokeParticles.forEach((particle) => {
+      particle.sprite.visible = false;
+      particle.sprite.alpha = 0;
+      particle.sprite.scale.set(1);
     });
   };
 
-  const resetEmployeePose = (employee?: AnimatedSprite) => {
-    if (!employee) {
+  const resolveTexture = (pose: EmployeeStationPoseName, config: EmployeeStationAnimationConfig): Texture | undefined => {
+    if (pose === 'hidden') {
+      return undefined;
+    }
+
+    if (pose === 'workTyping') {
+      const frameIndex = Math.floor(elapsedTime * config.frameSpeed) % textures.workTypingFrames.length;
+
+      return textures.workTypingFrames[frameIndex] ?? textures.typingA;
+    }
+
+    return textures[pose];
+  };
+
+  const setPoseTexture = (pose: EmployeeStationPoseName, config: EmployeeStationAnimationConfig) => {
+    const nextTexture = resolveTexture(pose, config);
+
+    if (currentPose === pose && currentTexture === nextTexture) {
       return;
     }
 
-    employee.x = 0;
-    employee.y = 0;
-    employee.rotation = 0;
-    employee.alpha = 1;
+    currentPose = pose;
+    currentTexture = nextTexture;
+    poseSprite.visible = pose !== 'hidden';
+    effectLayer.visible = pose !== 'hidden';
+
+    if (pose === 'hidden' || !nextTexture) {
+      return;
+    }
+
+    const offset = POSE_OFFSETS[pose];
+    poseSprite.texture = nextTexture;
+    poseSprite.height = POSE_CELL_DISPLAY_HEIGHT;
+    poseSprite.width = POSE_CELL_DISPLAY_HEIGHT * (poseSprite.texture.width / poseSprite.texture.height);
+    poseSprite.x = POSE_OFFSET_X + offset.x;
+    poseSprite.y = POSE_OFFSET_Y + offset.y;
   };
 
-  const setStatus = (status?: EmployeeStatus, employee?: AnimatedSprite) => {
+  const selectPose = (config: EmployeeStationAnimationConfig): EmployeeStationPoseName => {
+    if (!config.nextPose || config.pose === 'hidden' || config.pose === 'workTyping') {
+      return config.pose;
+    }
+
+    // 喝水等状态继续用完整人物姿势做两帧循环：手臂已经画在人物身上，因此不会出现漂浮或袖口断开。
+    // 工作状态改为播放单独的完整人物打字图集，只有图集里的手部像素变化，避免椅子和身体被整图帧差带着晃动。
+    // 这里只影响办公室表现，真实产出、精力、满意度和处罚仍然由 EmployeeStatus 在游戏系统里结算。
+    const frameIndex = Math.floor(elapsedTime * config.frameSpeed) % 2;
+
+    return frameIndex === 0 ? config.pose : config.nextPose;
+  };
+
+  const setStatus = (status?: EmployeeStatus) => {
     currentStatus = status;
     elapsedTime = 0;
-    resetEmployeePose(employee);
-    resetEffects();
+    resetSmoke();
 
     if (!status) {
-      setEffectVisibility('none');
-      if (employee) {
-        employee.visible = false;
-        employee.stop();
-      }
+      setPoseTexture('hidden', EMPLOYEE_STATION_ANIMATION_CONFIGS.idle);
       return;
     }
 
-    const config = EMPLOYEE_STATION_ANIMATION_CONFIGS[status];
-
-    setEffectVisibility(config.effect);
-    if (!employee) {
-      return;
-    }
-
-    // 主人物帧动画只读取员工状态做表现：工作状态更快，摸鱼更慢，喝水/抽烟停在坐姿帧并由道具层表达动作。
-    // 项目进度、甲方满意度、罚款收益等经营结果仍由 game/systems 根据 EmployeeStatus 计算。
-    employee.visible = config.bodyVisible;
-    employee.animationSpeed = config.animationSpeed;
-    if (!config.bodyVisible) {
-      employee.stop();
-      return;
-    }
-    if (config.animationSpeed > 0) {
-      employee.play();
-    } else {
-      employee.gotoAndStop(0);
-    }
-  };
-
-  const updatePhone = () => {
-    phone.layer.x = PHONE_X + Math.sin(elapsedTime * 0.04) * 1.2;
-    phone.layer.y = PHONE_Y + Math.sin(elapsedTime * 0.07) * 0.8;
-    phone.screen.alpha = 0.5 + (Math.sin(elapsedTime * 0.14) + 1) * 0.2;
-  };
-
-  const updateCup = () => {
-    const cycle = (elapsedTime * 0.012) % 1;
-    const lift = cycle < 0.34
-      ? easeInOut(cycle / 0.34)
-      : cycle < 0.54
-        ? 1
-        : cycle < 0.88
-          ? 1 - easeInOut((cycle - 0.54) / 0.34)
-          : 0;
-
-    cup.layer.x = CUP_X + lift * 8;
-    cup.layer.y = CUP_FROM_Y + (CUP_TO_Y - CUP_FROM_Y) * lift;
-    cup.layer.rotation = -0.18 * lift;
+    setPoseTexture(EMPLOYEE_STATION_ANIMATION_CONFIGS[status].pose, EMPLOYEE_STATION_ANIMATION_CONFIGS[status]);
   };
 
   const updateSmoke = () => {
-    smoke.cigarette.alpha = 0.86 + Math.sin(elapsedTime * 0.08) * 0.12;
-    smoke.particles.forEach((particle, index) => {
-      const progress = (elapsedTime * 0.012 + index * 0.24) % 1;
+    smokeParticles.forEach((particle, index) => {
+      const progress = (elapsedTime * 0.012 + particle.offset) % 1;
       const drift = Math.sin(elapsedTime * 0.035 + index * 1.7) * 5;
 
-      particle.visible = true;
-      particle.x = SMOKE_X + 8 + drift;
-      particle.y = SMOKE_Y - 8 - progress * 42;
-      particle.alpha = (1 - progress) * 0.48;
-      particle.scale.set(0.55 + progress * 0.95);
+      particle.sprite.visible = true;
+      particle.sprite.x = SMOKE_ORIGIN_X + drift;
+      particle.sprite.y = SMOKE_ORIGIN_Y - progress * 42;
+      particle.sprite.alpha = (1 - progress) * 0.42;
+      particle.sprite.scale.set(0.55 + progress * 0.95);
     });
   };
 
-  const update = (ticker: Ticker, employee: AnimatedSprite) => {
+  const update = (ticker: Ticker) => {
     if (!currentStatus) {
       return;
     }
 
     const config = EMPLOYEE_STATION_ANIMATION_CONFIGS[currentStatus];
     elapsedTime += ticker.deltaTime;
+    const pose = selectPose(config);
+    setPoseTexture(pose, config);
 
-    if (config.bodyVisible) {
-      employee.x = Math.sin(elapsedTime * config.swaySpeed) * config.swayRange;
-      employee.y = Math.sin(elapsedTime * config.swaySpeed * 1.8) * config.bobRange;
-      employee.rotation = Math.sin(elapsedTime * config.swaySpeed * 0.7) * 0.012;
+    if (pose !== 'hidden') {
+      const offset = POSE_OFFSETS[pose];
+      poseSprite.x = POSE_OFFSET_X + offset.x;
+      poseSprite.y = POSE_OFFSET_Y + offset.y + Math.sin(elapsedTime * config.breatheSpeed) * config.breatheRange;
     }
 
-    if (config.effect === 'phone') {
-      updatePhone();
-      return;
-    }
-    if (config.effect === 'cup') {
-      updateCup();
-      return;
-    }
-    if (config.effect === 'smoke') {
+    if (config.smokeVisible) {
       updateSmoke();
     }
   };

@@ -48,6 +48,7 @@ interface CompensationSettingsProps {
   limits?: CompensationLimits
   limitHint?: string
   className?: string
+  compact?: boolean
   onChange: (patch: Partial<CompensationFormState>) => void
   footer?: (summary: CompensationSummary) => ReactNode
 }
@@ -118,6 +119,7 @@ export function CompensationSettings({
   limits,
   limitHint,
   className,
+  compact = false,
   onChange,
   footer,
 }: CompensationSettingsProps) {
@@ -129,13 +131,13 @@ export function CompensationSettings({
   const socialSliderMax = limits?.socialMaxPercent ?? 100
 
   return (
-    <div className={cn('grid gap-4', className)}>
+    <div className={cn('grid', compact ? 'gap-2.5' : 'gap-4', className)}>
       {limitHint ? (
-        <p className="m-0 rounded-md border border-[#7f6840] bg-[#2d281f] p-3 text-xs font-extrabold leading-5 text-[#ead7aa]">
+        <p className={cn('m-0 rounded-md border border-[#7f6840] bg-[#2d281f] text-xs font-extrabold leading-5 text-[#ead7aa]', compact ? 'p-2' : 'p-3')}>
           {limitHint}
         </p>
       ) : null}
-      <div className="grid gap-2">
+      <div className={cn('grid', compact ? 'gap-1.5' : 'gap-2')}>
         <div className="flex items-center justify-between gap-3">
           <label
             className="text-[13px] font-extrabold text-[#d4cbb6]"
@@ -177,7 +179,7 @@ export function CompensationSettings({
         />
       </div>
 
-      <div className="grid gap-2">
+      <div className={cn('grid', compact ? 'gap-1.5' : 'gap-2')}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#d4cbb6]">
             <span>社保公积金 {summary.socialPercent}%</span>
@@ -213,7 +215,7 @@ export function CompensationSettings({
         />
       </div>
 
-      <div className="grid gap-1.5 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-[13px]">
+      <div className={cn('grid rounded-md border border-[#303834] bg-[#171c1b] text-[13px]', compact ? 'gap-1 p-2' : 'gap-1.5 p-3')}>
         <span className="text-[#d8cfbb]">
           社保支出：{summary.socialPercent} * {summary.salaryPerDay} / 100 * 38% = {money(summary.socialInsuranceCost)}
         </span>

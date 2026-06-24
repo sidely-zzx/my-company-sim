@@ -1,6 +1,6 @@
 import { Application, Assets, Container, Sprite, type Texture } from 'pixi.js';
 import createChairLayer from './chair';
-import createDeskLayer from './desk';
+import createDeskLayer, { DESK_ROWS } from './desk';
 import createEmployeeLayer, { type PixiEmployeeView } from './employee';
 import createPcLayer from './pc';
 
@@ -156,10 +156,15 @@ const createGameApp = async (
   officeBackground.width = OFFICE_IMAGE_WIDTH;
   officeBackground.height = OFFICE_IMAGE_HEIGHT;
   backgroundLayer.addChild(officeBackground);
-  officeLayer.addChild(deskLayer);
-  officeLayer.addChild(pcLayer.layer);
-  officeLayer.addChild(employeeLayer.layer);
-  officeLayer.addChild(chairLayer.layer);
+
+  for (let row = 0; row < DESK_ROWS; row += 1) {
+    // 办公室按行渲染遮挡：同一排里员工坐在电脑前；下一排的桌面/电脑会压住上一排椅子下探的部分。
+    // 这只改变 Pixi 绘制顺序，不改变员工数量、工位占用、项目进度、现金流或其他经营状态。
+    officeLayer.addChild(deskLayer.rowLayers[row]);
+    officeLayer.addChild(pcLayer.rowLayers[row]);
+    officeLayer.addChild(employeeLayer.rowLayers[row]);
+    officeLayer.addChild(chairLayer.rowLayers[row]);
+  }
   pcLayer.setActiveScreenCount(options.employees.length);
   chairLayer.setOccupiedEmployeeCount(options.employees.length);
 

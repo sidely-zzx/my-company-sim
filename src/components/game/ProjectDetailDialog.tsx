@@ -181,16 +181,6 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const breachPenalty = Math.round(project.amount * PROJECT_BREACH_PENALTY_RATE)
   const breachPenaltyPercent = Math.round(PROJECT_BREACH_PENALTY_RATE * 100)
   const breachAvailable = canBreachProject(project)
-  const clientProfile = project.clientProfile
-  const clientStats = clientProfile
-    ? [
-        { label: '客情', value: clientProfile.relationship },
-        { label: '预算', value: clientProfile.budgetLevel },
-        { label: '需求', value: clientProfile.requirementChaos },
-        { label: '脾气', value: clientProfile.temper },
-        { label: '信任', value: clientProfile.trust },
-      ]
-    : []
   const projectPendingClientEvents = pendingProjectClientEvents.filter((event) => event.projectId === project.id)
   const starterProject = isStarterProjectContract({ tutorial }, project.id) && !tutorial.completed
   const selectedRoleNeedsAssignment = Boolean(
@@ -203,7 +193,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
   const recentProjectEvents = events
     .filter((event) => event.relatedEntityId === project.id)
     .filter(isProjectClientRequirementEvent)
-    .slice(-6)
+    .slice(-3)
     .reverse()
 
   const filteredEmployees = useMemo(() => {
@@ -256,17 +246,17 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
           </button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[min(calc(100vw-32px),1400px)]">
-        <DialogTitle>{project.title}</DialogTitle>
-        <DialogDescription>
+      <DialogContent className="max-h-[calc(100vh-24px)] w-[min(calc(100vw-24px),1400px)] overflow-hidden p-4 max-[980px]:overflow-auto">
+        <DialogTitle className="pr-10 leading-6">{project.title}</DialogTitle>
+        <DialogDescription className="mb-2">
           {project.clientName} · {projectStatusLabels[project.status]} · 当前阶段 {phaseLabels[project.currentPhase]}
         </DialogDescription>
 
-        <div className="grid min-h-[640px] grid-cols-[minmax(320px,0.85fr)_minmax(520px,1.15fr)] gap-4 max-[980px]:grid-cols-1">
-          <section className="min-w-0 rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-4">
-            <div className="grid gap-3">
+        <div className="grid h-[min(660px,calc(100vh-132px))] min-h-0 grid-cols-[minmax(360px,0.86fr)_minmax(520px,1.14fr)] gap-3 max-[980px]:h-auto max-[980px]:grid-cols-1">
+          <section className="min-h-0 min-w-0 overflow-hidden rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-3 max-[980px]:overflow-visible">
+            <div className="flex h-full min-h-0 flex-col gap-2 max-[980px]:h-auto">
               {starterProject ? (
-                <div className="rounded-md border border-[#b59d65] bg-[#2d281f] p-3 text-sm text-[#ead7aa]">
+                <div className="rounded-md border border-[#b59d65] bg-[#2d281f] p-2 text-sm text-[#ead7aa]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong className="text-[#ffe0a3]">推荐项目教学</strong>
                     <span className="text-xs font-extrabold text-[#e4b45b]">产品 / 设计 / 前端 / 后端 / 测试各 1 人</span>
@@ -277,7 +267,8 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                 </div>
               ) : null}
 
-              <dl className="m-0 grid grid-cols-2 gap-2 text-[13px] text-[#d8cfbb]">
+              <dl className="m-0 grid grid-cols-4 gap-2 text-[13px] text-[#d8cfbb] max-[720px]:grid-cols-2">
+                {/* 金额、罚金和期限直接影响项目现金流与延期风险，因此放在首屏摘要行，不再纵向堆高。 */}
                 <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2">
                   <dt className="text-[#9aa29a]">项目金额</dt>
                   <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{money(project.amount)}</dd>
@@ -296,34 +287,140 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                 </div>
               </dl>
 
-              {/* {clientProfile && (
-                <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+              <div className="grid min-h-0 gap-2">
+                <div className="rounded-md border border-[#303834] bg-[#171c1b] p-2.5">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <strong className="text-sm text-[#efe2c8]">甲方属性</strong>
-                    <span className="text-xs text-[#9aa29a]">影响金额、周期、罚金、需求和推进效率</span>
+                    <strong className="text-[#efe2c8]">总进度</strong>
+                    <span className="font-extrabold text-[#d8cfbb]">{totalProgress}%</span>
                   </div>
-                  <dl className="m-0 grid grid-cols-5 gap-2 text-center text-xs max-[560px]:grid-cols-3">
-                    {clientStats.map((stat) => (
-                      <div key={stat.label} className="rounded border border-[#303834] bg-[#101413] px-2 py-1.5">
-                        <dt className="text-[#9aa29a]">{stat.label}</dt>
-                        <dd className="m-0 mt-1 font-extrabold text-[#efe2c8]">{stat.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
+                  <div className={progressTrack}>
+                    <i
+                      className={cn(progressFill, progressToneClass[progressTone(totalProgress)])}
+                      style={{ width: `${totalProgress}%` }}
+                    />
+                  </div>
                 </div>
-              )} */}
 
-              <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
+                <div className="grid grid-cols-2 gap-2 max-[560px]:grid-cols-1">
+                  {projectTracks.map((track) => {
+                    const assignedCount = project.assignedEmployees[track]?.length ?? 0
+                    const pendingCount = employees.filter((employee) =>
+                      employee.pendingAssignment?.type === 'project' &&
+                      employee.pendingAssignment.id === project.id &&
+                      employee.pendingAssignment.role === track,
+                    ).length
+                    const requirement = project.requirements.find((item) => item.role === track)
+                    const progress = Math.round(project.phaseProgress[track])
+                    const tutorialMissingRole =
+                      starterProject &&
+                      isCurrentTutorialNode(tutorial, 'assign_project_team') &&
+                      assignedCount === 0 &&
+                      pendingCount === 0 &&
+                      (requirement?.headcount ?? 0) > 0
+
+                    return (
+                      <button
+                        key={track}
+                        type="button"
+                        data-tutorial-anchor={tutorialMissingRole ? 'starter-project-role-missing' : undefined}
+                        className={cn(
+                          'grid gap-1 rounded-md border border-[#303834] bg-[#171c1b] p-2 text-left text-[#d8cfbb]',
+                          selectedRole === track && 'border-[#b59d65] bg-[#2d2a22]',
+                          isCurrentPhaseRole(project, track) && 'shadow-[inset_4px_0_0_#b59d65]',
+                          tutorialMissingRole && cn('animate-pulse', tutorialTarget),
+                        )}
+                        onClick={() => setSelectedRole(track)}
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <strong className="text-[#efe2c8]">{roleLabels[track]}</strong>
+                          <em className="not-italic">{progress}%</em>
+                        </span>
+                        <span className={progressTrack}>
+                          <i
+                            className={cn(progressFill, progressToneClass[progressTone(progress)])}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </span>
+                        <span className="truncate text-xs text-[#aeb5ac]">
+                          当前 {assignedCount} / 待投 {pendingCount} / 建议 {requirement?.headcount ?? 0}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {(project.status === 'available' || breachAvailable) && (
+                <div className="grid gap-2">
+                  {project.status === 'available' && (
+                    <div className="rounded-md border border-[#4b514d] bg-[#171c1b] p-2 text-sm text-[#d8cfbb]">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <strong className="block text-[#efe2c8]">签约后配置项目人员</strong>
+                          <span className="text-xs text-[#aeb5ac]">
+                            签约后可在本详情页继续安排岗位人员。
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          data-tutorial-anchor={starterProject ? 'starter-project-sign-button' : undefined}
+                          className={cn(button, starterProject && cn('animate-pulse', tutorialTarget))}
+                          onClick={() => acceptProjectContract(project.id)}
+                        >
+                          签约
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {breachAvailable && (
+                    <div className="rounded-md border border-[#5a352f] bg-[#241717] p-2 text-sm text-[#d8cfbb]">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <strong className="block text-[#ffb0a3]">毁约赔偿</strong>
+                          <span className="text-xs text-[#d8cfbb]">
+                            项目金额 {breachPenaltyPercent}% · {money(breachPenalty)}
+                          </span>
+                        </div>
+                        {!confirmingBreach ? (
+                          <button
+                            type="button"
+                            className={cn(button, 'border-[#7c3a31] bg-[#4a201b] text-[#ffe5df] hover:bg-[#5a2a23]')}
+                            onClick={() => setConfirmingBreach(true)}
+                          >
+                            毁约
+                          </button>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className={cn(button, 'border-[#7c3a31] bg-[#4a201b] text-[#ffe5df] hover:bg-[#5a2a23]')}
+                              onClick={confirmBreachProject}
+                            >
+                              确认毁约
+                            </button>
+                            <button type="button" className={button} onClick={() => setConfirmingBreach(false)}>
+                              取消
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[#303834] bg-[#171c1b] p-2.5">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <strong className="text-sm text-[#efe2c8]">项目事件</strong>
                   <span className="text-xs font-extrabold text-[#aeb5ac]">
-                    待处理 {projectPendingClientEvents.length} · 历史 {recentProjectEvents.length}
+                    待处理 {projectPendingClientEvents.length} · 最近历史 {recentProjectEvents.length}
                   </span>
                 </div>
                 {projectPendingClientEvents.length === 0 && recentProjectEvents.length === 0 ? (
-                  <p className={cn(emptyState, 'm-0 p-3 text-xs')}>暂无项目事件。</p>
+                  <p className={cn(emptyState, 'm-0 p-2 text-xs')}>暂无项目事件。</p>
                 ) : (
-                  <div className="grid gap-2.5">
+                  <div className="grid gap-2">
                     {projectPendingClientEvents.map((event) => {
                       const tutorialEvent = isStarterProjectClientEvent(tutorial, event.id)
                       return (
@@ -331,7 +428,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                         key={event.id}
                         data-tutorial-anchor={tutorialEvent ? 'starter-event-card' : undefined}
                         className={cn(
-                          'rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-3 py-3',
+                          'rounded-md border-l-4 bg-[rgba(12,15,15,0.72)] px-2.5 py-2',
                           eventBorderToneClass[event.severity],
                           tutorialEvent && 'shadow-[0_0_0_2px_rgba(181,157,101,0.22)]',
                         )}
@@ -345,8 +442,8 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                             {tutorialEvent ? '教学事件' : '甲方事件'}
                           </span>
                         </div>
-                        <p className="mb-3 mt-2 text-xs leading-5 text-[#c9c1ad]">{event.description}</p>
-                        <div className="grid gap-2">
+                        <p className="mb-2 mt-1.5 text-xs leading-5 text-[#c9c1ad]">{event.description}</p>
+                        <div className="grid gap-1.5">
                           {event.options.map((option) => (
                             <button
                               key={option.id}
@@ -354,7 +451,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                               data-tutorial-anchor={tutorialEvent && option.id === 'compress_deadline' ? 'starter-event-recommended-option' : undefined}
                               className={cn(
                                 button,
-                                'min-h-11 justify-start whitespace-normal bg-[#1b201f] px-3 py-2 text-left text-[#efe2c8]',
+                                'min-h-9 justify-start whitespace-normal bg-[#1b201f] px-2.5 py-1.5 text-left text-[#efe2c8]',
                                 tutorialEvent &&
                                   option.id === 'compress_deadline' &&
                                   cn('animate-pulse', tutorialTarget),
@@ -379,7 +476,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                         {recentProjectEvents.map((event) => (
                           <li
                             key={event.id}
-                            className={cn('rounded-md border-l-4 bg-[rgba(12,15,15,0.5)] px-3 py-2.5', eventBorderToneClass[event.severity])}
+                            className={cn('rounded-md border-l-4 bg-[rgba(12,15,15,0.5)] px-2.5 py-2', eventBorderToneClass[event.severity])}
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <strong className="text-sm text-[#efe2c8]">{event.title}</strong>
@@ -387,7 +484,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                                 第 {event.day} 天 {formatTime(event.minute)}
                               </span>
                             </div>
-                            <p className="mb-0 mt-1 text-xs leading-5 text-[#aeb5ac]">{event.message}</p>
+                            <p className="mb-0 mt-1 line-clamp-2 text-xs leading-5 text-[#aeb5ac]">{event.message}</p>
                           </li>
                         ))}
                       </ol>
@@ -396,128 +493,13 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                 )}
               </div>
 
-              {project.status === 'available' && (
-                <div className="rounded-md border border-[#4b514d] bg-[#171c1b] p-3 text-sm text-[#d8cfbb]">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <strong className="block text-[#efe2c8]">签约后配置项目人员</strong>
-                      <span className="text-xs text-[#aeb5ac]">
-                        签约会把项目状态改为已签约，并允许在本详情页继续安排岗位人员。
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      data-tutorial-anchor={starterProject ? 'starter-project-sign-button' : undefined}
-                      className={cn(button, starterProject && cn('animate-pulse', tutorialTarget))}
-                      onClick={() => acceptProjectContract(project.id)}
-                    >
-                      签约
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {breachAvailable && (
-                <div className="rounded-md border border-[#5a352f] bg-[#241717] p-3 text-sm text-[#d8cfbb]">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <strong className="block text-[#ffb0a3]">毁约赔偿</strong>
-                      <span className="text-xs text-[#d8cfbb]">
-                        项目金额 {breachPenaltyPercent}% · {money(breachPenalty)}
-                      </span>
-                    </div>
-                    {!confirmingBreach ? (
-                      <button
-                        type="button"
-                        className={cn(button, 'border-[#7c3a31] bg-[#4a201b] text-[#ffe5df] hover:bg-[#5a2a23]')}
-                        onClick={() => setConfirmingBreach(true)}
-                      >
-                        毁约
-                      </button>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className={cn(button, 'border-[#7c3a31] bg-[#4a201b] text-[#ffe5df] hover:bg-[#5a2a23]')}
-                          onClick={confirmBreachProject}
-                        >
-                          确认毁约
-                        </button>
-                        <button type="button" className={button} onClick={() => setConfirmingBreach(false)}>
-                          取消
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <strong className="text-[#efe2c8]">总进度</strong>
-                  <span className="font-extrabold text-[#d8cfbb]">{totalProgress}%</span>
-                </div>
-                <div className={progressTrack}>
-                  <i
-                    className={cn(progressFill, progressToneClass[progressTone(totalProgress)])}
-                    style={{ width: `${totalProgress}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                {projectTracks.map((track) => {
-                  const assignedCount = project.assignedEmployees[track]?.length ?? 0
-                  const pendingCount = employees.filter((employee) =>
-                    employee.pendingAssignment?.type === 'project' &&
-                    employee.pendingAssignment.id === project.id &&
-                    employee.pendingAssignment.role === track,
-                  ).length
-                  const requirement = project.requirements.find((item) => item.role === track)
-                  const progress = Math.round(project.phaseProgress[track])
-                  const tutorialMissingRole =
-                    starterProject &&
-                    isCurrentTutorialNode(tutorial, 'assign_project_team') &&
-                    assignedCount === 0 &&
-                    pendingCount === 0 &&
-                    (requirement?.headcount ?? 0) > 0
-
-                  return (
-                    <button
-                      key={track}
-                      type="button"
-                      data-tutorial-anchor={tutorialMissingRole ? 'starter-project-role-missing' : undefined}
-                      className={cn(
-                        'grid gap-2 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-left text-[#d8cfbb]',
-                        selectedRole === track && 'border-[#b59d65] bg-[#2d2a22]',
-                        isCurrentPhaseRole(project, track) && 'shadow-[inset_4px_0_0_#b59d65]',
-                        tutorialMissingRole && cn('animate-pulse', tutorialTarget),
-                      )}
-                      onClick={() => setSelectedRole(track)}
-                    >
-                      <span className="flex items-center justify-between gap-3">
-                        <strong className="text-[#efe2c8]">{roleLabels[track]}</strong>
-                        <em className="not-italic">{progress}%</em>
-                      </span>
-                      <span className={progressTrack}>
-                        <i
-                          className={cn(progressFill, progressToneClass[progressTone(progress)])}
-                          style={{ width: `${progress}%` }}
-                        />
-                      </span>
-                      <span className="text-xs text-[#aeb5ac]">
-                        当前 {assignedCount} 人 / 待投入 {pendingCount} 人 / 建议 {requirement?.headcount ?? 0} 人
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
           </section>
 
-          <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
-            <div className="rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-3">
+          <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2">
+            <div className="rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-2.5">
               <div className="flex flex-wrap items-center gap-2">
+                {/* 筛选只影响候选员工列表，不改变项目状态；压缩到一行后让右侧员工列表始终留出固定可视高度。 */}
                 <SelectField
                   label="分配岗位"
                   value={selectedRole}
@@ -544,13 +526,13 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                 />
               </div>
               {disabledReason && (
-                <p className={cn('mb-0 mt-3 text-xs font-extrabold', riskToneClass.danger)}>
+                <p className={cn('mb-0 mt-2 text-xs font-extrabold', riskToneClass.danger)}>
                   {disabledReason}
                 </p>
               )}
             </div>
 
-            <div className="min-h-0 overflow-auto rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-3">
+            <div className="min-h-0 overflow-auto rounded-md border border-[#303834] bg-[rgba(12,15,15,0.42)] p-2.5">
               {filteredEmployees.length === 0 ? (
                 <p className={emptyState}>没有符合筛选条件的员工。</p>
               ) : (
@@ -571,7 +553,7 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                         type="button"
                         data-tutorial-anchor={tutorialEmployeeTarget ? 'starter-project-employee' : undefined}
                         className={cn(
-                          'grid gap-2 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-left text-[#d8cfbb]',
+                          'grid gap-1.5 rounded-md border border-[#303834] bg-[#171c1b] p-2.5 text-left text-[#d8cfbb]',
                           employeeIdle && 'border-[#56684d] bg-[#1d251d]',
                           starterEmployee && starterProject && tutorialTarget,
                           cannotAssign
@@ -592,10 +574,10 @@ export function ProjectDetailDialog({ project, trigger }: ProjectDetailDialogPro
                             </span>
                           </span>
                         </span>
-                        <span className="grid gap-1 text-xs text-[#aeb5ac]">
-                          <span>当前：{assignmentText(employee, laborContracts, projectContracts)}</span>
-                          <span>后续：{pendingAssignmentText(employee, laborContracts, projectContracts)}</span>
-                          <span>简历：{skillClaimsText(employee.resumeSkills)}</span>
+                        <span className="grid gap-0.5 text-xs text-[#aeb5ac]">
+                          <span className="truncate">当前：{assignmentText(employee, laborContracts, projectContracts)}</span>
+                          <span className="truncate">后续：{pendingAssignmentText(employee, laborContracts, projectContracts)}</span>
+                          <span className="truncate">简历：{skillClaimsText(employee.resumeSkills)}</span>
                         </span>
                         <span className="flex flex-wrap gap-2 text-xs font-extrabold text-[#d8cfbb]">
                           <span>{roleLabels[selectedRole]}能力 {ability}</span>

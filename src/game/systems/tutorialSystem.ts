@@ -10,6 +10,7 @@ import type {
   GameEvent,
   GameState,
   LaborContract,
+  PendingLaborClientNotice,
   PendingProjectClientEvent,
   ProjectContract,
   Resume,
@@ -86,7 +87,8 @@ interface TutorialNodeDefinition {
   isCompleted: (state: TutorialRuntimeState) => boolean
 }
 
-type TutorialRuntimeState = Pick<GameState, 'employees' | 'financeRecords' | 'laborContracts' | 'mailbox' | 'pendingProjectClientEvents' | 'projectContracts' | 'tutorial'>
+type TutorialRuntimeState = Pick<GameState, 'employees' | 'financeRecords' | 'laborContracts' | 'mailbox' | 'pendingLaborClientNotices' | 'pendingProjectClientEvents' | 'projectContracts' | 'tutorial'>
+type StarterLaborOutcomeState = Pick<GameState, 'financeRecords' | 'laborContracts' | 'pendingLaborClientNotices' | 'tutorial'>
 
 function createGuideNode(definition: TutorialNodeDefinition): TutorialGuideNode {
   return {
@@ -632,7 +634,7 @@ function hasActiveEmployee(state: Pick<GameState, 'employees'>): boolean {
   return state.employees.some((employee) => employee.status !== 'fired')
 }
 
-function hasStarterLaborOutcome(
+function hasStarterLaborFinanceRecord(
   state: Pick<GameState, 'financeRecords' | 'tutorial'>,
 ): boolean {
   const starterLaborContractId = state.tutorial.starterLaborContractId
@@ -642,6 +644,28 @@ function hasStarterLaborOutcome(
         record.relatedEntityId === starterLaborContractId &&
         (record.type === 'labor_income' || record.type === 'labor_penalty'),
       ),
+  )
+}
+
+function getStarterLaborNotice(
+  state: Pick<GameState, 'pendingLaborClientNotices' | 'tutorial'>,
+): PendingLaborClientNotice | undefined {
+  const starterLaborContractId = state.tutorial.starterLaborContractId
+  if (!starterLaborContractId) {
+    return undefined
+  }
+
+  return state.pendingLaborClientNotices.find((notice) => notice.contractId === starterLaborContractId)
+}
+
+function hasStarterLaborOutcome(state: StarterLaborOutcomeState): boolean {
+  const starterContract = getStarterLaborContract(state)
+  // 第一单日结结果会影响教学是否开启项目教学：达标有收入，未达标有甲方通知，0 要求当天也会写入 lastOutputCheckDay。
+  // 这里不只看财务流水，避免第一天未达标但已经进入日报时，新手待办仍卡在“推进到下班”。
+  return Boolean(
+    hasStarterLaborFinanceRecord(state) ||
+      getStarterLaborNotice(state) ||
+      starterContract?.lastOutputCheckDay !== undefined,
   )
 }
 
@@ -658,11 +682,11 @@ function getStarterLaborAssignedEmployee(
   )
 }
 
-function hasStarterStatusLessonStarted(state: Pick<GameState, 'financeRecords' | 'tutorial'>): boolean {
+function hasStarterStatusLessonStarted(state: StarterLaborOutcomeState): boolean {
   return Boolean(state.tutorial.starterStatusTriggered || hasStarterLaborOutcome(state))
 }
 
-function hasStarterStatusLessonHandled(state: Pick<GameState, 'financeRecords' | 'tutorial'>): boolean {
+function hasStarterStatusLessonHandled(state: StarterLaborOutcomeState): boolean {
   return Boolean(state.tutorial.starterStatusHandled || hasStarterLaborOutcome(state))
 }
 
@@ -934,6 +958,10 @@ function starterSettlementMessage(state: GameState): string {
   }
   if (record?.type === 'labor_penalty') {
     return `推荐驻场合同已经产生违约反馈，本次扣款 ${Math.abs(record.amount)}，需要尽快补人。`
+  }
+  const notice = getStarterLaborNotice(state)
+  if (notice) {
+    return `推荐驻场合同第一次日结未达标，昨日有效产出 ${Math.round(notice.actualOutput)}/${Math.round(notice.requiredOutput)}。先处理甲方反馈，再继续后续经营。`
   }
   return '推荐驻场合同已经完成第一次日结反馈。'
 }

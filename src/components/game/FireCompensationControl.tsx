@@ -14,12 +14,14 @@ import {
 interface FireCompensationControlProps {
   employee: Employee
   disabled: boolean
+  compact?: boolean
   onFire: () => void
 }
 
 export function FireCompensationControl({
   employee,
   disabled,
+  compact = false,
   onFire,
 }: FireCompensationControlProps) {
   const compensationWeeks = Math.max(1, Math.ceil(employee.workDays / 7))
@@ -27,7 +29,7 @@ export function FireCompensationControl({
   const finalCompensation = calculateFireCompensation(employee)
 
   return (
-    <div className="grid gap-3">
+    <div className={compact ? 'grid gap-2.5' : 'grid gap-3'}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#d4cbb6]">
           <span>固定赔偿 100%</span>
@@ -45,7 +47,7 @@ export function FireCompensationControl({
         <strong className="text-[#efe2c8]">{money(finalCompensation)}</strong>
       </div>
 
-      <div className="grid gap-1.5 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-[13px] text-[#d8cfbb]">
+      <div className={compact ? 'grid gap-1 rounded-md border border-[#303834] bg-[#171c1b] p-2 text-[13px] text-[#d8cfbb]' : 'grid gap-1.5 rounded-md border border-[#303834] bg-[#171c1b] p-3 text-[13px] text-[#d8cfbb]'}>
         <span>
           赔偿基数：日工资 {money(employee.salaryPerDay)} * {compensationWeeks} 周
         </span>

@@ -27,6 +27,7 @@ const MAX_ACTIVE_SCREENS = DESK_COLUMNS * DESK_ROWS;
 
 export interface PcLayerHandle {
   layer: Container;
+  rowLayers: Container[];
   setActiveScreenCount: (count: number) => void;
 }
 
@@ -75,9 +76,14 @@ const createWorkingScreen = (screenTexture: Texture) => {
 
 const createPcMatrix = (pcTexture: Texture, screenTexture: Texture, ticker: Ticker) => {
   const pcLayer = new Container();
+  const rowLayers: Container[] = [];
   const workingScreens: Array<ReturnType<typeof createWorkingScreen>> = [];
 
   for (let row = 0; row < DESK_ROWS; row += 1) {
+    const rowLayer = new Container();
+    rowLayers.push(rowLayer);
+    pcLayer.addChild(rowLayer);
+
     for (let column = 0; column < DESK_COLUMNS; column += 1) {
       const stationLayer = new Container();
       const pc = new Sprite(pcTexture);
@@ -93,7 +99,7 @@ const createPcMatrix = (pcTexture: Texture, screenTexture: Texture, ticker: Tick
       pc.height = PC_DISPLAY_HEIGHT;
       stationLayer.addChild(pc);
       stationLayer.addChild(workingScreen.layer);
-      pcLayer.addChild(stationLayer);
+      rowLayer.addChild(stationLayer);
       workingScreens.push(workingScreen);
       ticker.add((ticker) => {
         if (workingScreen.layer.visible) {
@@ -115,6 +121,7 @@ const createPcMatrix = (pcTexture: Texture, screenTexture: Texture, ticker: Tick
 
   return {
     layer: pcLayer,
+    rowLayers,
     setActiveScreenCount,
   };
 };

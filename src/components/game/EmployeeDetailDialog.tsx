@@ -54,7 +54,7 @@ export function EmployeeDetailDialog({
 
   return (
     <Dialog open={open && Boolean(employee)} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(calc(100vw-32px),1180px)] p-0">
+      <DialogContent className="max-h-[calc(100vh-24px)] w-[min(calc(100vw-24px),1280px)] overflow-hidden p-0 max-[900px]:overflow-auto">
         <DialogTitle className={srOnly}>员工详情</DialogTitle>
         <DialogDescription className={srOnly}>查看员工属性、薪酬、离职和工作安排。</DialogDescription>
         {employee ? (

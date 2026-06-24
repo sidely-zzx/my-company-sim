@@ -18,35 +18,41 @@ const MAX_OCCUPIED_CHAIRS = DESK_COLUMNS * DESK_ROWS;
 
 export interface ChairLayerHandle {
   layer: Container;
+  rowLayers: Container[];
   setOccupiedEmployeeCount: (count: number) => void;
 }
 
 const createChairMatrix = (chairTexture: Texture) => {
   const chairLayer = new Container();
+  const rowLayers: Container[] = [];
   const chairs: Sprite[] = [];
 
   for (let row = 0; row < DESK_ROWS; row += 1) {
+    const rowLayer = new Container();
+    rowLayers.push(rowLayer);
+    chairLayer.addChild(rowLayer);
+
     for (let column = 0; column < DESK_COLUMNS; column += 1) {
       const chair = new Sprite(chairTexture);
 
-      // 椅子是每个桌子对应的前景工位资产：它遮挡桌子、显示器、电脑和桌面摆件等同工位物件。
       // 椅子位置跟随桌子坐标，影响员工坐姿、点击热区和后续工位状态的视觉对齐，不直接改变经营数值。
+      // 行容器会让下一排电脑压住上一排椅子，避免前后排交叠时椅子盖住电脑。
       chair.anchor.set(0.5);
       chair.width = CHAIR_DISPLAY_WIDTH;
       chair.height = CHAIR_DISPLAY_HEIGHT;
       chair.x = DESK_COLUMN_CENTER_XS[column] - 10;
       chair.y = DESK_ROW_CENTER_YS[row] + CHAIR_OFFSET_Y;
       chairs.push(chair);
-      chairLayer.addChild(chair);
+      rowLayer.addChild(chair);
     }
   }
 
-  return { chairLayer, chairs };
+  return { chairLayer, rowLayers, chairs };
 };
 
 async function createChairLayer() {
   const chairTexture = await Assets.load<Texture>(CHAIR_SRC);
-  const { chairLayer, chairs } = createChairMatrix(chairTexture);
+  const { chairLayer, rowLayers, chairs } = createChairMatrix(chairTexture);
 
   const setOccupiedEmployeeCount = (count: number) => {
     const occupiedCount = Math.max(0, Math.min(MAX_OCCUPIED_CHAIRS, count));
@@ -60,6 +66,7 @@ async function createChairLayer() {
 
   return {
     layer: chairLayer,
+    rowLayers,
     setOccupiedEmployeeCount,
   };
 }
