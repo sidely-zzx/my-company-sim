@@ -1,10 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "web-cad",
-  "main": "./workers/app.ts",
-  "compatibility_date": "2026-03-29",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2026-06-25",
   "assets": {
-    "directory": "./build/client"
+    // SPA 现在只需要部署 Vite 产出的静态文件，不再走 SSR Worker 入口。
+    "directory": "./dist",
+    // 让 /game、/settings 这类前端路由在 Cloudflare 上回退到 index.html。
+    "not_found_handling": "single-page-application"
   }
 }
