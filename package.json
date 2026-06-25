@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "pnpm build && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
