@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "web-cad",
+  "name": "my-company-sim",
   "compatibility_date": "2026-06-25",
   "assets": {
     // SPA 现在只需要部署 Vite 产出的静态文件，不再走 SSR Worker 入口。
