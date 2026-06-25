@@ -142,6 +142,13 @@ function hasGameStateShape(value: unknown): value is GameState {
     return false
   }
 
+  // tutorial 已在上方缩窄为对象；存到局部变量后，后续节点校验不会再从 unknown 上直接取属性。
+  const tutorial = value.tutorial
+  if (!isRecord(tutorial.nodes)) {
+    return false
+  }
+  const tutorialNodes = tutorial.nodes
+
   return (
     hasNumberField(value.settings, 'offWorkHour') &&
     hasNumberField(value.time, 'day') &&
@@ -174,13 +181,12 @@ function hasGameStateShape(value: unknown): value is GameState {
     hasNumberField(value.market, 'resumeRefreshLimit') &&
     typeof value.market.vip === 'boolean' &&
     hasArrayField(value.market, 'recruitingPosts') &&
-    typeof value.tutorial.enabled === 'boolean' &&
-    typeof value.tutorial.completed === 'boolean' &&
-    typeof value.tutorial.currentNodeId === 'string' &&
-    isRecord(value.tutorial.nodes) &&
-    TUTORIAL_SAVE_NODE_IDS.every((nodeId) => hasTutorialNodeShape((value.tutorial.nodes as Record<string, unknown>)[nodeId])) &&
-    hasArrayField(value.tutorial, 'starterResumeIds') &&
-    hasArrayField(value.tutorial, 'starterProjectResumeIds') &&
+    typeof tutorial.enabled === 'boolean' &&
+    typeof tutorial.completed === 'boolean' &&
+    typeof tutorial.currentNodeId === 'string' &&
+    TUTORIAL_SAVE_NODE_IDS.every((nodeId) => hasTutorialNodeShape(tutorialNodes[nodeId])) &&
+    hasArrayField(tutorial, 'starterResumeIds') &&
+    hasArrayField(tutorial, 'starterProjectResumeIds') &&
     hasNumberField(value, 'rngSeed') &&
     hasNumberField(value, 'nextId')
   )

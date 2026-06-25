@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
-import type { Resume, SkillRole } from '../../game/types'
+import type { Resume } from '../../game/types'
 import { schoolLabels, skillClaimsText } from '../../game/ui'
 import {
   TUTORIAL_OFFER_LIMITS,
@@ -120,7 +120,7 @@ function OfferDialog({ resume, form, starterResume, starterProjectResume, compan
           <div className="rounded-md border border-[#303834] bg-[#171c1b] p-3">
             <span className="block text-xs font-extrabold text-[#aaa48f]">简历技能</span>
             <strong className="mt-1 block text-[#efe2c8]">
-              {skillClaimsText(resume.resumeSkills as { role: SkillRole; level: string }[])}
+              {skillClaimsText(resume.resumeSkills)}
             </strong>
           </div>
 
@@ -135,7 +135,7 @@ function OfferDialog({ resume, form, starterResume, starterProjectResume, compan
                 <span className="text-xs font-extrabold text-[#e4b45b]">Offer 必定接受</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-[#d8cfbb] max-[560px]:grid-cols-1">
-                <span>覆盖岗位：{skillClaimsText(resume.resumeSkills as { role: SkillRole; level: string }[])}</span>
+                <span>覆盖岗位：{skillClaimsText(resume.resumeSkills)}</span>
                 <span>预计日成本：{money(estimatedDailyCost)}</span>
               </div>
             </div>
@@ -281,7 +281,7 @@ export function RecruitingPanel() {
                       ) : null}
                     </td>
                     <td>{schoolLabels[resume.school]} · {resume.workYears} 年</td>
-                    <td>{skillClaimsText(resume.resumeSkills as { role: SkillRole; level: string }[])}</td>
+                    <td>{skillClaimsText(resume.resumeSkills)}</td>
                     <td>{money(resume.expectedSalaryPerDay)}</td>
                     <td>{resume.introduction}</td>
                     <td>

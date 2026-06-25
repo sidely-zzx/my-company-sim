@@ -1,13 +1,10 @@
 import { useState } from 'react'
 
 import {
-  abilitiesText,
   assignmentText,
   employeeStatusLabels,
   pendingAssignmentText,
   realSkillText,
-  schoolLabels,
-  skillClaimsText,
 } from '../../game/ui'
 import { useGameStore } from '../../store/gameStore'
 import { isStarterStatusEmployee } from '../../game/systems/tutorialSystem'
